@@ -8,7 +8,7 @@ from matplotlib.finance import candlestick_ohlc
 from matplotlib.dates import date2num, DateFormatter, HourLocator, DayLocator
 from finance_metrics import *
 
-def display_plot(quotes, keltner_channels=None):
+def display_plot(quotes, technical_indicators=None):
    # plot the candle chart
    # set the formatters for the horizontal axis
    days = DayLocator()
@@ -29,11 +29,16 @@ def display_plot(quotes, keltner_channels=None):
    ax.xaxis_date()
    ax.autoscale_view()
    plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
-   if keltner_channels is not None:
+   if technical_indicators is not None:
       dates = [x[0] for x in quotes]
-      for channel, data in keltner_channels.iteritems():
-         linestyle = "dotted" if channel == "average" else "solid"
-         plt.plot(dates, data, linestyle=linestyle, linewidth=1, color='blue')
+      for indicator, data in technical_indicators.iteritems():
+         if "KELCH" in indicator:
+            linestyle = ":" if indicator == "KELCH_average" else "-"
+            linecolor = "blue"
+         if "psar" in indicator:
+            linestyle = ":"
+            linecolor = "violet"
+         plt.plot(dates, data, linestyle=linestyle, linewidth=1, color=linecolor)
    plt.show()
 
 
@@ -45,6 +50,9 @@ client = cl.MarketClient("kraken", "etheur")
 OHLC = client.GetOHLC(after=str(today), periods=[period])
 
 quotes = np.array( [ (date2num(datetime.fromtimestamp(x.open_time)), x.open, x.high, x.low, x.close) for x in OHLC[period] ], dtype=float )
-keltner_channels = KELCH(quotes, 14)
+technical_indicators = KELCH(quotes, 14)
 
-display_plot(quotes, keltner_channels)
+psar_results = parabolic_sar(quotes)
+technical_indicators['psar_bull'] = psar_results['psarbull']
+technical_indicators['psar_bear'] = psar_results['psarbear']
+display_plot(quotes, technical_indicators)

@@ -35,9 +35,69 @@ def KELCH(quote_list, n):
    average_hlc = np.asarray([(x[2] + x[3] + x[4])/3 for x in quote_list], dtype=float)
    average_hlc = quote_list[:,4]
    KelChM = moving_average( average_hlc, n=n, type='exp')
-   KelChU = KelChM + 2 * ATR(quote_list, n)
-   KelChL = KelChM - 2 * ATR(quote_list, n)
+   atr_tmp = ATR(quote_list, n)
+   KelChU = KelChM + 2 * atr_tmp
+   KelChL = KelChM - 2 * atr_tmp
 
-   return { "average": KelChM, "upper": KelChU, "lower" : KelChL}
+   return { "KELCH_average": KelChM, "KELCH_upper": KelChU, "KELCH_lower" : KelChL}
 
 
+def parabolic_sar(quote_list, iaf = 0.02, maxaf = 0.2):
+   length = quote_list.shape[0]
+	 #format: d o h l c
+   high = quote_list[:,2]
+   low = quote_list[:,3]
+   close = quote_list[:,4]
+   #psar = close[:]
+   psar = np.ndarray(shape=close.shape, dtype=float)
+   psar[:2] = close[:2]
+   psarbull = [None] * length
+   psarbear = [None] * length
+   bull = True
+   af = iaf
+   ep = low[0]
+   hp = high[0]
+   lp = low[0]
+   for i in range(2,length):
+      if bull:
+         psar[i] = psar[i - 1] + af * (hp - psar[i - 1])
+      else:
+         psar[i] = psar[i - 1] + af * (lp - psar[i - 1])
+      reverse = False
+      if bull:
+         if low[i] < psar[i]:
+            bull = False
+            reverse = True
+            psar[i] = hp
+            lp = low[i]
+            af = iaf
+      else:
+         if high[i] > psar[i]:
+            bull = True
+            reverse = True
+            psar[i] = lp
+            hp = high[i]
+            af = iaf
+      if not reverse:
+         if bull:
+            if high[i] > hp:
+               hp = high[i]
+               af = min(af + iaf, maxaf)
+            if low[i - 1] < psar[i]:
+               psar[i] = low[i - 1]
+            if low[i - 2] < psar[i]:
+               psar[i] = low[i - 2]
+         else:
+            if low[i] < lp:
+               lp = low[i]
+               af = min(af + iaf, maxaf)
+            if high[i - 1] > psar[i]:
+               psar[i] = high[i - 1]
+            if high[i - 2] > psar[i]:
+               psar[i] = high[i - 2]
+      if bull:
+         psarbull[i] = psar[i]
+      else:
+         psarbear[i] = psar[i]
+
+   return {"psar":psar, "psarbear":psarbear, "psarbull":psarbull}
