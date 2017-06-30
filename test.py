@@ -41,11 +41,21 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
          plt.plot(dates, data, linestyle=linestyle, linewidth=1, color=linecolor)
    
    if processing_results is not None:
-      for indicator, result in processing_results.iteritems():
-         dates = [x[0] for x in result]
-         data = [x[1] for x in result]
-         linecolor = "black"
-         plt.plot(dates, data, linestyle=linestyle, label=indicator, linewidth=1, color=linecolor)
+      #indicator = 'order_book'
+      #result = processing_results[ indicator ]
+      #dates = [x[0] for x in result]
+      #data = [x[1] for x in result]
+      #linecolor = "black"
+      #plt.plot(dates, data, linestyle=linestyle, label=indicator, linewidth=1, color=linecolor)
+
+      yoffset = ax.get_ylim()[0]
+      for event in processing_results['order_book_events']:
+         ax.annotate(event[1], xy=(event[0], event[2]),  xycoords='data',
+                  xytext=(event[0], yoffset+1), textcoords='data',
+                  bbox=dict(boxstyle="round", fc="0.8"),
+                  arrowprops=dict(arrowstyle="->",
+                  connectionstyle="angle,angleA=0,angleB=90,rad=10"),
+                  )
 
    plt.legend()
    plt.show()
@@ -58,35 +68,33 @@ def get_trade_proposals(quotes, technical_indicators):
    #raise Exception()
    # we want to BUY when technical_indicators['psar_bear'] switches from value to None,
    # if there are AT LEAST N consecutives Nones
-   consec_nones = 4
+   consec_nones = 2
    numsamples = len(technical_indicators['psar_bear'])
 
    # get the indices of the None elements in array, whose preceding element is not None
+   #for elem in technical_indicators['psar_bear']:
+   #   print elem
+
    local_mins = [ i for i, j in enumerate(technical_indicators['psar_bear']) if j is None and technical_indicators['psar_bear'][i-1] is not None]
-   #print local_mins
 
    # restrict the eligible elements only to those that have AT LEAST N consecutives Nones
    buy_time_idx = []
    for i in local_mins:
-      window = min(4, numsamples - i)
+      window = min(consec_nones, numsamples - i)
    
       if all([sample is None for sample in technical_indicators['psar_bear'][i:i+window]]):
          buy_time_idx.append(min(i+window,numsamples-1))
-   #print buy_time_idx
    
    # get the indices of the None elements in array, whose next element is None
    local_maxs = [ i for i, j in enumerate(technical_indicators['psar_bull']) if j is None and technical_indicators['psar_bull'][i-1] is not None]
-   #print local_maxs
 
    # restrict the eligible elements only to those that have AT LEAST N consecutives Nones
-   #print technical_indicators['psar_bull']
    sell_time_idx = []
    for i in local_maxs:
-      window = min(4, numsamples - i)
+      window = min(consec_nones, numsamples - i)
    
       if all([sample is None for sample in technical_indicators['psar_bull'][i:i+window]]):
          sell_time_idx.append(min(i+window,numsamples-1))
-   #print sell_time_idx
 
    # generate an order book
    OrderBook = [ (quotes[i,0], 'B', quotes[i,1]) for i in buy_time_idx ] + [ (quotes[i,0], 'S', quotes[i,1]) for i in sell_time_idx ]
@@ -129,8 +137,6 @@ def simulate_trading(OrderBook):
    print "Total assets value: ", total_assets_value 
    
 
-
-
 period='1800'
 s = "26/06/2017 00:00:00"
 today=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
@@ -139,14 +145,15 @@ client = cl.MarketClient("kraken", "etheur")
 OHLC = client.GetOHLC(after=str(today), periods=[period])
 
 quotes = np.array( [ (date2num(datetime.fromtimestamp(x.open_time)), x.open, x.high, x.low, x.close, x.volume) for x in OHLC[period] ], dtype=float )
-technical_indicators = KELCH(quotes, 14)
+#technical_indicators = KELCH(quotes, 14)
+technical_indicators = {}
 
 psar_results = parabolic_sar(quotes)
 technical_indicators['psar_bull'] = psar_results['psarbull']
 technical_indicators['psar_bear'] = psar_results['psarbear']
 
 OrderBook = get_trade_proposals(quotes, technical_indicators)
-simulate_trading(OrderBook)
-#processing_results = {}
-#processing_results['order_book'] = np.array([(x[0],x[2]) for x in OrderBook], dtype=float)
-#display_plot(quotes, technical_indicators, processing_results)
+#simulate_trading(OrderBook)
+processing_results = {}
+processing_results['order_book_events'] = OrderBook
+display_plot(quotes, technical_indicators, processing_results)
