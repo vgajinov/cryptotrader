@@ -158,76 +158,71 @@ def get_trade_proposals(quotes, technical_indicators):
    # we want to BUY when technical_indicators['psar_bear'] switches from value to None,
    # if there are AT LEAST N consecutives Nones
    consec_nones = 2
+   init_offset = consec_nones
    numsamples = len(technical_indicators['psar_bear'])
 
    # get the indices of the None elements in array, whose preceding element is not None
    #for elem in technical_indicators['psar_bear']:
    #   print elem
-
-   local_mins = [ min(i+consec_nones, numsamples) for i, j in enumerate(technical_indicators['psar_bear']) if j is None and technical_indicators['psar_bear'][i-1] is not None]
-
-   # restrict the eligible elements only to those that have AT LEAST N consecutives Nones
    buy_time_idx = []
-   for i in local_mins:
-      window = max(i - consec_nones, 0 )
-   
-      if all([sample is None for sample in technical_indicators['psar_bear'][window:i]]):
-         buy_time_idx.append(i)
-   
-   # get the indices of the None elements in array, whose next element is None
-   local_maxs = [ i for i, j in enumerate(technical_indicators['psar_bull']) if j is None and technical_indicators['psar_bull'][i-1] is not None]
+   for i, j in enumerate(technical_indicators['psar_bear'][init_offset:]):
+      real_i = i+init_offset
+      window = max(real_i-consec_nones, 0)
+      bear_starts = all([x is not None for x in technical_indicators['psar_bear'][window:real_i]]) and j is None
+      if bear_starts:
+         buy_time_idx.append(real_i)
 
-   # restrict the eligible elements only to those that have AT LEAST N consecutives Nones
+   # get the indices of the None elements in array, whose next element is None
    sell_time_idx = []
-   for i in local_maxs:
-      window = max(i-consec_nones, 0)
-   
-      if all([sample is None for sample in technical_indicators['psar_bull'][window:i]]):
-         sell_time_idx.append(i)
+   for i, j in enumerate(technical_indicators['psar_bull'][init_offset:]):
+      real_i = i+init_offset
+      window = max(real_i-consec_nones, 0)
+      bull_starts = all([x is not None for x in technical_indicators['psar_bull'][window:real_i]]) and j is None
+      if bull_starts:
+         sell_time_idx.append(real_i)
 
    # generate an order book
    OrderBook = [ (quotes[i,0], 'B', quotes[i,1]) for i in buy_time_idx ] + [ (quotes[i,0], 'S', quotes[i,1]) for i in sell_time_idx ]
   
-   print OrderBook
+   #print OrderBook
    return sorted(OrderBook, key=lambda x: x[0])
 
 
-def simulate_trading(OrderBook):
-   capital=1000
+def simulate_trading(OrderBook, capital, broker_fee=.02):
    coins=0
-   last_buy = 0
-   last_sell = 1000
 
    #print OrderBook[0]
    #for i,value in enumerate(OrderBook[1:]):
    #   print value, (value[2]*100/OrderBook[i][2]) - 100
 
+   OrderBookOut = []
    for order in OrderBook:
       order_sent = False
-      if order[1] == 'S' and coins>0 and order[2]>last_buy:
+      if order[1] == 'S' and coins>0:
          coins_sold=min(.2*coins, .5)
-         capital += order[2] * coins_sold
+         capital += (order[2] * coins_sold)/(1+broker_fee)
          coins -= coins_sold
-         last_sell = order[2]
          order_sent = True
          
       if order[1] == 'B' and capital>0:
          invest = min(capital, 500)
          coins += invest / order[2]
-         capital -= invest
-         last_buy = order[2]
+         capital -= invest*(1+broker_fee)
          order_sent = True
      
-      if order_sent: 
-         print order, capital, coins, "<-------"
+      if order_sent:
+         OrderBookOut.append(order)
+      #   assets = capital + coins * order[2]
+      #   print order, capital, coins, assets, "<-------"
       #else:
       #   print order
 
    total_assets_value = capital + coins * OrderBook[-1][2]
    print "Total assets value: ", total_assets_value 
+   return total_assets_value, OrderBookOut
    
 
-period='1800'
+period='300'
 
 with dbconnector( "samples_%s_26062017_000000.db"%period ) as dbObj:
    if not dbObj.db_is_initialized:
@@ -242,13 +237,16 @@ with dbconnector( "samples_%s_26062017_000000.db"%period ) as dbObj:
       #before=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
    
       client = cl.MarketClient("kraken", "etheur")
-      #OHLC = client.GetOHLC(before=str(before), after=str(after), periods=[period])
       OHLC = client.GetOHLC( after=str(after), periods=[period])
    
       quotes = np.array( [ (date2num(datetime.fromtimestamp(x.open_time)), x.open, x.high, x.low, x.close, x.volume) for x in OHLC[period] ], dtype=float )
       dbObj.save_data(quotes)
    else:
       quotes = dbObj.load_data()
+
+total_time_years = len(quotes)*int(period) / (3600.0*24*365)
+
+print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
 
 #technical_indicators = KELCH(quotes, 14)
 technical_indicators = {}
@@ -258,7 +256,16 @@ technical_indicators['psar_bull'] = psar_results['psarbull']
 technical_indicators['psar_bear'] = psar_results['psarbear']
 
 OrderBook = get_trade_proposals(quotes, technical_indicators)
-#simulate_trading(OrderBook)
-processing_results = {}
-processing_results['order_book_events'] = OrderBook
+capital = 1000
+profit, OrderBook = simulate_trading(OrderBook, capital)
+
+# compute annual percentage rate
+periods_year = 1.0/total_time_years
+rate_period = profit/capital
+print rate_period, periods_year
+APY = pow( rate_period, periods_year) - 1
+print "Initial capital: %f\nProfit: %f\nTime: %f\nInterest rate: %.2f%%\nAPY: %.2f%%\n"%(capital, profit, total_time_years, (rate_period-1)*100, APY*100)
+
+processing_results = {'order_book_events': OrderBook }
 display_plot(quotes, technical_indicators, processing_results)
+
