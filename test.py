@@ -2,6 +2,10 @@
 
 from finance_metrics import *
 import sys
+import strategies
+
+# init strategies list with the list of strategies
+strategies_list = [method for method in dir(strategies) if callable(getattr(strategies, method))]
 
 class dbconnector(object):
 
@@ -188,50 +192,23 @@ def get_trade_proposals(quotes, technical_indicators):
    return sorted(OrderBook, key=lambda x: x[0])
 
 
-def simulate_trading(OrderBook, capital, broker_fee=.02):
-   coins=0
+def simulate_trading(OrderBook, capital, broker_fee=.002, strategy=0):
+    total_assets_value, OrderBookOut = getattr(strategies, strategies_list[strategy])(OrderBook, capital, broker_fee)
 
-   #print OrderBook[0]
-   #for i,value in enumerate(OrderBook[1:]):
-   #   print value, (value[2]*100/OrderBook[i][2]) - 100
+    print "Total assets value: ", total_assets_value 
+    return total_assets_value, OrderBookOut
 
-   OrderBookOut = []
-   for order in OrderBook:
-      order_sent = False
-      if order[1] == 'S' and coins>0:
-         coins_sold=min(.2*coins, .5)
-         capital += (order[2] * coins_sold)/(1+broker_fee)
-         coins -= coins_sold
-         order_sent = True
-         
-      if order[1] == 'B' and capital>0:
-         invest = min(capital, 500)
-         coins += invest / order[2]
-         capital -= invest*(1+broker_fee)
-         order_sent = True
-     
-      if order_sent:
-         OrderBookOut.append(order)
-      #   assets = capital + coins * order[2]
-      #   print order, capital, coins, assets, "<-------"
-      #else:
-      #   print order
-
-   total_assets_value = capital + coins * OrderBook[-1][2]
-   print "Total assets value: ", total_assets_value 
-   return total_assets_value, OrderBookOut
-   
 
 period='300'
 
-with dbconnector( "samples_%s_26062017_000000.db"%period ) as dbObj:
+with dbconnector( "samples_%s_01042017_000000.db"%period ) as dbObj:
    if not dbObj.db_is_initialized:
       from matplotlib.dates import date2num
       import cryptowatch.Client as cl
       import time
       from datetime import datetime
    
-      s = "26/06/2017 00:00:00"
+      s = "01/04/2017 00:00:00"
       after=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
       #s = "27/06/2017 00:00:00"
       #before=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
@@ -245,7 +222,6 @@ with dbconnector( "samples_%s_26062017_000000.db"%period ) as dbObj:
       quotes = dbObj.load_data()
 
 total_time_years = len(quotes)*int(period) / (3600.0*24*365)
-
 print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
 
 #technical_indicators = KELCH(quotes, 14)
@@ -262,7 +238,6 @@ profit, OrderBook = simulate_trading(OrderBook, capital)
 # compute annual percentage rate
 periods_year = 1.0/total_time_years
 rate_period = profit/capital
-print rate_period, periods_year
 APY = pow( rate_period, periods_year) - 1
 print "Initial capital: %f\nProfit: %f\nTime: %f\nInterest rate: %.2f%%\nAPY: %.2f%%\n"%(capital, profit, total_time_years, (rate_period-1)*100, APY*100)
 
