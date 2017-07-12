@@ -39,7 +39,7 @@ def KELCH(quote_list, n):
    KelChU = KelChM + 2 * atr_tmp
    KelChL = KelChM - 2 * atr_tmp
 
-   return { "KELCH_average": KelChM, "KELCH_upper": KelChU, "KELCH_lower" : KelChL}
+   return KelChM, KelChU, KelChL
 
 
 def parabolic_sar(quote_list, iaf = 0.02, maxaf = 0.05):

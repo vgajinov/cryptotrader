@@ -4,12 +4,12 @@ from finance_metrics import *
 import sys
 import strategies
 from datetime import datetime
+from collections import namedtuple
 
 # init strategies list with the list of strategies
 strategies_list = [method for method in dir(strategies) if callable(getattr(strategies, method)) and not method.startswith("_") ]
 
 class dbconnector(object):
-
    def __init__(self, fname):
       self.con, self._db_is_initialized = self.connect_to_db(fname)
 
@@ -123,24 +123,25 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
    ax.xaxis_date()
    ax.autoscale_view()
    plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
+
    if technical_indicators is not None:
       dates = [x[0] for x in quotes]
-      for indicator, data in technical_indicators.iteritems():
-         if "KELCH" in indicator:
-            linestyle = ":" if indicator == "KELCH_average" else "-"
+      for indicator in technical_indicators:
+         if not indicator.display:
+            continue
+
+         linestyle = "-"
+         linecolor = "k"
+         if "kelner" in indicator.label:
+            linestyle = ":" if indicator.label == "kelner_average" else "-"
             linecolor = "blue"
-         if "psar" in indicator:
+         if "psar" in indicator.label:
             linestyle = ":"
             linecolor = "violet"
-         plt.plot(dates, data, linestyle=linestyle, linewidth=1, color=linecolor)
+
+         plt.plot(dates, indicator.data, label=indicator.legend, linestyle=linestyle, linewidth=1, color=linecolor)
    
    if processing_results is not None:
-      #indicator = 'order_book'
-      #result = processing_results[ indicator ]
-      #dates = [x[0] for x in result]
-      #data = [x[1] for x in result]
-      #linecolor = "black"
-      #plt.plot(dates, data, linestyle=linestyle, label=indicator, linewidth=1, color=linecolor)
 
       yoffset = ax.get_ylim()[0]
       for event in processing_results['order_book_events']:
@@ -155,14 +156,18 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
    plt.show()
 
 
-
 def simulate_trading(quotes, technical_indicators, capital, broker_fee=.002, strategy=0):
-   total_assets_value, OrderBookOut = getattr(strategies, strategies_list[strategy])(quotes, technical_indicators, capital, broker_fee)
+   indicators_dict = {indic.label: indic.data for indic in technical_indicators}
+   total_assets_value, OrderBookOut = getattr(strategies, strategies_list[strategy])(quotes, indicators_dict, capital, broker_fee)
 
    print "Total assets value: ", total_assets_value 
    return total_assets_value, OrderBookOut
 
 if __name__ == "__main__":
+
+   technical_indicator = namedtuple('technical_indicator', 'label data display legend')
+   technical_indicator.__new__.__defaults__ = ("", [], False, None)
+
    period='300'
    start_date = "01/04/2017 00:00:00"
    start_date_obj = datetime.strptime(start_date, "%d/%m/%Y %H:%M:%S")
@@ -186,13 +191,16 @@ if __name__ == "__main__":
    total_time_years = len(quotes)*int(period) / (3600.0*24*365)
    print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
    
-   #technical_indicators = KELCH(quotes, 14)
-   technical_indicators = {}
+   technical_indicators = []
+   kelchM, kelchU, kelchL = KELCH(quotes, 14)
+   technical_indicators.append( technical_indicator('kelner_average', kelchM, True, "kelner") )
+   technical_indicators.append( technical_indicator('kelner_upper', kelchU, True) )
+   technical_indicators.append( technical_indicator('kelner_lower', kelchL, True) )
    
    psar_results = parabolic_sar(quotes)
-   technical_indicators['psar_bull'] = psar_results['psarbull']
-   technical_indicators['psar_bear'] = psar_results['psarbear']
-   
+   technical_indicators.append( technical_indicator('psar_bull', psar_results['psarbull'], True, "psar") )
+   technical_indicators.append( technical_indicator('psar_bear', psar_results['psarbear'], True) )
+
    initial_capital = 1000
    end_capital, OrderBook = simulate_trading(quotes, technical_indicators, initial_capital)
    
