@@ -3,9 +3,10 @@
 from finance_metrics import *
 import sys
 import strategies
+from datetime import datetime
 
 # init strategies list with the list of strategies
-strategies_list = [method for method in dir(strategies) if callable(getattr(strategies, method))]
+strategies_list = [method for method in dir(strategies) if callable(getattr(strategies, method)) and not method.startswith("_") ]
 
 class dbconnector(object):
 
@@ -154,93 +155,53 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
    plt.show()
 
 
-def get_trade_proposals(quotes, technical_indicators):
 
-   #for i in quotes:
-   #   print i
-   #raise Exception()
-   # we want to BUY when technical_indicators['psar_bear'] switches from value to None,
-   # if there are AT LEAST N consecutives Nones
-   consec_nones = 2
-   init_offset = consec_nones
-   numsamples = len(technical_indicators['psar_bear'])
+def simulate_trading(quotes, technical_indicators, capital, broker_fee=.002, strategy=0):
+   total_assets_value, OrderBookOut = getattr(strategies, strategies_list[strategy])(quotes, technical_indicators, capital, broker_fee)
 
-   # get the indices of the None elements in array, whose preceding element is not None
-   #for elem in technical_indicators['psar_bear']:
-   #   print elem
-   buy_time_idx = []
-   for i, j in enumerate(technical_indicators['psar_bear'][init_offset:]):
-      real_i = i+init_offset
-      window = max(real_i-consec_nones, 0)
-      bear_starts = all([x is not None for x in technical_indicators['psar_bear'][window:real_i]]) and j is None
-      if bear_starts:
-         buy_time_idx.append(real_i)
+   print "Total assets value: ", total_assets_value 
+   return total_assets_value, OrderBookOut
 
-   # get the indices of the None elements in array, whose next element is None
-   sell_time_idx = []
-   for i, j in enumerate(technical_indicators['psar_bull'][init_offset:]):
-      real_i = i+init_offset
-      window = max(real_i-consec_nones, 0)
-      bull_starts = all([x is not None for x in technical_indicators['psar_bull'][window:real_i]]) and j is None
-      if bull_starts:
-         sell_time_idx.append(real_i)
-
-   # generate an order book
-   OrderBook = [ (quotes[i,0], 'B', quotes[i,1]) for i in buy_time_idx ] + [ (quotes[i,0], 'S', quotes[i,1]) for i in sell_time_idx ]
-  
-   #print OrderBook
-   return sorted(OrderBook, key=lambda x: x[0])
-
-
-def simulate_trading(OrderBook, capital, broker_fee=.002, strategy=0):
-    total_assets_value, OrderBookOut = getattr(strategies, strategies_list[strategy])(OrderBook, capital, broker_fee)
-
-    print "Total assets value: ", total_assets_value 
-    return total_assets_value, OrderBookOut
-
-
-period='300'
-
-with dbconnector( "samples_%s_01042017_000000.db"%period ) as dbObj:
-   if not dbObj.db_is_initialized:
-      from matplotlib.dates import date2num
-      import cryptowatch.Client as cl
-      import time
-      from datetime import datetime
+if __name__ == "__main__":
+   period='300'
+   start_date = "01/04/2017 00:00:00"
+   start_date_obj = datetime.strptime(start_date, "%d/%m/%Y %H:%M:%S")
+    
+   with dbconnector( "samples_%s_%s.db"%(period, start_date_obj.strftime('%d%m%Y_%H%M%S')) ) as dbObj:
+      if not dbObj.db_is_initialized:
+         from matplotlib.dates import date2num
+         import cryptowatch.Client as cl
+         import time
+      
+         after=int(time.mktime(start_date_obj.timetuple()))
+      
+         client = cl.MarketClient("kraken", "etheur")
+         OHLC = client.GetOHLC( after=str(after), periods=[period])
+      
+         quotes = np.array( [ (date2num(datetime.fromtimestamp(x.open_time)), x.open, x.high, x.low, x.close, x.volume) for x in OHLC[period] ], dtype=float )
+         dbObj.save_data(quotes)
+      else:
+         quotes = dbObj.load_data()
    
-      s = "01/04/2017 00:00:00"
-      after=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
-      #s = "27/06/2017 00:00:00"
-      #before=int(time.mktime(datetime.strptime(s, "%d/%m/%Y %H:%M:%S").timetuple()))
+   total_time_years = len(quotes)*int(period) / (3600.0*24*365)
+   print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
    
-      client = cl.MarketClient("kraken", "etheur")
-      OHLC = client.GetOHLC( after=str(after), periods=[period])
+   #technical_indicators = KELCH(quotes, 14)
+   technical_indicators = {}
    
-      quotes = np.array( [ (date2num(datetime.fromtimestamp(x.open_time)), x.open, x.high, x.low, x.close, x.volume) for x in OHLC[period] ], dtype=float )
-      dbObj.save_data(quotes)
-   else:
-      quotes = dbObj.load_data()
-
-total_time_years = len(quotes)*int(period) / (3600.0*24*365)
-print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
-
-#technical_indicators = KELCH(quotes, 14)
-technical_indicators = {}
-
-psar_results = parabolic_sar(quotes)
-technical_indicators['psar_bull'] = psar_results['psarbull']
-technical_indicators['psar_bear'] = psar_results['psarbear']
-
-OrderBook = get_trade_proposals(quotes, technical_indicators)
-capital = 1000
-profit, OrderBook = simulate_trading(OrderBook, capital)
-
-# compute annual percentage rate
-periods_year = 1.0/total_time_years
-rate_period = profit/capital
-APY = pow( rate_period, periods_year) - 1
-print "Initial capital: %f\nProfit: %f\nTime: %f\nInterest rate: %.2f%%\nAPY: %.2f%%\n"%(capital, profit, total_time_years, (rate_period-1)*100, APY*100)
-
-processing_results = {'order_book_events': OrderBook }
-display_plot(quotes, technical_indicators, processing_results)
-
+   psar_results = parabolic_sar(quotes)
+   technical_indicators['psar_bull'] = psar_results['psarbull']
+   technical_indicators['psar_bear'] = psar_results['psarbear']
+   
+   initial_capital = 1000
+   end_capital, OrderBook = simulate_trading(quotes, technical_indicators, initial_capital)
+   
+   # compute annual percentage rate
+   periods_year = 1.0/total_time_years
+   rate_period = end_capital/initial_capital
+   APY = pow( rate_period, periods_year) - 1
+   print "Initial capital: %f\nProfit: %f\nTime: %f\nInterest rate: %.2f%%\nAPY: %.2f%%\n"%(initial_capital, end_capital - initial_capital, total_time_years, (rate_period-1)*100, APY*100)
+   
+   processing_results = {'order_book_events': OrderBook }
+   display_plot(quotes, technical_indicators, processing_results)
+    
