@@ -101,3 +101,10 @@ def parabolic_sar(quote_list, iaf = 0.02, maxaf = 0.05):
          psarbear[i] = psar[i]
 
    return {"psar":psar, "psarbear":psarbear, "psarbull":psarbull}
+
+def macd(quote_list, short_term = 12, long_term = 26, signal_term = 9):
+   macd_result = moving_average(quote_list[:,4], short_term, 'exponential') - moving_average(quote_list[:,4], long_term, 'exponential')
+   macd_signal = moving_average(macd_result, signal_term, 'exponential')
+
+   return macd_result, macd_signal
+

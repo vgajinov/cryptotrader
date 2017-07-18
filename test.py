@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
-from finance_metrics import *
+import finance_metrics as fm
+import numpy as np
 import sys
 import strategies
 from datetime import datetime
@@ -108,20 +109,36 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
    days = DayLocator()
    allhours = HourLocator()
    weekFormatter = DateFormatter('%m-%d')
+   dayFormatter = DateFormatter('%H')
    
    # format the plot
-   fig, ax = plt.subplots()
+   if technical_indicators is not None:
+      for indicator in technical_indicators:
+         if "macd" in indicator.label:
+            fig, ax = plt.subplots(2, sharex=True)
+            break
+      else:
+         fig, ax = plt.subplots()
+         ax = [ax]
+   else:
+      fig, ax = plt.subplots()
+      ax = [ax]
+
    fig.subplots_adjust(bottom=0.2)
-   ax.xaxis.set_major_locator(days)
-   ax.xaxis.set_minor_locator(allhours)
-   ax.xaxis.set_major_formatter(weekFormatter)
+   ax[0].xaxis.set_major_locator(days)
+   ax[0].xaxis.set_minor_locator(allhours)
+   ax[0].xaxis.set_major_formatter(weekFormatter)
+
+   if ax[0].get_xlim()[0] - ax[0].get_xlim()[0]<1:
+      ax[0].xaxis.set_minor_formatter(dayFormatter)
+
    
    # generate the candlesticks
-   candlestick_ohlc(ax, list(map(tuple, quotes)), width=.001, colorup='g', colordown='r', )
+   candlestick_ohlc(ax[0], list(map(tuple, quotes)), width=.001, colorup='g', colordown='r', )
    
    # create the plot itself and display it
-   ax.xaxis_date()
-   ax.autoscale_view()
+   ax[0].xaxis_date()
+   ax[0].autoscale_view()
    plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
 
    if technical_indicators is not None:
@@ -132,20 +149,26 @@ def display_plot(quotes, technical_indicators=None, processing_results=None):
 
          linestyle = "-"
          linecolor = "k"
+
          if "kelner" in indicator.label:
             linestyle = ":" if indicator.label == "kelner_average" else "-"
             linecolor = "blue"
          if "psar" in indicator.label:
             linestyle = ":"
             linecolor = "violet"
+         if "macd" in indicator.label:
+            linecolor = "violet" if "_s" in indicator.label else "blue"
+            ax[1].plot(dates, indicator.data, label=indicator.legend, linestyle=linestyle, linewidth=1, color=linecolor)
+            ax[1].axhline(linewidth=0.5, color = 'k')
+            continue
 
-         plt.plot(dates, indicator.data, label=indicator.legend, linestyle=linestyle, linewidth=1, color=linecolor)
+         ax[0].plot(dates, indicator.data, label=indicator.legend, linestyle=linestyle, linewidth=1, color=linecolor)
    
    if processing_results is not None:
 
-      yoffset = ax.get_ylim()[0]
+      yoffset = ax[0].get_ylim()[0]
       for event in processing_results['order_book_events']:
-         ax.annotate(event[1], xy=(event[0], event[2]),  xycoords='data',
+         ax[0].annotate(event[1], xy=(event[0], event[2]),  xycoords='data',
                   xytext=(event[0], yoffset+1), textcoords='data',
                   bbox=dict(boxstyle="round", fc="0.8"),
                   arrowprops=dict(arrowstyle="->",
@@ -169,7 +192,7 @@ if __name__ == "__main__":
    technical_indicator.__new__.__defaults__ = ("", [], False, None)
 
    period='300'
-   start_date = "01/04/2017 00:00:00"
+   start_date = "18/07/2017 00:00:00"
    start_date_obj = datetime.strptime(start_date, "%d/%m/%Y %H:%M:%S")
     
    with dbconnector( "samples_%s_%s.db"%(period, start_date_obj.strftime('%d%m%Y_%H%M%S')) ) as dbObj:
@@ -179,7 +202,8 @@ if __name__ == "__main__":
          import time
       
          after=int(time.mktime(start_date_obj.timetuple()))
-      
+
+         print "Grabbing data from cryptowatch. Be patient, can take a minute..."
          client = cl.MarketClient("kraken", "etheur")
          OHLC = client.GetOHLC( after=str(after), periods=[period])
       
@@ -192,14 +216,18 @@ if __name__ == "__main__":
    print "Simulating %d samples separated %s seconds: %f years."%(len(quotes), period, total_time_years)
    
    technical_indicators = []
-   kelchM, kelchU, kelchL = KELCH(quotes, 14)
-   technical_indicators.append( technical_indicator('kelner_average', kelchM, True, "kelner") )
+   kelchM, kelchU, kelchL = fm.KELCH(quotes, 14)
+   technical_indicators.append( technical_indicator('kelner_average', kelchM, True, 'kelner') )
    technical_indicators.append( technical_indicator('kelner_upper', kelchU, True) )
    technical_indicators.append( technical_indicator('kelner_lower', kelchL, True) )
    
-   psar_results = parabolic_sar(quotes)
-   technical_indicators.append( technical_indicator('psar_bull', psar_results['psarbull'], True, "psar") )
+   psar_results = fm.parabolic_sar(quotes)
+   technical_indicators.append( technical_indicator('psar_bull', psar_results['psarbull'], True, 'psar') )
    technical_indicators.append( technical_indicator('psar_bear', psar_results['psarbear'], True) )
+
+   macd = fm.macd(quotes, short_term = 10)
+   technical_indicators.append( technical_indicator('macd', macd[0], True, 'macd') )
+   technical_indicators.append( technical_indicator('macd_s', macd[1], True, 'macd_s') )
 
    initial_capital = 1000
    end_capital, OrderBook = simulate_trading(quotes, technical_indicators, initial_capital)
