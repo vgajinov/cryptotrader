@@ -1,0 +1,15 @@
+EXCHANGE BACKENDS
+
+GIT SUBMODULES:
+   The exchange backends are submodules of this repository. To add a new exchange:
+      git submodule add <REPO URL> exchange_backends/<EXCHANGE NAME>
+
+   To update the submodule with the changes from its repo:
+      git submodule update
+
+FACTORY PATTERN:
+   1- Any new backend needs to be as a class, called wrap<Exchange>.py, and has to 
+      inherit from the abstract class exchange.
+   2- exchangeFactory.py needs to be updated to detect and return the added exchange
+      when requested. Also, to import the new added class.
+
