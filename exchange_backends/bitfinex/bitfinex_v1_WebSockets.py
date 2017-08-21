@@ -425,10 +425,10 @@ class Client:
             # 'tu' message
             print ( "TradesUpdate  {:>12} {:>12} {:>12}".format(msg[4], msg[5], msg[6]) )
 
+
    # Ticker
    # ---------------------------------------------------------------------------------
-
-   def subscribeToTicker(self, params={}):
+            
       """
       request :
       {
@@ -436,13 +436,7 @@ class Client:
           "channel": "ticker",
           "pair"   : "BTCUSD"
       }
-      """
-      print ( 'Subscribing to ticker ...' )
-      pair = params.get('pair', "BTCUSD")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "ticker", "pair": pair}))
-
-   def TickerSubscribed(self, msg):
-      """
+   
       response
       {
           "event"  : "subscribed",
@@ -462,19 +456,7 @@ class Client:
       VOLUME	            float	   Daily volume
       HIGH	               float	   Daily high
       LOW	               float	   Daily low
-      """
-      # register update handler for the channel based on bitfinex channel ID
-      self.updateHandlers[msg['chanId']] = self.TickerUpdate
-      self.tickers[msg['pair']] = []
-
-      print ( 'Subcribed to Ticker channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Pair      : ' + str(msg['pair']) )
-      print
-
-   def TickerUpdate(self, msg):
-      """
+      
       snapshot & updates
       [
          "<CHANNEL_ID>",
@@ -490,24 +472,41 @@ class Client:
          "<LOW>"
       ]
       """
+
+   def subscribeToTicker(self, params={}):
+      print ( 'Subscribing to ticker ...' )
+      pair = params.get('pair', "BTCUSD")
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "ticker", "pair": pair}))
+
+
+   def TickerSubscribed(self, msg):
+      # register update handler for the channel based on bitfinex channel ID
+      self.updateHandlers[msg['chanId']] = self.TickerUpdate
+      self.tickers[msg['pair']] = []
+
+      print ( 'Subcribed to Ticker channel' )
+      print ( '-' * 40 )
+      print ( 'ID        : ' + str(msg['chanId']) )
+      print ( 'Pair      : ' + str(msg['pair']) )
+      print
+
+
+   def TickerUpdate(self, msg):
       chanId = msg[0]
+      fmt = "{:^14}" * (len(msg) - 1)
       if not self.subscriptions.get(msg[0], None):
          self.subscriptions[chanId] = msg
-         self.tickers[chanId].apend([float(x) for x in msg[1:]])
-         print ( '{:>12} {:>12} {:>12} {:>12} {:>14} {:>12} {:>12} {:>12}'.format(
-            'BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
-
+         self.tickers[chanId] = []
+         print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC', 'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
       elif 'hb' in msg:
-         pass
-      else:
-         self.tickers[chanId].apend([float(x) for x in msg[1:]])
-         print ( '{:>12} {:>12} {:>12} {:>12} {:>14} {:>12} {:>12} {:>12}'.format(
-            msg[1], msg[2], msg[3], msg[4], msg[7], msg[8], msg[9], msg[10]) )
-         # fmt = "{:>12} "*(len(msg)-1)
-         # print fmt.format(msg[1:])
+         return
+      self.tickers[chanId].append([float(x) for x in msg[1:]])
+      print (fmt.format(*msg[1:]))
+
 
    def GetTickerHistory(self, chanId):
       return self.tickers[chanId]
+
 
    def GetTicker(self, chanId):
       return self.tickers[chanId][-1]
