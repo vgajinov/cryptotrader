@@ -5,23 +5,27 @@ class exchange(ABC):
       super().__init__()
 
    @abstractmethod
+   def queryBalance(self):
+      pass
+
+   @abstractmethod
    def queryTicker(self, curr):
       pass
 
    @abstractmethod
-   def addMarket(self, curr, vol):
+   def buyMkt(self, curr, vol):
       pass
    
    @abstractmethod
-   def sellMarket(self, curr, vol):
+   def sellMkt(self, curr, vol):
       pass
 
    @abstractmethod
-   def addMarketLmt(self, curr, vol, price):
+   def buyLmt(self, curr, vol, price):
       pass
    
    @abstractmethod
-   def sellMarketLmt(self, curr, vol, price):
+   def sellLmt(self, curr, vol, price):
       pass
 
    @abstractmethod

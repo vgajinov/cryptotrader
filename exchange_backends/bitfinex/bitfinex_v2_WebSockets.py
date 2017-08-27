@@ -2,10 +2,24 @@ import os, sys
 import websocket
 import json
 import time
+import traceback
+import logging
 from datetime import datetime
 from threading import Thread
 from pydispatch import dispatcher
 
+from collections import OrderedDict
+from collections import deque
+
+
+
+# set up logging to file
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%d-%m %H:%M',
+                    filename='./bitfinex_WS_v2.log',
+                    filemode='w')
+logger = logging.getLogger('bitfinex_websocket')
 
 # NOTES:
 #
@@ -169,9 +183,129 @@ from pydispatch import dispatcher
 
 
 # SSL connection
-WEBSOCKET_URI = "wss://api.bitfinex.com/ws/2"
+WEBSOCKET_URI = 'wss://api.bitfinex.com/ws/2'
 
-SYMBOLS = ["btcusd","ltcusd","ltcbtc","ethusd","ethbtc","bchbtc","bcheth"]
+SYMBOLS = ["btcusd"] #,"ltcusd"] #,"ltcbtc","ethusd","ethbtc","bchbtc","bcheth"]
+
+
+# ==========================================================================================
+#   OrderBook
+# ==========================================================================================
+
+class OrderBook:
+   """
+      [ PRICE, COUNT, AMOUNT ]
+      when count > 0 then you have to add or update the price level
+           if amount > 0 then add/update bids
+           if amount < 0 then add/update asks
+      when count = 0 then you have to delete the price level.
+           if amount = 1 then remove from bids
+           if amount = -1 then remove from asks
+   """
+   def __init__(self, name, orders):
+      self.name = name
+      self.asks = {}
+      self.bids = {}
+      for order in orders:
+         price  = float(order[0])
+         amount = float(order[2])
+         if amount > 0:
+            self.bids[price] = amount
+         else:
+            self.asks[price] = amount
+      self._publish()
+
+
+   def updateBook(self, update):
+      price  = float(update[0])
+      count  = int(update[1])
+      amount = float(update[2])
+      if count > 0:
+         if amount > 0:
+            if self.bids.get(price, None):
+               self.bids[price] += amount
+            else:
+               self.bids[price] = amount
+         else:
+            if self.asks.get(price, None):
+               self.asks[price] += amount
+            else:
+               self.asks[price] = amount
+      else:
+         if amount == 1:
+            if self.bids.get(price, None):
+               self.bids.pop(price)
+         elif amount == -1:
+            if self.asks.get(price, None):
+               self.asks.pop(price)
+      self._publish()
+
+   def _sortBook(self):
+      bids = OrderedDict( reversed(sorted(self.bids.items(), key=lambda t: t[0])) )
+      asks = OrderedDict( reversed(sorted(self.asks.items(), key=lambda t: t[0])) )
+      return bids, asks
+
+   def _publish(self):
+      # send updated book to listeners
+      bids, asks = self._sortBook()
+      dispatcher.send(signal=self.name, sender='bitfinex', bids=bids, asks=asks)
+
+   @property
+   def getBidsAsks(self):
+      return self._sortBook()
+
+
+# ==========================================================================================
+#   Trades
+# ==========================================================================================
+
+class bitfinexTrades:
+   # Updates are in the form of a list [ ID, MTS, AMOUNT, PRICE ]
+   def __init__(self, name, trades):
+      self.name = name
+      self.trades = deque(maxlen=40)
+      for trade in trades:
+         self.trades.append(trade[1:])
+      self._publish()
+
+   def update(self, trade):
+      self.trades.append(trade[1:])
+      self._publish()
+
+   def _publish(self):
+      # send updated book to listeners
+      dispatcher.send(signal=self.name, sender='bitfinex', trades=list(self.trades))
+
+   @property
+   def getTrades(self):
+      return list(self.trades)
+
+
+# ==========================================================================================
+#   Candles
+# ==========================================================================================
+
+class bitfinexCandles:
+   # Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
+   def __init__(self, name, candles):
+      self.name = name
+      self.candles = deque(maxlen=40)
+      for candle in candles:
+         self.candles.append(candle)
+      self._publish()
+
+   def update(self, candle):
+      self.candles.append(candle)
+      self._publish()
+
+   def _publish(self):
+      # send updated book to listeners
+      dispatcher.send(signal=self.name, sender='bitfinex', candles=list(self.candles))
+
+   @property
+   def getCandles(self):
+      return list(self.candles)
+
 
 # ==========================================================================================
 #   Client
@@ -179,7 +313,10 @@ SYMBOLS = ["btcusd","ltcusd","ltcbtc","ethusd","ethbtc","bchbtc","bcheth"]
 
 class BitfinexWSClient:
    def __init__(self):
+      self.thread = None
       self.ws = None
+      self.connected = False
+
       self.channels = {
          'book'     : self.subscribeToBook,
          'raw_book' : self.subscribeToRawBook,
@@ -187,14 +324,11 @@ class BitfinexWSClient:
          'ticker'   : self.subscribeToTicker,
          'candles'  : self.subscribeToCandles
       }
-      # channelId -> updateHandler
-      self.updateHandlers = {}
-      self.subscriptions = {}
-      self.channel_info = {}
 
-      self.thread = None
-      self.msgCount = 0
-      # channels
+      self.updateHandlers = {}    # channelId -> updateHandler
+      self.subscriptions  = {}    # channelId -> channelName
+
+      # channel data - one object per channelId
       self.book    = {}
       self.rawBook = {}
       self.trades  = {}
@@ -202,7 +336,7 @@ class BitfinexWSClient:
       self.candles = {}
 
    def _connect(self):
-      print ('Connecting to bitfinex websocket API ...')
+      logger.info ('Connecting to bitfinex websocket API ...')
       # websocket.enableTrace(True)
       self.ws = websocket.WebSocketApp(WEBSOCKET_URI,
                                        on_message=self.on_message,
@@ -215,9 +349,20 @@ class BitfinexWSClient:
       def run():
          self._connect()
 
+      # start websocket listener thread
       self.thread = Thread(target=run)
       self.thread.start()
-      time.sleep(1)  # halt the calling thread until the connection is up
+
+      # halt the calling thread until the connection is up
+      while not self.connected:
+         time.sleep(1)
+
+      # automatically subscribe to default channels
+      for pair in SYMBOLS:
+         self.subscribeToBook({'pair': pair, 'prec': "P0", 'freq': "F0", 'len': "100"})
+         self.subscribeToTrades({'pair': pair})
+         self.subscribeToTicker({'pair': pair})
+         self.subscribeToCandles({'pair': pair, 'scale': "1m"})
 
    def disconnect(self):
       if self.ws is not None:
@@ -225,10 +370,11 @@ class BitfinexWSClient:
       self.thread.join()
 
    def on_open(self, ws):
-      print ('Websocket connection open.')
+      self.connected = True
+      logger.info ('Websocket connection open.')
 
    def on_close(self, ws):
-      print ('Connection to bitfinex closed.')
+      logger.info ('Connection to bitfinex closed.')
 
    def on_error(self, ws, error):
       print (error)
@@ -249,29 +395,36 @@ class BitfinexWSClient:
          'error'       : (self.errorMsg, [msg]),
          'hb'          : (self.heartbeatMsg, [msg])
       }
-      # get the message handler and call it
-      if isinstance(msg, dict):
-         msgHadler, args = event_callback.get(msg['event'], (None, None))
-         msgHadler(*args)
-      else:
-         # if the message is a channel update get the handler from subscriptions dictionary
-         msgHadler = self.updateHandlers.get(msg[0])
-         msgHadler(msg)
+
+      try:
+         # get the message handler and call it
+         if isinstance(msg, dict):
+            msgHadler, args = event_callback.get(msg['event'], (None, None))
+            msgHadler(*args)
+         else:
+            # if the message is a channel update get the handler from subscriptions dictionary
+            msgHadler = self.updateHandlers.get(msg[0])
+            msgHadler(msg)
+      except Exception as inst:
+         print (type(inst))  # the exception instance
+         print (inst)  # __str__ allows args to be printed directly
+         print (traceback.format_exc())
+
 
    def printMsg(self, msg):
-      print (msg)
+      logger.info (msg)
 
    def errorMsg(self, msg):
-      print ('Error ' + msg['code'] + ' : ' + msg['msg'])
+      print ('Error ' + str(msg['code']) + ' : ' + str(msg['msg']))
 
    def heartbeatMsg(self, msg):
       pass
 
    def info(self, msg):
       if msg['version']:
-         print ('version ' + str(msg['version']))
+         logger.info ('version ' + str(msg['version']))
       elif msg['code']:
-         print ('Received code' + str(msg['code']) + ' : ' + msg['msg'])
+         logger.info ('Received code' + str(msg['code']) + ' : ' + msg['msg'])
       return
 
    # Subscriptions
@@ -298,13 +451,7 @@ class BitfinexWSClient:
          self.CandlesSubscribed(msg)
       else:
          print ('No channel handler for channel - ' + msg['channel'])
-         # channel_handlers = {
-         #    'trades': (self.TradesSubscribed),
-         #    'book'  : (self.RawBookSubscribed) if msg['prec'] == 'R0' else (self.BookSubscribed)
-         # }
-         # get the channel callback and call it
-         # channelHandler = channel_handlers[msg['channel']]
-         # channelHandler(msg)
+
 
    # ===============================================================================
    # Channels
@@ -374,38 +521,46 @@ class BitfinexWSClient:
 
 
    def subscribeToBook(self, params={}):
-      print ('Subscribing to order book ...')
+      logger.info('Subscribing to order book ...')
       pair = params.get('pair', "BTCUSD")
       prec = params.get('prec', "P0")
       freq = params.get('freq', "F0")
       len  = params.get('len', "25")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "book", "symbol": 't'+pair, "prec": prec, "freq": freq, "len": len}))
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "book", "symbol": pair,
+                               "prec": prec, "freq": freq, "len": len}))
 
    def BookSubscribed(self, msg):
       # register snapshot handler for the channel based on bitfinex channel ID
       self.updateHandlers[msg['chanId']] = self.BookUpdate
+      self.subscriptions [msg['chanId']] = 'book_' + msg['symbol'][1:]
 
-      print ( 'Subcribed to Book channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Pair      : ' + str(msg['symbol']) )
-      print ( 'Precision : ' + str(msg['prec']) )
-      print ( 'Frequency : ' + str(msg['freq']) )
-      print ( 'Lenght    : ' + str(msg['len']) )
-      print
+      logMsg  = '\nSubcribed to Book channel\n'
+      logMsg += '-' * 40 + '\n'
+      logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
+      logMsg += 'Pair      : ' + str(msg['symbol']) + '\n'
+      logMsg += 'Precision : ' + str(msg['prec']) + '\n'
+      logMsg += 'Frequency : ' + str(msg['freq']) + '\n'
+      logMsg += 'Lenght    : ' + str(msg['len']) + '\n'
+      logger.info(logMsg)
 
    def BookUpdate(self, msg):
-      if not self.subscriptions.get(msg[0], None):
+      if 'hb' in msg:
+         return
+      chanId = msg[0]
+      if not self.book.get(chanId, None):
          # snapshot message
          orders = msg[1]
-         self.subscriptions[msg[0]] = orders
-         for order in orders:
-            print ( "{:>12} {:>12}".format(order[0], order[2]) )
-         print
-      elif 'hb' in msg:
-         return
+         self.book[chanId] = OrderBook(self.subscriptions[chanId], orders)
+         #for order in orders:
+         #   print ( "{:>12} {:>12}".format(order[0], order[2]) )
       else:
-         print ( "BookUpdate     {:>12} {:>12}".format(msg[1][0], msg[1][2]) )
+         # update
+         self.book[chanId].updateBook(msg[1])
+         #print ( "BookUpdate {:>12} ::: {:>12} {:>12} {:>12}".format(msg[0], msg[1][0], msg[1][1], msg[1][2]) )
+
+   def getOrderBook(self, pair):
+      revsubs = dict([reversed(i) for i in self.subscriptions.items()])
+      return self.book.get(revsubs['book_' + pair], None)
 
 
    # Raw Order Book
@@ -459,7 +614,7 @@ class BitfinexWSClient:
       """
 
    def subscribeToRawBook(self, params={}):
-      print ('Subscribing to raw order book ...')
+      logger.info('Subscribing to raw order book ...')
       pair = params.get('pair', "BTCUSD")
       len  = params.get('len', "25")
       self.ws.send(json.dumps({"event": "subscribe", "channel": "book", "pair": 't'+pair, "prec": "R0", "len": len}))
@@ -467,28 +622,32 @@ class BitfinexWSClient:
    def RawBookSubscribed(self, msg):
       # register update handler for the channel based on bitfinex channel ID
       self.updateHandlers[msg['chanId']] = self.RawBookUpdate
+      self.subscriptions [msg['chanId']] = 'rawBook_' + msg['symbol'][1:]
 
-      print ( 'Subcribed to Raw Order Book channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Pair      : ' + str(msg['symbol']) )
-      print ( 'Precision : ' + str(msg['prec']) )
-      print ( 'Lenght    : ' + str(msg['len']) )
-      print
+      logMsg  = '\nSubcribed to Raw Order Book channel\n'
+      logMsg += '-' * 40 + '\n'
+      logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
+      logMsg += 'Pair      : ' + str(msg['symbol']) + '\n'
+      logMsg += 'Precision : ' + str(msg['prec']) + '\n'
+      logMsg += 'Lenght    : ' + str(msg['len']) + '\n'
+      logger.info(logMsg)
 
    def RawBookUpdate(self, msg):
-      if not self.subscriptions.get(msg[0], None):
+      if 'hb' in msg:
+         return
+
+      chanId = msg[0]
+      if not self.book.get(chanId, None):
          # snapshot message
          orders = msg[1]
-         self.subscriptions[msg[0]] = orders
-         for order in orders:
-            print ( "{:>12} {:>12}".format(order[1], order[2]) )
-         print
-      elif 'hb' in msg:
-         return
+         self.book[chanId] = orders
+         #for order in orders:
+         #   print ( "{:>12} {:>12}".format(order[1], order[2]) )
+         #print
       else:
          # update
-         print ( "RawBookUpdate  {:>12} {:>12}".format(msg[1][1], msg[1][2]) )
+         self.book[chanId].append(msg[1])
+         #print ( "RawBookUpdate  {:>12} {:>12}".format(msg[1][1], msg[1][2]) )
 
 
    # Trades
@@ -556,36 +715,42 @@ class BitfinexWSClient:
       """
 
    def subscribeToTrades(self, params={}):
-      print ( 'Subscribing to trades ...' )
+      logger.info( 'Subscribing to trades ...' )
       pair = params.get('pair', "BTCUSD")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "trades", "symbol": 't'+pair}))
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "trades", "symbol": pair}))
 
 
    def TradesSubscribed(self, msg):
       # register update handler for the channel based on bitfinex channel ID
       self.updateHandlers[msg['chanId']] = self.TradesUpdate
+      self.subscriptions[msg['chanId']] = 'trades_' + msg['symbol'][1:]
 
-      print ( 'Subcribed to Trades channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Pair      : ' + str(msg['pair']) )
-      print
+      logMsg  = '\nSubcribed to Trades channel' + '\n'
+      logMsg += '-' * 40 + '\n'
+      logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
+      logMsg += 'Pair      : ' + str(msg['pair']) + '\n'
+      logger.info(logMsg)
 
 
    def TradesUpdate(self, msg):
-      if not self.subscriptions.get(msg[0], None):
+      if 'hb' in msg:
+         return
+      chanId = msg[0]
+      if not self.trades.get(chanId, None):
          # snapshot message
          trades = msg[1]
-         self.subscriptions[msg[0]] = trades
-         for trade in trades:
-            print ( "{:>12} {:>12} {:>12}".format(trade[1], trade[2], trade[3]) )
-         print
-      elif 'hb' in msg:
-         pass
+         self.trades[chanId] = bitfinexTrades(self.subscriptions[chanId], trades)
+         #for trade in trades:
+         #   print ( "{:>12} {:>12} {:>12}".format(trade[1], trade[2], trade[3]) )
       else:
          # update
-         print ( "TradesUpdate  {:>12} {:>12} {:>12}".format(*msg[2][1:] ) )
+         self.trades[chanId].update(msg[2])
+         #print ( "TradesUpdate  {:>12} {:>12} {:>12}".format(*msg[2][1:] ) )
 
+   def getTrades(self, pair):
+      revsubs = dict([reversed(i) for i in self.subscriptions.items()])
+      chanId = revsubs.get('trades_' + pair, None)
+      return self.trades.get(chanId, None)
 
 
    # Ticker
@@ -624,7 +789,8 @@ class BitfinexWSClient:
       // Funding pairs
       [
         CHANNEL_ID,
-        [ FRR, BID, BID_PERIOD, BID_SIZE, ASK, ASK_PERIOD, ASK_SIZE, DAILY_CHANGE, DAILY_CHANGE_PERC, LAST_PRICE, VOLUME, HIGH, LOW ]
+        [ FRR, BID, BID_PERIOD, BID_SIZE, ASK, ASK_PERIOD, ASK_SIZE, 
+          DAILY_CHANGE, DAILY_CHANGE_PERC, LAST_PRICE, VOLUME, HIGH, LOW ]
       ]
       
       // Trading pairs
@@ -636,50 +802,48 @@ class BitfinexWSClient:
       // Funding pairs
       [
         CHANNEL_ID,
-        [ FRR, BID, BID_PERIOD, BID_SIZE, ASK, ASK_PERIOD, ASK_SIZE, DAILY_CHANGE, DAILY_CHANGE_PERC, LAST_PRICE, VOLUME, HIGH, LOW ]
+        [ FRR, BID, BID_PERIOD, BID_SIZE, ASK, ASK_PERIOD, ASK_SIZE, 
+          DAILY_CHANGE, DAILY_CHANGE_PERC, LAST_PRICE, VOLUME, HIGH, LOW ]
       ]
       
       NOTE: funding ticker not implemented as I do not see the need for it at the moment.
    """
 
    def subscribeToTicker(self, params={}):
-      print ( 'Subscribing to ticker ...' )
+      logger.info( 'Subscribing to ticker ...' )
       pair = params.get('pair', "BTCUSD")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "ticker", "symbol": 't'+pair}))
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "ticker", "symbol": pair}))
 
 
    def TickerSubscribed(self, msg):
       # register update handler for the channel based on bitfinex channel ID
       self.updateHandlers[msg['chanId']] = self.TickerUpdate
-      self.tickers[msg['pair']] = []
+      self.subscriptions [msg['chanId']] = 'ticker_' + msg['pair']
 
-      print ( 'Subcribed to Ticker channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Pair      : ' + str(msg['pair']) )
-      print
+      logMsg  = '\nSubcribed to Ticker channel' + '\n'
+      logMsg += '-' * 40 + '\n'
+      logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
+      logMsg += 'Pair      : ' + str(msg['pair']) + '\n'
+      logger.info(logMsg)
 
 
    def TickerUpdate(self, msg):
-      chanId = msg[0]
-      fmt = "{:^14}" * (len(msg[1]) - 1)
-      if not self.subscriptions.get(msg[0], None):
-         # snapshot message
-         self.subscriptions[chanId] = msg
-         self.tickers[chanId] = []
-         print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC', 'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
-      elif 'hb' in msg:
+      if 'hb' in msg:
          return
-      self.tickers[chanId].append([float(x) for x in msg[1]])
-      print (fmt.format(*msg[1]))
+      chanId = msg[0]
+      self.tickers[chanId] = [float(x) for x in msg[1]]
+      dispatcher.send(signal=self.subscriptions[chanId], sender='bitfinex', ticker=self.tickers[chanId])
+
+      # fmt = "{:^14}" * (len(msg[1]) - 1)
+      # print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC',
+      #                  'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
+      # print (fmt.format(*msg[1]))
 
 
-   def GetTickerHistory(self, chanId):
-      return self.tickers[chanId]
-
-
-   def GetTicker(self, chanId):
-      return self.tickers[chanId][-1]
+   def getTicker(self, pair):
+      revsubs = dict([reversed(i) for i in self.subscriptions.items()])
+      chanId = revsubs.get('ticker_' + pair, None)
+      return self.tickers.get(chanId, None)
 
 
    # Candles
@@ -736,36 +900,45 @@ class BitfinexWSClient:
 
 
    def subscribeToCandles(self, params={}):
-      print ( 'Subscribing to candels channel ...' )
+      logger.info( 'Subscribing to candels channel ...' )
       pair  = params.get('pair', "BTCUSD")
       scale = params.get('scale', "15m")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + scale + ':t'+pair}))
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + scale + ':t' + pair.lower()}))
 
 
    def CandlesSubscribed(self, msg):
       # register update handler for the channel based on bitfinex channel ID
       self.updateHandlers[msg['chanId']] = self.CandlesUpdate
+      self.subscriptions [msg['chanId']] = 'candles_' + msg['key'].split(':')[-1][1:].upper()
 
-      print ( 'Subcribed to Candles channel' )
-      print ( '-' * 40 )
-      print ( 'ID        : ' + str(msg['chanId']) )
-      print ( 'Key       : ' + str(msg['key']) )
-      print
+      logMsg  = '\nSubcribed to Candles channel' + '\n'
+      logMsg += '-' * 40 + '\n'
+      logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
+      logMsg += 'Key       : ' + str(msg['key']) + '\n'
+      logMsg += 'Pair      : ' + str(msg['key'].split(':')[-1][1:]) + '\n'
+      logger.info(logMsg)
 
 
    def CandlesUpdate(self, msg):
-      header = ['MTS', 'OPEN', 'CLOSE', 'HIGH', 'LOW', 'VOLUME']
-      chanId = msg[0]
-      fmt = "{:^14}" * len(header)
-      if not self.subscriptions.get(msg[0], None):
-         # snapshot message
-         self.subscriptions[chanId] = msg[1]
-         print( fmt.format(*header) )
-         candles = msg[1]
-         for candle in candles:
-            print( fmt.format(*candle) )
-      elif 'hb' in msg:
+      if 'hb' in msg:
          return
+
+      chanId = msg[0]
+      if not self.candles.get(chanId, None):
+         # snapshot message
+         candles = msg[1]
+         self.candles[chanId] = bitfinexCandles(self.subscriptions[chanId], candles)
+         #header = ['MTS', 'OPEN', 'CLOSE', 'HIGH', 'LOW', 'VOLUME']
+         #print( fmt.format(*header) )
+         #for candle in candles:
+         #   print( fmt.format(*candle) )
       else:
          # update
-         print (fmt.format(*msg[1]))
+         self.candles[chanId].update(msg[1])
+         #fmt = "{:^14}" * len(msg[1])
+         #print (fmt.format(*msg[1]))
+
+   def getCandles(self, pair):
+      revsubs = dict([reversed(i) for i in self.subscriptions.items()])
+      chanId = revsubs.get('candles_' + pair, None)
+      return self.candles.get(chanId, None)
