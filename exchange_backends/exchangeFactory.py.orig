@@ -1,0 +1,24 @@
+from AutoTrader.exchange_backends.kraken.kraken import *
+
+
+class exchangeFactory(object):
+
+   def __init__(self):
+      pass
+
+<<<<<<< HEAD
+   def getExchange(self, strExchange, params=[]):
+      if strExchange == "kraken":
+         return Kraken()
+=======
+   def getExchange(self, strExchange, **kwargs):
+      if strExchange == "kraken":
+<<<<<<< HEAD
+         return wrapKraken(**kwargs)
+>>>>>>> 69258120c3427f62e3704f9a4dba28f73749ae3c
+=======
+         return wrapKraken(strExchange, **kwargs)
+>>>>>>> 2dde870df5cd52b8daf1b6d6134f6ab7ad660eb4
+      else:
+         raise Exception("Exchange not known")
+

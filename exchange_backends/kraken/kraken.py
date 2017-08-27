@@ -4,13 +4,13 @@ from AutoTrader.exchange_backends.exchange import *
 
 class Kraken(exchange):
 
-   def __init__(self, keyfile=None):
+   def __init__(self, exchangeName, keyfile=None):
       self.k = krakenex.API()
 
       if keyfile is not None:
          self.k.load_key(keyfile)
 
-      super().__init__()
+      super().__init__(exchangeName)
 
 
    def queryBalance(self):
@@ -18,25 +18,35 @@ class Kraken(exchange):
       if answer['error']:
          raise Exception(answer['error'])
 
-      return float(answer['result']['ZEUR'])
+      return float(answer['result'][''])
 
 
    def queryTicker(self, curr):
-      pair = '{}EUR'.format(curr)
-      buy_data = { 'pair' : pair }
+      buy_data = { 'pair' : ",".join(curr) if isinstance(curr,list) else curr }
 
       answer = self.k.query_public('Ticker', buy_data)
       if answer['error']:
          raise Exception(answer['error'])
 
-      bid = float(answer['result'][pair]['b'][0])
-      ask = float(answer['result'][pair]['a'][0])
-      return (bid, ask)
+      if isinstance(curr,list):
+         result = []
+         for c in curr:
+            bid = float(answer['result'][c]['b'][0])
+            ask = float(answer['result'][c]['a'][0])
+            vol = float(answer['result'][c]['v'][0])
+            result.append((bid, ask, vol))
+      else:
+         bid = float(answer['result'][curr]['b'][0])
+         ask = float(answer['result'][curr]['a'][0])
+         vol = float(answer['result'][curr]['v'][0])
+         result = (bid, ask, vol)
+      
+      return result
 
 
    def buyMkt(self, curr, vol):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'buy',
          'ordertype' : 'market',
          'volume' : str(vol),
@@ -52,7 +62,7 @@ class Kraken(exchange):
 
    def sellMkt(self, curr, vol):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'sell',
          'ordertype' : 'market',
          'volume' : str(vol),
@@ -68,7 +78,7 @@ class Kraken(exchange):
 
    def buyLmt(self, curr, vol, price):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'buy',
          'ordertype' : 'limit',
          'price'  : str(price),
@@ -85,7 +95,7 @@ class Kraken(exchange):
    
    def sellLmt(self, curr, vol, price):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'sell',
          'ordertype' : 'limit',
          'price'  : str(price),
@@ -116,7 +126,7 @@ class Kraken(exchange):
 
    def buyMktCondStop(self, curr, vol, stop):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'buy',
          'ordertype' : 'market',
          'volume' : str(vol),
@@ -134,7 +144,7 @@ class Kraken(exchange):
 
    def buyMktCondTrailing(self, curr, vol, trail):
       buy_data = {
-         'pair' : '{}EUR'.format(curr),
+         'pair' : curr,
          'type' : 'buy',
          'ordertype' : 'market',
          'volume' : str(vol),
