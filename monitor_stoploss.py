@@ -26,8 +26,9 @@ from exchange_backends.exchangeFactory import *
 
 # set up the logging system
 logger = setup_custom_logger('myapp')
+#logger.setLevel(logging.DEBUG)
 # get the reference to the exchange
-exchange = exchangeFactory().getExchange("kraken", keyfile="kraken.key")
+exchangeKraken = exchangeFactory().getExchange("kraken", keyfile="kraken.key")
 # set up notification
 notification = Notification("pushbullet.key")
 
@@ -36,7 +37,14 @@ notification = Notification("pushbullet.key")
 # updates the dictionary with the ticker data
 class exchange_checker(object):
    def __init__(self, cryptocurr=None, period_seconds=5):
-      self.spreads = { x : (None, None, None) for x in cryptocurr }
+      self.spreads = {}
+      for curr, mkt in cryptocurr:
+         try:
+            self.spreads[mkt][curr] = (None, None, None)
+         except:
+            self.spreads[mkt] = {}
+            self.spreads[mkt][curr] = (None, None, None)
+
       self._lastupdate = [None]
       self.period_seconds = period_seconds
       self.helper = threading.Thread(target=self.queryExchange, args=(self.spreads,self._lastupdate))
@@ -58,9 +66,11 @@ class exchange_checker(object):
          # over the currencies) is: the exchange might have optimized
          # queries for list, so we perform just one call to get all
          # the spreads at once
-         spreads = exchange.queryTicker(list(spreadDict.keys()))
-         for idx,key in enumerate(spreadDict.keys()):
-            spreadDict[key] = spreads[idx]
+         for mkt in spreadDict:
+            tmp = list(spreadDict[mkt])
+            spreads = mkt.queryTicker(tmp)
+            for idx,key in enumerate(spreadDict[mkt]):
+               spreadDict[mkt][key] = spreads[idx]
          
          sleep(self.period_seconds)
 
@@ -100,66 +110,99 @@ if __name__ == "__main__":
    # time thresholds for aggregated volumes, and the alarm levels for each one of them
    # and each currency
    volume_thresholds = [ timedelta(minutes=1), timedelta(minutes=3) ]
-   volume_alarms = { "XETHZEUR": [ 200, 300 ], "XXBTZEUR": [ 200, 300 ]}
+   volume_alarms = { }
+   volume_alarms[exchangeKraken] = { "XETHZEUR": [ 200, 300 ], "XXBTZEUR": [ 200, 300 ]}
 
    # array of orders we are monitoring
-   orders = [("XETHZEUR", 275.5, 3.0), ("XXBTZEUR", 3600.0, 3.0)] 
+   orders = [("XETHZEUR", 281, 3.51, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
 
    # to track state changes we want to compare the previous and current states
    prev_state = [ None ]*len(orders)
    curr_state = [ None ]*len(orders)
 
    # the current delta volumes and previous full volume for each currency
-   vol_buffer = { x[0]:[] for x in orders}
-   prev_vol = { x[0]:[] for x in orders}
+   vol_buffer = {}
+   prev_vol = {}
+   for x in orders:
+      try:
+         vol_buffer[x[3]][x[0]] = []
+      except:
+         vol_buffer[x[3]] = {}
+         vol_buffer[x[3]][x[0]] = []
+         prev_vol[x[3]] = {}
    
    # once an alarm has been triggered, we do not want to bother for the
    # same currency in the next snooze_time minutes
    snooze_time = timedelta(minutes=3)
    curr_time = datetime.now()
-   last_alert_volume_time = {x[0]: curr_time - snooze_time for x in orders}
+   last_alert_volume_time = {}
+   for x in orders:
+      try:
+         last_alert_volume_time[x[3]][x[0]] = curr_time - snooze_time
+      except:
+         last_alert_volume_time[x[3]] = {}
+         last_alert_volume_time[x[3]][x[0]] = curr_time - snooze_time
 
-   # start a helper thread to monitor the currencies
-   monitor = exchange_checker(cryptocurr=set(x[0] for x in orders))
 
-   # wait for the monitor to contain any data
-   while not any(x != (None, None, None) for x in monitor.spreads.values()):
-      print ("Waiting for initialization...")
-      sleep(1)
-  
+   # start a helper thread to monitor the currencies for markets
+   monitor = exchange_checker(cryptocurr=set((x[0],x[3]) for x in orders))
+
    # endless loop
    while True:
-      # flags to find if we have already cheked a currency in this iteration
-      currency_wide = {x[0]: False for x in orders}
+      # flags to find if we have already checked a currency in this iteration
+      currency_wide = {}
+      for x in orders:
+         try:
+            currency_wide[x[3]][x[0]] = False
+         except:
+            currency_wide[x[3]] = {}
+            currency_wide[x[3]][x[0]] = False
 
       # flags to find if any volume alert has been triggered for any currency in this iteration
-      alert_volume = {x[0]: False for x in orders }
+      alert_volume = {}
+      for x in orders:
+         try:
+            alert_volume[x[3]][x[0]] = False
+         except:
+            alert_volume[x[3]] = {}
+            alert_volume[x[3]][x[0]] = False
 
       # check all the orders
       for idx, order in enumerate(orders):
-         cryptocurr, order_buy, order_vol = order
+         cryptocurr, order_buy, order_vol, mkt = order
 
          # request last available information to the exchange monitor
          # for this currency
-         bid, ask, vol = monitor.spreads[cryptocurr]
+         t = monitor.spreads[mkt][cryptocurr]
+         if not all(t):
+            logger.info("No ticker info received for cryptocurr {}".format(cryptocurr))
+            sleep(10)
+            continue
+
+         bid, ask, vol = t
          curr_time = monitor.lastupdate
 
-         #calculate the midprice with respect to the buying price, and get the profit threshold
+         #calculate the midprice with respect to the buying price, and get the relative profit
          midprice = (ask + bid) / ( 2.0 * order_buy )
-         curr_state[idx] = sum( map(lambda x: midprice <= x, profit_thresholds) )
+         state_vec = map(lambda x: midprice > x, profit_thresholds)
+         logger.debug("State vec for crypto {} in market {}: [{}]".format(cryptocurr, mkt, ",".join([str(x) for x in state_vec])))
+         curr_state[idx] = sum( state_vec )
   
          # check the volume-related data for this cryptocurrency (if it has not been alread
          # evaluated in the current iteration)
-         if not currency_wide[cryptocurr]:
-            delta_vol = 0.0 if not vol_buffer[cryptocurr] else vol - prev_vol[cryptocurr]
-            vol_buffer[cryptocurr].append((curr_time, delta_vol))
-            prev_vol[cryptocurr] = vol
+         if not currency_wide[mkt][cryptocurr]:
+            try:
+               delta_vol = vol - prev_vol[mkt][cryptocurr]
+            except:
+               delta_vol = 0.0
+            vol_buffer[mkt][cryptocurr].append((curr_time, delta_vol))
+            prev_vol[mkt][cryptocurr] = vol
    
             # get the aggregated volumes for the previous thresholds
-            agg_vol = aggregated_volumes(vol_buffer[cryptocurr], [curr_time - x for x in volume_thresholds])
+            agg_vol = aggregated_volumes(vol_buffer[mkt][cryptocurr], [curr_time - x for x in volume_thresholds])
   
             # check if any of the aggregated volumes triggers an alarm
-            alert_volume[cryptocurr] = any( x>y for x,y in zip(agg_vol,volume_alarms[cryptocurr]) )
+            alert_volume[mkt][cryptocurr] = any( x>y for x,y in zip(agg_vol,volume_alarms[mkt][cryptocurr]) )
             
       # check if sending a message is required
       msg = ""
@@ -167,22 +210,23 @@ if __name__ == "__main__":
       # check if the monitoring state has changed for any order
       for x,y,o in zip(curr_state, prev_state, orders):
          if x != y:
-            msg += "{} for {}, {}, {}.".format(profit_messages[x], *o)
+            msg += "{} for {}, {}, {}.".format(profit_messages[x], *o[:3])
       
       # check if any volume alarm has been triggered
-      for key,val in alert_volume.items():
-         # if there is an alarm and snooze_time has already passed,
-         # update the messge and reset last_alert_volume_time
-         if val and curr_time > last_alert_volume_time[key] + snooze_time:
-            last_alert_volume_time[key] = curr_time
-            msg += "Alert VOLUME for crypto {}.".format(k)
+      for mkt,val in alert_volume.items():
+         for curr,flag in val.items():
+            # if there is an alarm and snooze_time has already passed,
+            # update the messge and reset last_alert_volume_time
+            if flag and curr_time > last_alert_volume_time[mkt][curr] + snooze_time:
+               last_alert_volume_time[mkt][key] = curr_time
+               msg += "Alert VOLUME for crypto {} in market {}.".format(curr, mkt)
   
       # if there is anything to be send, send it
       if msg:
          logger.info(msg)
          notification.notify("Monitor alert", msg)
          prev_state= list(curr_state)
-      logger.info("Price check performed")
+      logger.debug("Price check performed")
       logger.debug(vol_buffer)
       logger.debug(curr_state)
 
