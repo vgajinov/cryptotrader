@@ -8,7 +8,7 @@ class exchangeFactory(object):
 
    def getExchange(self, strExchange, **kwargs):
       if strExchange == "kraken":
-         return wrapKraken(**kwargs)
+         return wrapKraken(strExchange, **kwargs)
       else:
          raise Exception("Exchange not known")
 

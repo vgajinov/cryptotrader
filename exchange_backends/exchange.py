@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 
 class exchange(ABC):
-   def __init__(self):
+   def __init__(self, exchangeName):
+      self.exchangeName = exchangeName
       super().__init__()
+
+   def __str__(self):
+      return self.exchangeName
 
    @abstractmethod
    def queryBalance(self):

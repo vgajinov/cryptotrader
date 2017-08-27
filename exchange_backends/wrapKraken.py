@@ -3,13 +3,13 @@ from .exchange import *
 
 class wrapKraken(exchange):
 
-   def __init__(self, keyfile=None):
+   def __init__(self, exchangeName, keyfile=None):
       self.k = krakenex.API()
 
       if keyfile is not None:
          self.k.load_key(keyfile)
 
-      super().__init__()
+      super().__init__(exchangeName)
 
 
    def queryBalance(self):
