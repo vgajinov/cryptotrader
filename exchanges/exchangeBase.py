@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class exchange(ABC):
+class exchangeBase(ABC):
    def __init__(self, exchangeName):
       self.exchangeName = exchangeName
       super().__init__()

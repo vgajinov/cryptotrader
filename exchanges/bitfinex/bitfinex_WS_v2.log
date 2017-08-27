@@ -1,0 +1,35 @@
+27-08 16:11 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+27-08 16:11 bitfinex_websocket INFO     Websocket connection open.
+27-08 16:11 bitfinex_websocket INFO     version 2
+27-08 16:11 bitfinex_websocket INFO     Subscribing to order book ...
+27-08 16:11 bitfinex_websocket INFO     Subscribing to trades ...
+27-08 16:11 bitfinex_websocket INFO     Subscribing to ticker ...
+27-08 16:11 bitfinex_websocket INFO     Subscribing to candels channel ...
+27-08 16:11 bitfinex_websocket INFO     
+Subcribed to Trades channel
+----------------------------------------
+ID        : 88
+Pair      : BTCUSD
+
+27-08 16:11 bitfinex_websocket INFO     
+Subcribed to Ticker channel
+----------------------------------------
+ID        : 1
+Pair      : BTCUSD
+
+27-08 16:11 bitfinex_websocket INFO     
+Subcribed to Candles channel
+----------------------------------------
+ID        : 106929
+Key       : trade:1m:tbtcusd
+Pair      : btcusd
+
+27-08 16:11 bitfinex_websocket INFO     
+Subcribed to Book channel
+----------------------------------------
+ID        : 90106
+Pair      : tBTCUSD
+Precision : P0
+Frequency : F0
+Lenght    : 100
+

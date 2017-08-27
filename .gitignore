@@ -1,3 +1,5 @@
 */*.pyc
 *.pyc
 *.key
+.idea/
+__pycache__

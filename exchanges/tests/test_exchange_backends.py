@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-import sys
-sys.path.insert(0, "./python-modules")
+import sys, os
+sys.path.insert(0, "python-modules")
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
 import unittest
 import warnings
-from exchange_backends.exchangeFactory import *
+from exchangeFactory import *
+
 
 def ignore_warnings(test_func):
    def do_test(self, *args, **kwargs):

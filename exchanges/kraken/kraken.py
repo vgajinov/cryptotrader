@@ -1,8 +1,8 @@
 import krakenex
-from AutoTrader.exchange_backends.exchange import *
+from exchangeBase import *
 
 
-class Kraken(exchange):
+class Kraken(exchangeBase):
 
    def __init__(self, exchangeName, keyfile=None):
       self.k = krakenex.API()
