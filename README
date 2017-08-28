@@ -1,13 +1,14 @@
-EXCHANGE BACKENDS
-
 GIT SUBMODULES:
-   The exchange backends are submodules of this repository. To add a new exchange:
-      git submodule add <REPO URL> exchange_backends/<EXCHANGE NAME>
+   The Thirdparties are submodules of this repository. To add a new Thirdparty git submodule:
+      git submodule add <REPO URL> Thirdparty/<EXCHANGE NAME>
+
+   When first cloning the repo, these folders will be empty. To populate them, run from the project root
+      gti submodule --init
 
    To update the submodule with the changes from its repo:
       git submodule update
 
-FACTORY PATTERN:
+EXCHANGE BACKENDS: FACTORY PATTERN:
    1- Any new backend needs to be as a class, called wrap<Exchange>.py, and has to 
       inherit from the abstract class exchange.
    2- exchangeFactory.py needs to be updated to detect and return the added exchange

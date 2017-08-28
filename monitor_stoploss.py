@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys, socket, threading
+import signal
 from time import sleep
 from datetime import datetime, timedelta
 
@@ -7,7 +8,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, "./python-modules")
 
 from notification import *
-from exchange_backends.exchangeFactory import *
+from exchanges import exchangeFactory
 
 #import code, traceback, signal
 #def debug(sig, frame):
@@ -24,13 +25,15 @@ from exchange_backends.exchangeFactory import *
 #
 #signal.signal(signal.SIGUSR1, debug)  # Register handler
 
-# set up the logging system
-logger = setup_custom_logger('myapp')
-#logger.setLevel(logging.DEBUG)
+# set up a clean exit when calling ctrl+c
+signal.signal(signal.SIGINT, lambda s,f: sys.exit(0))
+
+
+#logging.setLevel(logging.DEBUG)
 # get the reference to the exchange
 exchangeKraken = exchangeFactory().getExchange("kraken", keyfile="kraken.key")
 # set up notification
-notification = Notification("pushbullet.key")
+notification = setup_remote_notification("pushbullet.key")
 
 
 # Class to start a helper thread that checks the exchange at a given frequency and
@@ -42,12 +45,12 @@ class exchange_checker(object):
          try:
             self.spreads[mkt][curr] = (None, None, None)
          except:
-            self.spreads[mkt] = {}
-            self.spreads[mkt][curr] = (None, None, None)
+            self.spreads[mkt] = {curr: (None, None, None)}
 
       self._lastupdate = [None]
       self.period_seconds = period_seconds
       self.helper = threading.Thread(target=self.queryExchange, args=(self.spreads,self._lastupdate))
+      self.helper.setDaemon(True)
       self.helper.start()
 
    @property
@@ -67,8 +70,7 @@ class exchange_checker(object):
          # queries for list, so we perform just one call to get all
          # the spreads at once
          for mkt in spreadDict:
-            tmp = list(spreadDict[mkt])
-            spreads = mkt.queryTicker(tmp)
+            spreads = mkt.queryTicker(list(spreadDict[mkt]))
             for idx,key in enumerate(spreadDict[mkt]):
                spreadDict[mkt][key] = spreads[idx]
          
@@ -102,6 +104,8 @@ def aggregated_volumes(vol_buffer, thList):
 
 
 if __name__ == "__main__":
+   logger = logging.getLogger("monitor_stoploss")
+
    # these are profit thresholds we want to monitor, toghether with the states/messages 
    # to be notified when the midprice falls on them.
    profit_thresholds = (0.980, 0.985, 1.005, 1.015, 1.025)
@@ -127,8 +131,7 @@ if __name__ == "__main__":
       try:
          vol_buffer[x[3]][x[0]] = []
       except:
-         vol_buffer[x[3]] = {}
-         vol_buffer[x[3]][x[0]] = []
+         vol_buffer[x[3]] = {x[0]: []}
          prev_vol[x[3]] = {}
    
    # once an alarm has been triggered, we do not want to bother for the
@@ -140,8 +143,7 @@ if __name__ == "__main__":
       try:
          last_alert_volume_time[x[3]][x[0]] = curr_time - snooze_time
       except:
-         last_alert_volume_time[x[3]] = {}
-         last_alert_volume_time[x[3]][x[0]] = curr_time - snooze_time
+         last_alert_volume_time[x[3]] = {x[0] : curr_time - snooze_time}
 
 
    # start a helper thread to monitor the currencies for markets
@@ -155,8 +157,7 @@ if __name__ == "__main__":
          try:
             currency_wide[x[3]][x[0]] = False
          except:
-            currency_wide[x[3]] = {}
-            currency_wide[x[3]][x[0]] = False
+            currency_wide[x[3]] = {x[0]: False}
 
       # flags to find if any volume alert has been triggered for any currency in this iteration
       alert_volume = {}
@@ -164,8 +165,7 @@ if __name__ == "__main__":
          try:
             alert_volume[x[3]][x[0]] = False
          except:
-            alert_volume[x[3]] = {}
-            alert_volume[x[3]][x[0]] = False
+            alert_volume[x[3]] = {x[0]: False}
 
       # check all the orders
       for idx, order in enumerate(orders):
@@ -182,11 +182,11 @@ if __name__ == "__main__":
          bid, ask, vol = t
          curr_time = monitor.lastupdate
 
-         #calculate the midprice with respect to the buying price, and get the relative profit
+         #calculate the midprice with respect to the buying price
          midprice = (ask + bid) / ( 2.0 * order_buy )
-         state_vec = map(lambda x: midprice > x, profit_thresholds)
-         logger.debug("State vec for crypto {} in market {}: [{}]".format(cryptocurr, mkt, ",".join([str(x) for x in state_vec])))
-         curr_state[idx] = sum( state_vec )
+         t = sum(map(lambda x: midprice >= x, profit_thresholds))
+         logger.debug("State vec for crypto {} in market {} at relative price {:.3f}: {} ({})".format(cryptocurr, mkt, midprice, t, profit_messages[t]))
+         curr_state[idx] = t
   
          # check the volume-related data for this cryptocurrency (if it has not been alread
          # evaluated in the current iteration)
@@ -223,12 +223,9 @@ if __name__ == "__main__":
   
       # if there is anything to be send, send it
       if msg:
-         logger.info(msg)
-         notification.notify("Monitor alert", msg)
+         logger.notify(msg)
          prev_state= list(curr_state)
       logger.debug("Price check performed")
-      logger.debug(vol_buffer)
-      logger.debug(curr_state)
 
       sleep(10)
       

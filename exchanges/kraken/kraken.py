@@ -1,5 +1,5 @@
 import krakenex
-from exchangeBase import *
+from ..exchangeBase import exchangeBase
 
 
 class Kraken(exchangeBase):

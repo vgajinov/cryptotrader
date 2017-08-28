@@ -1,7 +1,4 @@
-#from .kraken.kraken import *
-#from .exchange import *
-import exchangeBase
-from kraken.kraken import Kraken
+from .kraken import Kraken
 
 class exchangeFactory(object):
 

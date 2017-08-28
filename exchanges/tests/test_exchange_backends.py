@@ -1,11 +1,6 @@
-#!/usr/bin/env python
-import sys, os
-sys.path.insert(0, "python-modules")
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-
 import unittest
 import warnings
-from exchangeFactory import *
+from exchanges import exchangeFactory
 
 
 def ignore_warnings(test_func):
