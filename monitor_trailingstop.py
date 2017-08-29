@@ -202,7 +202,8 @@ if __name__ == "__main__":
             stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr]
             logger.debug("TS reset for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
          elif midprice < stop_loss[idx]:
-            logger.info("ALERT TS for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice,  ))
+            logger.info("ALERT TS for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
+            mkt.sellMkt(cryptocurr, vol)
             alert_trailing_stop[idx] = True
 
          # check the volume-related data for this cryptocurrency (if it has not been alread
