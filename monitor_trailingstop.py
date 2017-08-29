@@ -106,32 +106,23 @@ def aggregated_volumes(vol_buffer, thList):
 if __name__ == "__main__":
    logger = logging.getLogger("monitor_trailingstop")
 
-   # these are profit thresholds we want to monitor, toghether with the states/messages 
-   # to be notified when the midprice falls on them.
-   profit_thresholds = (0.980, 0.985, 1.005, 1.015, 1.025)
-   profit_messages = ("CONSIDER SELLING", "WARNING", "no change", "Fees covered", "Some profit", "Sensible profit")
-
    # time thresholds for aggregated volumes, and the alarm levels for each one of them
    # and each currency
    volume_thresholds = [ timedelta(minutes=1), timedelta(minutes=3) ]
    volume_alarms = { }
    volume_alarms[exchangeKraken] = { "XETHZEUR": [ 200, 300 ], "XXBTZEUR": [ 200, 300 ]}
 
-   # in case midprice is above "Fees covered"+<noise value>, set up a trailing stop for the order at the
+   # set up a trailing stop for the order at the
    # distance for that crypto (related to market volatility)
    # the legend is "CRYPTO" : (noise value, distance)
    stop_loss_distance = {}
-   stop_loss_distance[exchangeKraken] = { "XETHZEUR": (4, 4) , "XXBTZEUR": (30, 30) }
+   stop_loss_distance[exchangeKraken] = { "XETHZEUR": 4 , "XXBTZEUR": 30 }
 
    # array of orders we are monitoring
-   orders = [("XETHZEUR", 281, 3.51, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
-
-   # to track state changes we want to compare the previous and current states
-   prev_state = [ None ]*len(orders)
-   curr_state = [ None ]*len(orders)
+   orders = [("XETHZEUR", 308, 3.999, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
 
    # buffer to track the trailing stop-loss, if set, for each order
-   stop_loss = [ None ]*len(orders)
+   stop_loss = [ x[1] - stop_loss_distance[x[3]][x[0]] for x in orders ]
 
    # the current delta volumes and previous full volume for each currency
    vol_buffer = {}
@@ -203,20 +194,16 @@ if __name__ == "__main__":
 
          #calculate the bid price with respect to the buying price,
          # because this is the price at which we will sell
-         midprice = bid / order_buy
-         t = sum(map(lambda x: midprice >= x, profit_thresholds))
-         logger.debug("State vec for crypto {} in market {} at relative price {:.3f}: {} ({})".format(cryptocurr, mkt, midprice, t, profit_messages[t]))
-         curr_state[idx] = t
+         midprice = bid 
+         logger.debug("crypto {} in market {} at relative price {:.3f}".format(cryptocurr, mkt, midprice ))
  
-         # if check if we can set up the trailing stop
-         if stop_loss[idx] is None and curr_state[idx] > 3 and midprice >= (order_buy + stop_loss_distance[mkt][cryptocurr][0]):
-            stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr][1]
-         elif stop_loss[idx] is not None:
-            # if the stop_loss has been set, check for update or if it has been triggered
-            if midprice - stop_loss_distance[mkt][cryptocurr][1] >= stoploss:
-               stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr][1]
-            elif midprice < stoploss[idx]:
-               alert_trailing_stop[idx] = True
+         # if check the status of the trailing stop
+         if midprice >= (order_buy + stop_loss_distance[mkt][cryptocurr]):
+            stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr]
+            logger.debug("TS reset for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
+         elif midprice < stop_loss[idx]:
+            logger.info("ALERT TS for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice,  ))
+            alert_trailing_stop[idx] = True
 
          # check the volume-related data for this cryptocurrency (if it has not been alread
          # evaluated in the current iteration)
@@ -240,11 +227,6 @@ if __name__ == "__main__":
       # check if sending a message is required
       msg = ""
 
-      # check if the monitoring state has changed for any order
-      for x,y,o in zip(curr_state, prev_state, orders):
-         if x != y:
-            msg += "{} for {}, {}, {}.".format(profit_messages[x], *o[:3])
-      
       # check if any volume alarm has been triggered
       for mkt,val in alert_volume.items():
          for curr,flag in val.items():
@@ -256,12 +238,11 @@ if __name__ == "__main__":
   
       # check if any trailing stop has been triggered
       for idx in [i for i, x in enumerate(alert_trailing_stop) if x]:
-         msg += " Alert TS for order {}, {}, {}.".format(orders[idx])
+         msg += " Alert TS for order {}, {}, {}, {}.".format(*orders[idx])
 
       # if there is anything to be send, send it
       if msg:
          logger.notify(msg)
-         prev_state= list(curr_state)
       logger.debug("Price check performed")
 
       sleep(10)
