@@ -149,6 +149,13 @@ if __name__ == "__main__":
    # start a helper thread to monitor the currencies for markets
    monitor = exchange_checker(cryptocurr=set((x[0],x[3]) for x in orders))
 
+   # wait for the monitor to contain any data
+   print ("Waiting for initialization.", end="")
+   while not any( x != (None, None, None) for mkt,currs in monitor.spreads.items() for x in currs.values() ):
+      sleep(1)
+      print(".", end="")
+   print ("\nPrice monitor initialized")
+
    # endless loop
    while True:
       # flags to find if we have already checked a currency in this iteration
@@ -203,6 +210,9 @@ if __name__ == "__main__":
   
             # check if any of the aggregated volumes triggers an alarm
             alert_volume[mkt][cryptocurr] = any( x>y for x,y in zip(agg_vol,volume_alarms[mkt][cryptocurr]) )
+            
+            # Mark this currency as updated in this iteration
+            currency_wide[cryptocurr] = True
             
       # check if sending a message is required
       msg = ""
