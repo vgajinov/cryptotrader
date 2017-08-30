@@ -1,4 +1,4 @@
-for fldr in coinbase kraken pydispatch; do
+for fldr in coinbase pydispatch; do
 (
    export PYTHONPATH=../../python-modules:$PYTHONPATH
    cd $fldr

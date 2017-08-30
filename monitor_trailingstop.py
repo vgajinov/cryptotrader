@@ -3,6 +3,7 @@ import sys, socket, threading
 import signal
 from time import sleep
 from datetime import datetime, timedelta
+import daemon
 
 # Add the local folder "python-modules" to the python path
 sys.path.insert(0, "./python-modules")
@@ -27,14 +28,6 @@ from exchanges import exchangeFactory
 
 # set up a clean exit when calling ctrl+c
 signal.signal(signal.SIGINT, lambda s,f: sys.exit(0))
-
-
-#logging.setLevel(logging.DEBUG)
-# get the reference to the exchange
-exchangeKraken = exchangeFactory().getExchange("kraken", keyfile="kraken.key")
-# set up notification
-notification = setup_remote_notification("pushbullet.key")
-
 
 # Class to start a helper thread that checks the exchange at a given frequency and
 # updates the dictionary with the ticker data
@@ -77,176 +70,74 @@ class exchange_checker(object):
          sleep(self.period_seconds)
 
 
-# function that, given a list of volumes and thresholds,
-# returns the aggregated volumes for accumulated up to
-# each threshold
-def aggregated_volumes(vol_buffer, thList):
-   result = [0.0] * len(thList)
-   last_idx = 0
-   for i,s in enumerate(vol_buffer[:0:-1]):
-      t,v = s
-   
-      # get the index of the first threshold that is above
-      cond = map(lambda x: t<=x, thList)
-   
-      # if there are not True values, just break
-      if not any(cond):
-         last_idx = i
-         break
-   
-      # accumulate v for the thresholds that are True
-      result = [ r + c*v for r,c in zip(result,cond)]
-
-   # remove the elements, from the beginning of the list,
-   # that exceed all thresholds taken into account
-   del vol_buffer[:last_idx+1]
-   return result
-
-
 if __name__ == "__main__":
-   logger = logging.getLogger("monitor_trailingstop")
+   #daemonContext = daemon.DaemonContext( files_preserve = [ handler.stream ] )
 
-   # time thresholds for aggregated volumes, and the alarm levels for each one of them
-   # and each currency
-   volume_thresholds = [ timedelta(minutes=1), timedelta(minutes=3) ]
-   volume_alarms = { }
-   volume_alarms[exchangeKraken] = { "XETHZEUR": [ 200, 300 ], "XXBTZEUR": [ 200, 300 ]}
+   #logging.setLevel(logging.DEBUG)
+   # get the reference to the exchange
+   exchangeKraken = exchangeFactory().getExchange("kraken", keyfile="kraken_trade.key")
+
+   # set up notification
+   setup_remote_notification("pushbullet.key")
+
+   logger = logging.getLogger("monitor_trailingstop")
 
    # set up a trailing stop for the order at the
    # distance for that crypto (related to market volatility)
    # the legend is "CRYPTO" : (noise value, distance)
    stop_loss_distance = {}
-   stop_loss_distance[exchangeKraken] = { "XETHZEUR": 4 , "XXBTZEUR": 30 }
+   stop_loss_distance[exchangeKraken] = { "XETHZEUR": 1 , "XXBTZEUR": 30 }
 
    # array of orders we are monitoring
-   orders = [("XETHZEUR", 308, 3.999, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
+   orders = [("XETHZEUR", 326, 0.020, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
 
    # buffer to track the trailing stop-loss, if set, for each order
    stop_loss = [ x[1] - stop_loss_distance[x[3]][x[0]] for x in orders ]
 
-   # the current delta volumes and previous full volume for each currency
-   vol_buffer = {}
-   prev_vol = {}
-   for x in orders:
-      try:
-         vol_buffer[x[3]][x[0]] = []
-      except:
-         vol_buffer[x[3]] = {x[0]: []}
-         prev_vol[x[3]] = {}
-   
    # once an alarm has been triggered, we do not want to bother for the
    # same currency in the next snooze_time minutes
    snooze_time = timedelta(minutes=3)
    curr_time = datetime.now()
-   last_alert_volume_time = {}
-   for x in orders:
-      try:
-         last_alert_volume_time[x[3]][x[0]] = curr_time - snooze_time
-      except:
-         last_alert_volume_time[x[3]] = {x[0] : curr_time - snooze_time}
-
 
    # start a helper thread to monitor the currencies for markets
    monitor = exchange_checker(cryptocurr=set((x[0],x[3]) for x in orders))
 
    # wait for the monitor to contain any data
-   print ("Waiting for initialization.", end="")
+   logger.info("Waiting for initialization")
    while not any( x != (None, None, None) for mkt,currs in monitor.spreads.items() for x in currs.values() ):
       sleep(1)
-      print(".", end="")
-   print ("\nPrice monitor initialized")
-  
+   logger.info("Price monitor initialized")
+
    # endless loop
    while True:
-      # flags to find if we have already checked a currency in this iteration
-      currency_wide = {}
-      for x in orders:
-         try:
-            currency_wide[x[3]][x[0]] = False
-         except:
-            currency_wide[x[3]] = {x[0]: False}
-
-      # flags to find if any volume alert has been triggered for any currency in this iteration
-      alert_volume = {}
-      for x in orders:
-         try:
-            alert_volume[x[3]][x[0]] = False
-         except:
-            alert_volume[x[3]] = {x[0]: False}
-
-      # flag to alert of a trailing stop being triggered
-      alert_trailing_stop = [False] * len(orders)
-
       # check all the orders
       for idx, order in enumerate(orders):
          cryptocurr, order_buy, order_vol, mkt = order
 
          # request last available information to the exchange monitor
          # for this currency
-         t = monitor.spreads[mkt][cryptocurr]
+         bid, ask, vol = t = monitor.spreads[mkt][cryptocurr]
          if not all(t):
             logger.info("No ticker info received for cryptocurr {}".format(cryptocurr))
             sleep(10)
             continue
 
-         bid, ask, vol = t
          curr_time = monitor.lastupdate
 
          #calculate the bid price with respect to the buying price,
          # because this is the price at which we will sell
          midprice = bid 
          logger.debug("crypto {} in market {} at relative price {:.3f}".format(cryptocurr, mkt, midprice ))
- 
+
          # if check the status of the trailing stop
          if midprice >= (order_buy + stop_loss_distance[mkt][cryptocurr]):
             stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr]
             logger.debug("TS reset for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
          elif midprice < stop_loss[idx]:
-            msg = "TS triggered for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] )
-            logger.info(msg)
-            mkt.sellMkt(cryptocurr, vol)
-            logger.notify(msg)
-            alert_trailing_stop[idx] = True
+            mkt.sellMkt(cryptocurr, order_vol)
+            logger.notify("TS triggered for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
 
-         # check the volume-related data for this cryptocurrency (if it has not been alread
-         # evaluated in the current iteration)
-         if not currency_wide[mkt][cryptocurr]:
-            try:
-               delta_vol = vol - prev_vol[mkt][cryptocurr]
-            except:
-               delta_vol = 0.0
-            vol_buffer[mkt][cryptocurr].append((curr_time, delta_vol))
-            prev_vol[mkt][cryptocurr] = vol
-   
-            # get the aggregated volumes for the previous thresholds
-            agg_vol = aggregated_volumes(vol_buffer[mkt][cryptocurr], [curr_time - x for x in volume_thresholds])
-  
-            # check if any of the aggregated volumes triggers an alarm
-            alert_volume[mkt][cryptocurr] = any( x>y for x,y in zip(agg_vol,volume_alarms[mkt][cryptocurr]) )
-
-            # Mark this currency as updated in this iteration
-            currency_wide[cryptocurr] = True
-            
-      # check if sending a message is required
-      msg = ""
-
-      # check if any volume alarm has been triggered
-      for mkt,val in alert_volume.items():
-         for curr,flag in val.items():
-            # if there is an alarm and snooze_time has already passed,
-            # update the messge and reset last_alert_volume_time
-            if flag and curr_time > last_alert_volume_time[mkt][curr] + snooze_time:
-               last_alert_volume_time[mkt][key] = curr_time
-               msg += "Alert VOLUME for crypto {} in market {}.".format(curr, mkt)
-  
-      # check if any trailing stop has been triggered
-      for idx in [i for i, x in enumerate(alert_trailing_stop) if x]:
-         msg += " Alert TS for order {}, {}, {}, {}.".format(*orders[idx])
-
-      # if there is anything to be send, send it
-      if msg:
-         logger.notify(msg)
       logger.debug("Price check performed")
 
       sleep(10)
-
+   

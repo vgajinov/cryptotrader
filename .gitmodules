@@ -1,6 +1,3 @@
-[submodule "Thirdparty/kraken"]
-	path = Thirdparty/kraken
-	url = https://github.com/veox/python3-krakenex.git
 [submodule "Thirdparty/coinbase"]
 	path = Thirdparty/coinbase
 	url = https://github.com/coinbase/coinbase-python.git
