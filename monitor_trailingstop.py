@@ -113,8 +113,10 @@ def check_sell_trailing_stops(monitor, orders):
             logger.notify("TSs triggered for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
          items_to_remove.append(idx)
       else:
-         order[5] = stop_loss = max(midprice - stop_loss_distance, stop_loss)
-         logger.debug("TSs reset for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+         t = max(midprice - stop_loss_distance, stop_loss)
+         if t > stop_loss:
+            order[5] = stop_loss = t
+            logger.info("TSs reset for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
 
    orders[:] = [ x for i,x in enumerate(orders) if i not in items_to_remove ]
 
@@ -214,6 +216,7 @@ if __name__ == "__main__":
    # array of orders we are monitoring
    # and buffer to track the buying trailing stop for each order
    orders = [["XETHZEUR", 330, 0.020, exchangeKraken, 4, 329], ["XXBTZEUR", 3600.0, 3.0, exchangeKraken, 30, 3570]]
+   orders = [["XXBTZEUR", 4085.82, 0.196, exchangeKraken, 40, 4049.53]]
    buy_trailing_stop = [["XETHZEUR", exchangeKraken, 4, 320]]
    open_orders_buy = []
 
@@ -226,9 +229,15 @@ if __name__ == "__main__":
       sleep(1)
    logger.info("Price monitor initialized")
 
+   last_minute_notification = datetime.now().minute
    # endless loop
    while True:
       check_sell_trailing_stops(monitor, orders)
-      check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy)
+      #check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy)
+
+      t = datetime.now().minute
+      if t%5 == 0 and t != last_minute_notification:
+         last_minute_notification = t
+         logger.info("Autotrader still alive!")
       sleep(10)
    
