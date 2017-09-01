@@ -174,11 +174,16 @@ class Kraken(exchangeBase):
 
 
    def queryOrder(self, orderID):
-      answer = self.k.query_private('QueryOrders', {'txid' : orderID})
+      answer = self.k.query_private('QueryOrders', {'txid' : ",".join(orderID) if isinstance(orderID,list) else orderID})
       if answer['error']:
          raise Exception(answer['error'])
 
-      return answer['result'][txid]
+      if isinstance(orderID,list):
+         result = [answer['result'][order] for order in orderID]
+      else:
+         result = answer['result'][orderID]
+
+      return result
 
 
    def cancelOrder(self, orderID):

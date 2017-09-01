@@ -4,19 +4,22 @@ import sys
 
 NOTIFY_LVL = 21
 pb = None
+logger = None
 
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+def setup_basic_logging(level = logging.INFO):
+   formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-# configure the handler to send log messages to file
-handler = logging.FileHandler('log.txt', mode='w')
-handler.setFormatter(formatter)
-# configure the handler to send log messages to screen
-screen_handler = logging.StreamHandler(stream=sys.stdout)
-screen_handler.setFormatter(formatter)
-# configure logging with the previously created handlers
-logging.basicConfig(level=logging.INFO, handlers=[handler, screen_handler])
+   # configure the handler to send log messages to file
+   handler = logging.FileHandler('log.txt', mode='w')
+   handler.setFormatter(formatter)
+   # configure the handler to send log messages to screen
+   screen_handler = logging.StreamHandler(stream=sys.stdout)
+   screen_handler.setFormatter(formatter)
+   # configure logging with the previously created handlers
+   logging.basicConfig(level=level, handlers=[handler, screen_handler])
 
-logger = logging.getLogger(__name__)
+   global logger
+   logger = logging.getLogger(__name__)
 
 def notify(self, message, *args, **kws):
    pb.push_note("AutoTrader", message)

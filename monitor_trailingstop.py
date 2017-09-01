@@ -3,13 +3,14 @@ import sys, socket, threading
 import signal
 from time import sleep
 from datetime import datetime, timedelta
-import daemon
 
 # Add the local folder "python-modules" to the python path
 sys.path.insert(0, "./python-modules")
 
 from notification import *
 from exchanges import exchangeFactory
+
+logger = None
 
 #import code, traceback, signal
 #def debug(sig, frame):
@@ -70,74 +71,164 @@ class exchange_checker(object):
          sleep(self.period_seconds)
 
 
-if __name__ == "__main__":
-   #daemonContext = daemon.DaemonContext( files_preserve = [ handler.stream ] )
+def check_sell_trailing_stops(monitor, orders):
+   # buffer for the items to be removed
+   items_to_remove = []
 
-   #logging.setLevel(logging.DEBUG)
+   # cryptocurrs_markets not ready
+   cryptocurrs_markets=set()
+
+   # check all the orders
+   for idx, order in enumerate(orders):
+      logger.debug("Checking order {}".format(order))
+      cryptocurr, order_buy, order_vol, mkt, stop_loss_distance, stop_loss = order
+
+      # if the mkt and cryptocurr are known for not being ready, just
+      # continue
+      if (mkt, cryptocurr) in cryptocurrs_markets:
+         logger.info("Ignoring ticker request for cryptocurr {} and market {}".format(cryptocurr,mkt))
+         continue
+
+      # request last available information to the exchange monitor
+      # for this currency
+      bid, ask, vol = t = monitor.spreads[mkt][cryptocurr]
+      if not all(t):
+         logger.info("No ticker info received for cryptocurr {} and market {}".format(cryptocurr,mkt))
+         cryptocurrs_markets.add((mkt, cryptocurr))
+         continue
+      curr_time = monitor.lastupdate
+
+      #calculate the bid price with respect to the buying price,
+      # because this is the price at which we will sell
+      midprice = bid
+      logger.debug("crypto {} in market {} at price {:.3f}".format(cryptocurr, mkt, midprice ))
+
+      # if check the status of the trailing stop
+      if midprice < stop_loss:
+         try:
+            mkt.sellMkt(cryptocurr, order_vol)
+         except Exception as e:
+            logger.notify("Exception triggered while managing TSs triggered for crypto {} in market {} at price {:.3f} SL {:.3f}: {}".format(cryptocurr, mkt, midprice, stop_loss, e))
+         else:
+            logger.notify("TSs triggered for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+         items_to_remove.append(idx)
+      else:
+         order[5] = stop_loss = max(midprice - stop_loss_distance, stop_loss)
+         logger.debug("TSs reset for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+
+   orders[:] = [ x for i,x in enumerate(orders) if i not in items_to_remove ]
+
+
+def check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy):
+   # buffer for the items to be removed
+   items_to_remove = []
+
+   # cryptocurrs_markets not ready
+   cryptocurrs_markets=set()
+
+   # check the status for the orders in open_orders_buy
+   try:
+      infoOrders = mkt.queryOrder(open_orders_buy)
+   except Exception as e:
+      logger.notify("Exception triggered while querying buy open orders")
+   else:
+      for info in infoOrders:
+         if info['status'] == "canceled":
+            logger.notify("TSb {} triggered for crypto {} in market {} at market price was canceled.".format(mktOrderId, cryptocurr, mkt ))
+         elif info['status'] == "closed":
+            logger.notify("TSb triggered for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+            orders.append([cryptocurr, float(info['price']), float(info['vol']), mkt, stop_loss, float(info['price'])-stop_loss])
+
+   # check all the orders
+   for idx, order in enumerate(buy_trailing_stop):
+      logger.debug("Checking order {}".format(order))
+      cryptocurr, mkt, stop_loss_distance, stop_loss = order
+
+      # if the mkt and cryptocurr are known for not being ready, just
+      # continue
+      if (mkt, cryptocurr) in cryptocurrs_markets:
+         logger.info("Ignoring ticker request for cryptocurr {} and market {}".format(cryptocurr,mkt))
+         continue
+
+      # request last available information to the exchange monitor
+      # for this currency
+      bid, ask, vol = t = monitor.spreads[mkt][cryptocurr]
+      if not all(t):
+         logger.info("No ticker info received for cryptocurr {} and market {}".format(cryptocurr,mkt))
+         cryptocurrs_markets.add((mkt, cryptocurr))
+         continue
+      curr_time = monitor.lastupdate
+
+      #calculate the bid price with respect to the buying price,
+      # because this is the price at which we will sell
+      midprice = bid
+      logger.debug("crypto {} in market {} at price {:.3f}".format(cryptocurr, mkt, midprice ))
+
+      # if check the status of the trailing stop
+      if midprice > stop_loss:
+         # TODO: calculate how much we want to invest in this transaction
+         order_vol = 0.02
+
+         try:
+            mktOrderId = mkt.buyMkt(cryptocurr, order_vol)
+         except Exception as e:
+            logger.notify("Exception triggered while managing TSb triggered for crypto {} in market {} at price {:.3f} SL {:.3f}: {}".format(cryptocurr, mkt, midprice, stop_loss, e))
+         else:
+            try:
+               info = mkt.queryOrder(mktOrderId)
+            except Exception as e:
+               logger.notify("Exception triggered while querying TSb {} triggered for crypto {} in market {} at price {:.3f} SL {:.3f}: {}".format(mktOrderId, cryptocurr, mkt, midprice, stop_loss, e))
+            else:
+               if info['status'] == "canceled":
+                  logger.notify("TSb {} triggered for crypto {} in market {} at market price was canceled.".format(mktOrderId, cryptocurr, mkt ))
+               elif info['status'] != "closed":
+                  logger.debug("TSb {} triggered for crypto {} in market {} at market price. status: {}".format(mktOrderId, cryptocurr, mkt, info['status'] ))
+                  open_orders_buy.append(mktOrderId)
+                  items_to_remove.append(idx)
+               else:
+                  logger.notify("TSb triggered for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+                  orders.append([cryptocurr, float(info['price']), float(info['vol']), mkt, stop_loss, float(info['price'])-stop_loss])
+      else:
+         order[3] = stop_loss = min(midprice + stop_loss_distance, stop_loss)
+         logger.debug("TSb reset for crypto {} in market {} at price {:.3f} SL {:.3f}".format(cryptocurr, mkt, midprice, stop_loss ))
+
+   buy_trailing_stop[:] = [ x for i,x in enumerate(buy_trailing_stop) if i not in items_to_remove ]
+
+
+if __name__ == "__main__":
    # get the reference to the exchange
    exchangeKraken = exchangeFactory().getExchange("kraken", keyfile="kraken_trade.key")
 
    # set up notification
+   setup_basic_logging()
    setup_remote_notification("pushbullet.key")
 
    logger = logging.getLogger("monitor_trailingstop")
 
    # set up a trailing stop for the order at the
    # distance for that crypto (related to market volatility)
-   # the legend is "CRYPTO" : (noise value, distance)
+   # the legend is "CRYPTO" : distance
    stop_loss_distance = {}
    stop_loss_distance[exchangeKraken] = { "XETHZEUR": 1 , "XXBTZEUR": 30 }
 
    # array of orders we are monitoring
-   orders = [("XETHZEUR", 326, 0.020, exchangeKraken)]#, ("XXBTZEUR", 3600.0, 3.0, exchangeKraken)]
-
-   # buffer to track the trailing stop-loss, if set, for each order
-   stop_loss = [ x[1] - stop_loss_distance[x[3]][x[0]] for x in orders ]
-
-   # once an alarm has been triggered, we do not want to bother for the
-   # same currency in the next snooze_time minutes
-   snooze_time = timedelta(minutes=3)
-   curr_time = datetime.now()
+   # and buffer to track the buying trailing stop for each order
+   orders = [["XETHZEUR", 330, 0.020, exchangeKraken, 4, 329], ["XXBTZEUR", 3600.0, 3.0, exchangeKraken, 30, 3570]]
+   buy_trailing_stop = [["XETHZEUR", exchangeKraken, 4, 320]]
+   open_orders_buy = []
 
    # start a helper thread to monitor the currencies for markets
    monitor = exchange_checker(cryptocurr=set((x[0],x[3]) for x in orders))
 
    # wait for the monitor to contain any data
    logger.info("Waiting for initialization")
-   while not any( x != (None, None, None) for mkt,currs in monitor.spreads.items() for x in currs.values() ):
+   while not any( x.count(None) != len(x) for mkt,currs in monitor.spreads.items() for x in currs.values() ):
       sleep(1)
    logger.info("Price monitor initialized")
 
    # endless loop
    while True:
-      # check all the orders
-      for idx, order in enumerate(orders):
-         cryptocurr, order_buy, order_vol, mkt = order
-
-         # request last available information to the exchange monitor
-         # for this currency
-         bid, ask, vol = t = monitor.spreads[mkt][cryptocurr]
-         if not all(t):
-            logger.info("No ticker info received for cryptocurr {}".format(cryptocurr))
-            sleep(10)
-            continue
-
-         curr_time = monitor.lastupdate
-
-         #calculate the bid price with respect to the buying price,
-         # because this is the price at which we will sell
-         midprice = bid 
-         logger.debug("crypto {} in market {} at relative price {:.3f}".format(cryptocurr, mkt, midprice ))
-
-         # if check the status of the trailing stop
-         if midprice >= (order_buy + stop_loss_distance[mkt][cryptocurr]):
-            stop_loss[idx] = midprice - stop_loss_distance[mkt][cryptocurr]
-            logger.debug("TS reset for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
-         elif midprice < stop_loss[idx]:
-            mkt.sellMkt(cryptocurr, order_vol)
-            logger.notify("TS triggered for crypto {} in market {} at relative price {:.3f}: {:.3f}".format(cryptocurr, mkt, midprice, stop_loss[idx] ))
-
-      logger.debug("Price check performed")
-
+      check_sell_trailing_stops(monitor, orders)
+      check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy)
       sleep(10)
    
