@@ -103,7 +103,7 @@ def check_sell_trailing_stops(monitor, orders):
       midprice = bid
       logger.debug("crypto {} in market {} at price {:.3f}".format(cryptocurr, mkt, midprice ))
 
-      # if check the status of the trailing stop
+      # check the status of the trailing stop
       if midprice < stop_loss:
          try:
             mkt.sellMkt(cryptocurr, order_vol)
@@ -232,8 +232,11 @@ if __name__ == "__main__":
    last_minute_notification = datetime.now().minute
    # endless loop
    while True:
-      check_sell_trailing_stops(monitor, orders)
-      #check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy)
+      if len(orders) > 0:
+         check_sell_trailing_stops(monitor, orders)
+
+      if len(buy_trailing_stop) > 0:
+         check_buy_trailing_stops(monitor, orders, buy_trailing_stop, open_orders_buy)
 
       t = datetime.now().minute
       if t%5 == 0 and t != last_minute_notification:
