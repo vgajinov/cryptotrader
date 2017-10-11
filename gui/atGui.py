@@ -226,114 +226,121 @@ class ATMainWindow(QtGui.QMainWindow):
    # ------------------------------------------------------------------------------------
 
    def setPlaceOrderLayout(self, PlaceOrderLayout):
+      self.addLimitOrderLayout(PlaceOrderLayout)
+
+
+   def addLimitOrderLayout(self, parentLayout):
       self.ctPlaceOrderBuyLayout = QtGui.QGridLayout()
       self.ctPlaceOrderSellLayout = QtGui.QGridLayout()
 
+      self.addLimitBuyLayout(self.ctPlaceOrderBuyLayout)
+      self.addLimitSellLayout(self.ctPlaceOrderSellLayout)
+
+      parentLayout.addLayout(self.ctPlaceOrderBuyLayout, stretch=1)
+      parentLayout.addLayout(self.ctPlaceOrderSellLayout, stretch=1)
+      parentLayout.addWidget(self.createSeparator(orientation=1, color=COLOR_SEPARATOR, stroke=5))
+      parentLayout.setSpacing(10)
+
+
+   def addLimitBuyLayout(self, parentLayout):
+
       # BUY Layout
       # ---------------------------------------------------
-      self.buyInfoLabel = QtGui.QLabel()
-      self.buyInfoLabel.setStyleSheet('font: bold 16px;')
+      self.limitBuyInfoLabel = QtGui.QLabel()
+      self.limitBuyInfoLabel.setStyleSheet('font: bold 16px;')
 
-      self.buyBalanceLabel = QtGui.QLabel()
-      self.buyBalanceAmountLabel = QtGui.QLabel()
-      self.buyBalanceLabel.setObjectName('grayedLabel')
-      self.buyBalanceAmountLabel.setObjectName('grayedLabel')
+      self.limitBuyBalanceLabel = QtGui.QLabel()
+      self.limitBuyBalanceAmountLabel = QtGui.QLabel()
+      self.limitBuyBalanceLabel.setObjectName('grayedLabel')
+      self.limitBuyBalanceAmountLabel.setObjectName('grayedLabel')
 
-      buyPriceLabel = QtGui.QLabel('Price:')
-      self.buyPriceInput = QtGui.QLineEdit()
-      self.buyPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
+      limitBuyPriceLabel = QtGui.QLabel('Price:')
+      self.limitBuyPriceInput = QtGui.QLineEdit()
+      self.limitBuyPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
 
-      buyAmountLabel = QtGui.QLabel('Amount:')
-      self.buyAmountInput = QtGui.QLineEdit()
+      limitBuyAmountLabel = QtGui.QLabel('Amount:')
+      self.limitBuyAmountInput = QtGui.QLineEdit()
 
-      buyTotalLabel = QtGui.QLabel('Total:')
-      self.buyTotalValueLabel = QtGui.QLabel()
-      buyTotalLabel.setObjectName('totalLabel')
+      limitBuyTotalLabel = QtGui.QLabel('Total:')
+      self.limitBuyTotalValueLabel = QtGui.QLabel()
+      limitBuyTotalLabel.setObjectName('totalLabel')
 
-      self.buyButton = QtGui.QPushButton()
-      self.buyButton.setMinimumHeight(40)
-      self.buyButton.setText('BUY')
-      self.buyButton.setObjectName('buyButton')
+      self.limitBuyButton = QtGui.QPushButton()
+      self.limitBuyButton.setMinimumHeight(40)
+      self.limitBuyButton.setText('BUY')
+      self.limitBuyButton.setObjectName('limitBuyButton')
 
-
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyInfoLabel, 0, 0)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyBalanceLabel, 1, 0)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyBalanceAmountLabel, 1, 1)
-      self.ctPlaceOrderBuyLayout.addWidget(buyPriceLabel, 2, 0)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyPriceInput, 2, 1)
-      self.ctPlaceOrderBuyLayout.addWidget(buyAmountLabel, 3, 0)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyAmountInput, 3, 1)
-      self.ctPlaceOrderBuyLayout.addWidget(buyTotalLabel, 4, 0)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyTotalValueLabel, 4, 1)
-      self.ctPlaceOrderBuyLayout.addWidget(self.buyButton, 5, 0, 1, 2)
-      self.ctPlaceOrderBuyLayout.setMargin(15)
-      self.ctPlaceOrderBuyLayout.setSpacing(10)
-      self.ctPlaceOrderBuyLayout.setColumnStretch(0,1)
-      self.ctPlaceOrderBuyLayout.setColumnStretch(1,3)
-      self.ctPlaceOrderBuyLayout.setRowStretch(0, 2)
-      self.ctPlaceOrderBuyLayout.setRowStretch(5, 2)
-
-
-      # SELL Layout
-      # ---------------------------------------------------
-      self.sellInfoLabel = QtGui.QLabel()
-      self.sellInfoLabel.setStyleSheet('font: bold 16px;')
-
-      self.sellBalanceLabel = QtGui.QLabel()
-      self.sellBalanceAmountLabel = QtGui.QLabel()
-      self.sellBalanceLabel.setObjectName('grayedLabel')
-      self.sellBalanceAmountLabel.setObjectName('grayedLabel')
-
-      sellPriceLabel = QtGui.QLabel('Price:')
-      self.sellPriceInput = QtGui.QLineEdit()
-      self.sellPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
-
-      sellAmountLabel = QtGui.QLabel('Amount:')
-      self.sellAmountInput = QtGui.QLineEdit()
-
-      sellTotalLabel = QtGui.QLabel('Total:')
-      self.sellTotalValueLabel = QtGui.QLabel()
-      sellTotalLabel.setObjectName('totalLabel')
-
-      self.sellButton = QtGui.QPushButton()
-      self.sellButton.setMinimumHeight(40)
-      self.sellButton.setText('SELL')
-      self.sellButton.setObjectName('sellButton')
+      parentLayout.addWidget(self.limitBuyInfoLabel, 0, 0)
+      parentLayout.addWidget(self.limitBuyBalanceLabel, 1, 0)
+      parentLayout.addWidget(self.limitBuyBalanceAmountLabel, 1, 1)
+      parentLayout.addWidget(limitBuyPriceLabel, 2, 0)
+      parentLayout.addWidget(self.limitBuyPriceInput, 2, 1)
+      parentLayout.addWidget(limitBuyAmountLabel, 3, 0)
+      parentLayout.addWidget(self.limitBuyAmountInput, 3, 1)
+      parentLayout.addWidget(limitBuyTotalLabel, 4, 0)
+      parentLayout.addWidget(self.limitBuyTotalValueLabel, 4, 1)
+      parentLayout.addWidget(self.limitBuyButton, 5, 0, 1, 2)
+      parentLayout.setMargin(15)
+      parentLayout.setSpacing(10)
+      parentLayout.setColumnStretch(0,1)
+      parentLayout.setColumnStretch(1,3)
+      parentLayout.setRowStretch(0, 2)
+      parentLayout.setRowStretch(5, 2)
 
 
-      self.ctPlaceOrderSellLayout.addWidget(self.sellInfoLabel, 0, 0)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellBalanceLabel, 1, 0)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellBalanceAmountLabel, 1, 1)
-      self.ctPlaceOrderSellLayout.addWidget(sellPriceLabel, 2, 0)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellPriceInput, 2, 1)
-      self.ctPlaceOrderSellLayout.addWidget(sellAmountLabel, 3, 0)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellAmountInput, 3, 1)
-      self.ctPlaceOrderSellLayout.addWidget(sellTotalLabel, 4, 0)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellTotalValueLabel, 4, 1)
-      self.ctPlaceOrderSellLayout.addWidget(self.sellButton, 5, 0, 1, 2)
-      self.ctPlaceOrderSellLayout.setMargin(15)
-      self.ctPlaceOrderSellLayout.setSpacing(10)
-      self.ctPlaceOrderSellLayout.setColumnStretch(0,1)
-      self.ctPlaceOrderSellLayout.setColumnStretch(1,3)
-      self.ctPlaceOrderSellLayout.setRowStretch(0, 2)
-      self.ctPlaceOrderSellLayout.setRowStretch(5, 3)
+   # Limit SELL Layout
+   # ---------------------------------------------------
+   def addLimitSellLayout(self, parentLayout):
+      self.limitSellInfoLabel = QtGui.QLabel()
+      self.limitSellInfoLabel.setStyleSheet('font: bold 16px;')
+
+      self.limitSellBalanceLabel = QtGui.QLabel()
+      self.limitSellBalanceAmountLabel = QtGui.QLabel()
+      self.limitSellBalanceLabel.setObjectName('grayedLabel')
+      self.limitSellBalanceAmountLabel.setObjectName('grayedLabel')
+
+      limitSellPriceLabel = QtGui.QLabel('Price:')
+      self.limitSellPriceInput = QtGui.QLineEdit()
+      self.limitSellPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
+
+      limitSellAmountLabel = QtGui.QLabel('Amount:')
+      self.limitSellAmountInput = QtGui.QLineEdit()
+
+      limitSellTotalLabel = QtGui.QLabel('Total:')
+      self.limitSellTotalValueLabel = QtGui.QLabel()
+      limitSellTotalLabel.setObjectName('totalLabel')
+
+      self.limitSellButton = QtGui.QPushButton()
+      self.limitSellButton.setMinimumHeight(40)
+      self.limitSellButton.setText('SELL')
+      self.limitSellButton.setObjectName('limitSellButton')
+
+      parentLayout.addWidget(self.limitSellInfoLabel, 0, 0)
+      parentLayout.addWidget(self.limitSellBalanceLabel, 1, 0)
+      parentLayout.addWidget(self.limitSellBalanceAmountLabel, 1, 1)
+      parentLayout.addWidget(limitSellPriceLabel, 2, 0)
+      parentLayout.addWidget(self.limitSellPriceInput, 2, 1)
+      parentLayout.addWidget(limitSellAmountLabel, 3, 0)
+      parentLayout.addWidget(self.limitSellAmountInput, 3, 1)
+      parentLayout.addWidget(limitSellTotalLabel, 4, 0)
+      parentLayout.addWidget(self.limitSellTotalValueLabel, 4, 1)
+      parentLayout.addWidget(self.limitSellButton, 5, 0, 1, 2)
+      parentLayout.setMargin(15)
+      parentLayout.setSpacing(10)
+      parentLayout.setColumnStretch(0,1)
+      parentLayout.setColumnStretch(1,3)
+      parentLayout.setRowStretch(0, 2)
+      parentLayout.setRowStretch(5, 3)
 
 
-      # add buy and sell layouts
-      PlaceOrderLayout.addLayout(self.ctPlaceOrderBuyLayout, stretch=1)
-      PlaceOrderLayout.addLayout(self.ctPlaceOrderSellLayout, stretch=1)
-      PlaceOrderLayout.addWidget(self.createSeparator(orientation=1, color=COLOR_SEPARATOR, stroke=5))
-      PlaceOrderLayout.setSpacing(10)
+   def setLimitData(self):
+      self.limitBuyInfoLabel.setText('Buy BTC')
+      self.limitBuyBalanceLabel.setText(('USD Balance:'))
+      self.limitBuyBalanceAmountLabel.setText('1450.65')
 
-
-
-      self.buyInfoLabel.setText('Buy BTC')
-      self.buyBalanceLabel.setText(('USD Balance:'))
-      self.buyBalanceAmountLabel.setText('1450.65')
-
-      self.sellInfoLabel.setText('Sell BTC')
-      self.sellBalanceLabel.setText(('BTC Balance:'))
-      self.sellBalanceAmountLabel.setText('2.356')
+      self.limitSellInfoLabel.setText('Sell BTC')
+      self.limitSellBalanceLabel.setText(('BTC Balance:'))
+      self.limitSellBalanceAmountLabel.setText('2.356')
 
 
 
