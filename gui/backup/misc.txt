@@ -1,0 +1,94 @@
+OrderBook Numeric Layout
+
+#      askTable = QtGui.QTableWidget(3, 3)
+#      askTable.verticalHeader().setVisible(False)
+#      askTable.horizontalHeader().setVisible(False)
+#      askTable.setShowGrid(False)
+
+      bidTable = pg.TableWidget(False, False)
+      bidTable.verticalHeader().setVisible(False)
+      bidTable.horizontalHeader().setVisible(False)
+      bidTable.setShowGrid(False)
+#
+#      bidTable = QtGui.QTableWidget(3, 3)
+#      bidTable.verticalHeader().setVisible(False)
+#      bidTable.horizontalHeader().setVisible(False)
+#      bidTable.setShowGrid(False)
+#
+#      tList = [[4000, 1, 10], [4001, 2, 12], [4002, 3, 13]]
+#      for i in range(askTable.rowCount()):
+#         for j in range(askTable.columnCount()):
+#            askTable.setItem(i, j , QtGui.QTableWidgetItem(str(tList[i][j])))
+#            bidTable.setItem(i, j , QtGui.QTableWidgetItem(str(tList[i][j])))
+
+#      tList = [[4000, 1, 10], [4001, 2, 12], [4002, 3, 13]]
+#      askTable = pg.TableWidget(3, 3, editable=False, sortable=False)
+#      askTable.verticalHeader().setVisible(False)
+#      askTable.horizontalHeader().setVisible(False)
+#      askTable.setShowGrid(False)
+#
+#      askTable.setData(tList)
+#      bidTable.setData(tList)
+
+
+
+
+    # using TableWidget
+#   def setOrderBookTradesLayout(self, ctOrderBookTradesLayout):
+#      tradesTable = pg.TableWidget(20, 3, editable=False, sortable=False)
+#      tradesTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+#      tradesTable.verticalHeader().setDefaultSectionSize(16)
+#      tradesTable.verticalHeader().setVisible(False)
+#      tradesTable.horizontalHeader().setVisible(False)
+#      tradesTable.setShowGrid(False)
+#      tradesTable.setStyleSheet('padding: 5px;')
+#
+#      tradesTable.setData([[4000, 1.1, 10], [-4001, 2.22, 12], [4002, 3.333, 13]])
+#      for i in range(tradesTable.rowCount()):
+#         priceItem = tradesTable.item(i, 0)
+#         if (int(priceItem.text()) < 0):
+#            priceItem.setText(str(-int(priceItem.text())))
+#            priceItem.setTextColor(QtCore.Qt.red)
+#         else:
+#            priceItem.setTextColor(QtCore.Qt.green)
+#         tradesTable.item(i, 1).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+#         tradesTable.item(i, 2).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+#
+#      ctOrderBookTradesLayout.addWidget(tradesTable)
+
+
+
+      priceText = ''
+      tradesData = [[4000, 1.1, 10], [-4001, 2.22, 12], [4002, 3.333, 13]]
+      for i in range(len(tradesData)):
+         if (tradesData[i][0] < 0):
+            priceText += '<font color=\"red\">' + str(-tradesData[i][0]) + '</font><br /> '
+         else:
+            priceText += '<font color=\"#00ff00\">' + str(tradesData[i][0]) + '</font><br /> '
+
+      tradesPriceLabel.setText(priceText)
+      tradesAmountLabel = QtGui.QLabel()
+      tradesAmountLabel.setAlignment(QtCore.Qt.AlignRight)
+      tradesAmountLabel.setText('1.23\n2.2334\n3.23')
+      tradesSumLabel = QtGui.QLabel()
+      tradesSumLabel.setAlignment(QtCore.Qt.AlignRight)
+      tradesSumLabel.setText('1.23\n3.46\n5.45')
+
+
+
+
+
+      #qss = open('style.qss', 'r')
+      #style = qss.read()
+      #self.setStyleSheet(style)
+      #qss.close()
+
+      styleFile = 'style.qss'
+      with open(styleFile, "r") as fh:
+         self.setStyleSheet(fh.read())
+
+      #css = QtCore.QFile(':/style.css')
+      #css.open(QtCore.QIODevice.ReadOnly)
+      #if css.isOpen():
+      #   self.setStyleSheet(QtCore.QVariant(css.readAll()).toString())
+      #css.close()

@@ -360,8 +360,11 @@ class BitfinexWSClient:
       # automatically subscribe to default channels
       for pair in SYMBOLS:
          self.subscribeToBook({'pair': pair, 'prec': "P0", 'freq': "F0", 'len': "100"})
+         time.sleep(1)
          self.subscribeToTrades({'pair': pair})
+         time.sleep(1)
          self.subscribeToTicker({'pair': pair})
+         time.sleep(1)
          self.subscribeToCandles({'pair': pair, 'scale': "1m"})
 
    def disconnect(self):
@@ -923,6 +926,7 @@ class BitfinexWSClient:
       if 'hb' in msg:
          return
 
+      print(msg)
       chanId = msg[0]
       if not self.candles.get(chanId, None):
          # snapshot message

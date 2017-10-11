@@ -1,0 +1,50 @@
+
+* {
+    color: white;
+    color: white;
+}
+
+QMainWindow {
+    background-color: rgb(0, 0, 0);
+    color: rgb(255, 255, 255);
+}
+
+
+/* LineEdit
+--------------------------------------------------
+*/
+QLineEdit {
+    background-color: rgb(0, 0, 0);
+    border: 1px solid rgb(255,255,255,200);
+    padding: 3px 3px 3px 3px;
+}
+
+
+/* Labels
+--------------------------------------------------
+*/
+QLabel {
+    color: white;
+}
+
+QLabel#grayedLabel {
+    color: rgb(167,174,186,100);
+}
+
+QLabel#totalLabel {
+    margin: 5px 0px 5px 0px;
+}
+
+
+/* Buttons
+--------------------------------------------------
+*/
+QPushButton#buyButton {
+    background-color: rgb(0,255,0,180);
+    font: bold 16px;
+}
+
+QPushButton#sellButton {
+    background-color: rgb(255,0,0,180);
+    font: bold 16px;
+}
