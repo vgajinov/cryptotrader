@@ -92,3 +92,145 @@ OrderBook Numeric Layout
       #if css.isOpen():
       #   self.setStyleSheet(QtCore.QVariant(css.readAll()).toString())
       #css.close()
+
+
+
+
+QComboBox::drop-down {
+    background-color: rgb(0, 0, 0);
+
+}
+
+QComboBox::down-arrow {
+    border: 1px solid;
+    border-color: rgb(167,174,186,150);
+    color: rgb(167,174,186,150);
+}
+
+QComboBox::down-arrow:on { /* shift the arrow when popup is open */
+    top: 1px;
+    left: 1px;
+}
+
+
+
+TableView in ComboBox
+-----------------------------------------
+
+   class MyTableModel(QtCore.QAbstractTableModel):
+      def __init__(self, data, parent=None, *args):
+         QtCore.QAbstractTableModel.__init__(self, parent, *args)
+         nr = 5
+         self.data = [data[i*nr:(i+1)*nr] for i in range(int(len(data)/nr)+1)]
+         self.numRows = nr
+
+
+      def rowCount(self, parent):
+         return self.numRows
+
+      def columnCount(self, parent):
+         return len(self.data)
+
+      def data(self, index, role):
+         if not index.isValid():
+            return QtGui.QVariant()
+         elif role != QtGui.Qt.DisplayRole:
+            return QtGui.QVariant()
+         return QtGui.QVariant(self.data[index.row()][index.column()])
+
+
+#self.ctrlPairView = QtGui.QTableView()
+#self.ctrlPairView.setShowGrid(False)
+#self.ctrlPairView.verticalHeader().setVisible(False)
+#self.ctrlPairView.horizontalHeader().setVisible(False)
+#self.ctrlPairView.resizeColumnsToContents()
+
+
+#self.ctrlPairView.setModel(self.MyTableModel(pairList))
+#self.ctrlPair.setView(self.ctrlPairView)
+
+
+
+ListView with Grid
+
+      self.ctrlPairView.setUniformItemSizes(True)
+      self.ctrlPairView.setGridSize(QtCore.QSize(20,20))
+      self.ctrlPairView.setFlow(QtGui.QListView.LeftToRight)
+      self.ctrlPairView.setWrapping(True)
+      self.ctrlPairView.setViewMode(QtGui.QListView.IconMode)
+
+-----------------------------------------
+
+
+Tab History
+
+
+      tableHistoryHeader = ['', 'Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
+      tabHistoryLayout = QtGui.QHBoxLayout(self.tabHistory)
+      tabHistoryControlsLayout = QtGui.QVBoxLayout()
+      self.tabHistoryTable = QtGui.QTableWidget()
+      tabHistoryLayout.addLayout(tabHistoryControlsLayout, stretch=1)
+      tabHistoryLayout.addWidget(self.tabHistoryTable, stretch=20)
+
+      self.tabHistoryTable.setColumnCount(len(tableHistoryHeader))
+      self.tabHistoryTable.setHorizontalHeaderLabels(tableHistoryHeader)
+      self.tabHistoryTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+      self.tabHistoryTable.horizontalHeader().setResizeMode(self.tabHistoryTable.columnCount()-1, QtGui.QHeaderView.ResizeToContents)
+      self.tabHistoryTable.verticalHeader().setVisible(False)
+      self.tabHistoryTable.setShowGrid(False)
+      self.tabHistoryTable.setAlternatingRowColors(True)
+      self.tabHistoryTable.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
+      self.tabHistoryTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+
+
+
+
+
+   class historyHeader(QtGui.QHeaderView):
+
+      def __init__(self, orientation, parent=None):
+         QtGui.QHeaderView.__init__(self, orientation, parent)
+         periodList = ['1d', '3d', '1w', '1m']
+         self.timePeriodCombo = QtGui.QComboBox()
+         self.timePeriodCombo.addItems(periodList)
+         self.timePeriodCombo.setMaxVisibleItems(len(periodList) + 1)
+         for i in range(self.timePeriodCombo.count()):
+            self.timePeriodCombo.setItemData(i, QtCore.Qt.AlignCenter, QtCore.Qt.TextAlignmentRole)
+
+         self.setResizeMode(QtGui.QHeaderView.Stretch)
+         self.setResizeMode(self.count()-1, QtGui.QHeaderView.ResizeToContents)
+
+      def paintSection(self, painter, rect, logicalIndex):
+         painter.save()
+         QtGui.QHeaderView.paintSection(self, painter, rect, logicalIndex)
+         painter.restore()
+
+         if logicalIndex == 0:
+            comboBoxOption = QtGui.QStyleOptionComboBox()
+            comboBoxOption.initFrom(self.timePeriodCombo)
+            comboBoxOption.state |= QtGui.QStyle.State_Enabled;
+            comboBoxOption.editable = False;
+            comboBoxOption.currentText = "CCC"
+            self.style().drawComplexControl(QtGui.QStyle.CC_ComboBox, comboBoxOption, painter);
+            self.style().drawControl(QtGui.QStyle.CE_ComboBoxLabel, comboBoxOption, painter)
+
+
+      def mousePressEvent(self, event):
+         self.updateSection(0)
+         QtGui.QHeaderView.mousePressEvent(self, event)
+
+
+
+      tableHistoryHeader = ['', 'Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
+      self.tabHistory.setColumnCount(len(tableHistoryHeader))
+      header = self.historyHeader(QtCore.Qt.Horizontal, self.tabHistory)
+      self.tabHistory.setHorizontalHeader(header)
+      self.tabHistory.setHorizontalHeaderLabels(tableHistoryHeader)
+      #self.tabHistory.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+      #self.tabHistory.horizontalHeader().setResizeMode(self.tabHistory.columnCount()-1, QtGui.QHeaderView.ResizeToContents)
+      self.tabHistory.verticalHeader().setVisible(False)
+      self.tabHistory.setShowGrid(False)
+      self.tabHistory.setAlternatingRowColors(True)
+      self.tabHistory.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
+      self.tabHistory.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
