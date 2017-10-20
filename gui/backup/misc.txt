@@ -234,3 +234,23 @@ Tab History
       self.tabHistory.setAlternatingRowColors(True)
       self.tabHistory.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
       self.tabHistory.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+
+Clicked event
+------------------------------------------------------------
+
+      #self.ctrlIndicator.view().clicked.connect(self.indicatorOnClick)
+
+   @pyqtSlot(int)
+   def indicatorOnClick(self, index):
+      itemClicked = self.ctrlIndicator.view().model().itemFromIndex(index)
+      if (itemClicked.checkState() == QtCore.Qt.Checked):
+         if itemClicked.text() == 'MACD':
+            try:
+               self.macdFrame.show()
+            except AttributeError:
+               self.addMACD()
+
+      else:
+         if itemClicked.text() == 'MACD':
+            self.macdFrame.hide()

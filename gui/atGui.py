@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtCore import pyqtSlot
 import pyqtgraph as pg
 #from pyqtgraph import PlotWidget
 
@@ -82,20 +83,20 @@ class ATMainWindow(QtGui.QMainWindow):
 
       # left layout
       self.ctControlsLayout = QtGui.QHBoxLayout()
-      self.ctCandlesLayout = pg.PlotWidget()
+      self.ctChartLayout = QtGui.QVBoxLayout()
       self.ctTradesLayout = QtGui.QHBoxLayout()
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=5))
       self.ctLeftLayout.addLayout(self.ctControlsLayout, stretch=1)
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color='rgb(0,0,0)', stroke=3))
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
-      self.ctLeftLayout.addWidget(self.ctCandlesLayout, stretch=10)
+      self.ctLeftLayout.addLayout(self.ctChartLayout, stretch=10)
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=5))
       self.ctLeftLayout.addLayout(self.ctTradesLayout, stretch=4)
       self.ctLeftLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=5))
 
       self.setControlsLayout(self.ctControlsLayout)
-      self.setCandlesLayout(self.ctCandlesLayout)
+      self.addCandleChart(self.ctChartLayout)
       self.setTradesLayout(self.ctTradesLayout)
 
 
@@ -228,18 +229,77 @@ class ATMainWindow(QtGui.QMainWindow):
       self.ctrlIndicator.view().setMinimumHeight((indicatorModel.rowCount()) * (self.ctrlIndicator.view().sizeHintForRow(1) + 3))
       self.ctrlIndicator.model().item(0,0).setSizeHint(QtCore.QSize(0,0))
 
+      self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
 
+
+
+   @pyqtSlot(QtGui.QStandardItem)
+   def indicatorChanged(self, itemChanged):
+      if (itemChanged.checkState() == QtCore.Qt.Checked):
+         if itemChanged.text() == 'MACD':
+            try:
+               self.macdFrame.show()
+            except AttributeError:
+               self.addMACD()
+         if itemChanged.text() == 'RSA':
+            try:
+               self.rsaFrame.show()
+            except AttributeError:
+               self.addRSA()
+
+      else:
+         if itemChanged.text() == 'MACD':
+                  self.macdFrame.hide()
+         if itemChanged.text() == 'RSA':
+                  self.rsaFrame.hide()
 
 
    # ------------------------------------------------------------------------------------
    # Candle chart
    # ------------------------------------------------------------------------------------
-   def setCandlesLayout(self, parentLayout):
+   def addCandleChart(self, parentLayout):
 
+      candleChart = pg.PlotWidget()
       x = np.cos(np.linspace(0, 2 * np.pi, 1000))
       y = np.sin(np.linspace(0, 4 * np.pi, 1000))
-      parentLayout.plot(x, y)
-      parentLayout.showGrid(x=True, y=True)
+      candleChart.plot(x, y)
+      candleChart.showGrid(x=True, y=True)
+
+      parentLayout.addWidget(candleChart, stretch=4)
+
+   def addMACD(self):
+      self.macdChart = pg.PlotWidget()
+      x = np.sin(np.linspace(0, 2 * np.pi, 1000))
+      self.macdChart.plot(x)
+
+      self.macdFrame = QtGui.QFrame()
+      self.macdLayout = QtGui.QVBoxLayout()
+      self.macdLayout.setSpacing(0)
+      self.macdLayout.setMargin(0)
+      self.macdFrame.setLayout(self.macdLayout)
+      self.macdLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
+      self.macdLayout.addWidget(self.createSeparator(orientation=0, color='rgb(0,0,0)', stroke=3))
+      self.macdLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
+      self.macdLayout.addWidget(self.macdChart)
+
+      self.ctChartLayout.addWidget(self.macdFrame, stretch=1)
+
+   def addRSA(self):
+      self.rsaChart = pg.PlotWidget()
+      x = np.cos(np.linspace(0, 2 * np.pi, 1000))
+      self.rsaChart.plot(x)
+
+      self.rsaFrame = QtGui.QFrame()
+      self.rsaLayout = QtGui.QVBoxLayout()
+      self.rsaLayout.setSpacing(0)
+      self.rsaLayout.setMargin(0)
+      self.rsaFrame.setLayout(self.rsaLayout)
+      self.rsaLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
+      self.rsaLayout.addWidget(self.createSeparator(orientation=0, color='rgb(0,0,0)', stroke=3))
+      self.rsaLayout.addWidget(self.createSeparator(orientation=0, color=COLOR_SEPARATOR, stroke=1))
+      self.rsaLayout.addWidget(self.rsaChart)
+
+      self.ctChartLayout.addWidget(self.rsaFrame, stretch=1)
 
 
 
@@ -335,6 +395,7 @@ class ATMainWindow(QtGui.QMainWindow):
       cancelButton.clicked.connect(self.cancelButtonClicked)
       cancelButton.adjustSize()
       self.tabOpenOrders.setCellWidget(0, len(rowData), cancelButton)
+
 
    def setHistoryData(self, rowData):
       self.tabHistoryTable.insertRow(0)
