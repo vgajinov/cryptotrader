@@ -285,7 +285,7 @@ TableView#historyTable {
 
 
 #tradesTable item {
-    font-size: 9px;
+    font-size: 12px;
 }
 
 QTableView#tradesTable {

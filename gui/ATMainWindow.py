@@ -156,6 +156,7 @@ class ATMainWindow(QtGui.QMainWindow):
          self.OrderBookWidget.setOrderBookGraphData(event.bids, event.asks)
          self.OrderBookWidget.setOrderBookNumericData(event.bids, event.asks)
       if event.type() == TradesUpdateEvent.EVENT_TYPE:
+         self.OrderBookWidget.setLastPrice(event.trades[0][2])
          self.OrderBookWidget.setOrderBookTradesData(event.trades)
       if event.type() == TickerUpdateEvent.EVENT_TYPE:
          lastPrice = event.ticker[6]

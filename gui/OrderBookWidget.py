@@ -105,25 +105,6 @@ class OrderBookWidget(QtGui.QWidget):
 
 
    # OrderBook Trades layout
-#   def createOrderBookTradesLayout(self, orderBookTradesLayout):
-#      self.tradesPriceLabel = QtGui.QLabel()
-#      self.tradesPriceLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-#      self.tradesAmountLabel = QtGui.QLabel()
-#      self.tradesAmountLabel.setAlignment(QtCore.Qt.AlignRight)
-#      self.tradesTimeLabel = QtGui.QLabel()
-#      self.tradesTimeLabel.setAlignment(QtCore.Qt.AlignRight)
-#
-#      orderBookTradesLayout.addWidget(self.tradesPriceLabel, stretch=3)
-#      orderBookTradesLayout.addWidget(self.tradesAmountLabel, stretch=3)
-#      orderBookTradesLayout.addWidget(self.tradesTimeLabel, stretch=5)
-#      orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
-#
-#      self.tradesPriceLabel.setObjectName('orderBookLabel')
-#      self.tradesAmountLabel.setObjectName('orderBookLabel')
-#      self.tradesTimeLabel.setObjectName('orderBookLabel')
-
-
-
    def createOrderBookTradesLayout(self, orderBookTradesLayout):
       self.tradesTable = QtGui.QTableWidget()
       self.tradesTable.setObjectName('tradeTable')
@@ -255,29 +236,8 @@ class OrderBookWidget(QtGui.QWidget):
       self.priceLabel.setText('{:.2f}'.format(price))
 
 
-#   def setOrderBookTradesData(self, tradesData):
-#      print('height = ' + str(self.tradesLabelHeight) + '   ' + str(self.tradesPriceLabel.height()) + '   ' + str(self.tradesAmountLabel.height()))
-#      numItems = int(self.tradesLabelHeight / (1.2 * self.tradesAmountLabel.fontInfo().pixelSize()) )
-#      tradesData = list(reversed(tradesData[-numItems:]))
-#
-#      timeStepText = '\n'.join([datetime.datetime.utcfromtimestamp(x[0]/1000).strftime('%H:%M:%S') for x in tradesData])
-#      amountText   = '\n'.join(['{:.2f}'.format(abs(x[1])) for x in tradesData])
-#      priceText    = '\n'.join(['{:.2f}'.format(x[2]) for x in tradesData])
-#      #priceText = '<p style="line-height:93"><span>'
-#      #for i in range(len(tradesData)):
-#      #   if (tradesData[i][1] < 0):
-#      #      priceText += '<font color=\"red\">' + '{:.2f}'.format(tradesData[i][2]) + '</font><br />'
-#      #   else:
-#      #      priceText += '<font color=\"#00ff00\">' + '{:.2f}'.format(tradesData[i][2]) + '</font><br />'
-#      #priceText += '</span></p>'
-#
-#      self.tradesPriceLabel.setText(priceText)
-#      self.tradesAmountLabel.setText(amountText)
-#      self.tradesTimeLabel.setText(timeStepText)
-#
-#      self.setLastPrice(tradesData[0][2])
-
    def setOrderBookTradesData(self, tradesData):
+      #self.setLastPrice(tradesData[0][2])
       numItems   = int(self.tradesTable.height() / 14)
       tradesData = list(reversed(tradesData[-numItems:]))
       self.tradesTable.setRowCount(len(tradesData))
@@ -300,7 +260,7 @@ class OrderBookWidget(QtGui.QWidget):
          dateItem.setTextAlignment(QtCore.Qt.AlignRight)
          self.tradesTable.setItem(i, 2, dateItem)
 
-      self.setLastPrice(tradesData[0][2])
+
 
 
    def paintEvent(self, event):
