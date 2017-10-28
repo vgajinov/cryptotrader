@@ -548,12 +548,10 @@ class BitfinexWSClient:
          # snapshot message
          orders = msg[1]
          self.book[chanId] = OrderBook(self.subscriptions[chanId], orders)
-         #for order in orders:
-         #   print ( "{:>12} {:>12}".format(order[0], order[2]) )
       else:
          # update
          self.book[chanId].updateBook(msg[1])
-         #print ( "BookUpdate {:>12} ::: {:>12} {:>12} {:>12}".format(msg[0], msg[1][0], msg[1][1], msg[1][2]) )
+
 
    def getOrderBook(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -638,13 +636,9 @@ class BitfinexWSClient:
          # snapshot message
          orders = msg[1]
          self.book[chanId] = orders
-         #for order in orders:
-         #   print ( "{:>12} {:>12}".format(order[1], order[2]) )
-         #print
       else:
          # update
          self.book[chanId].append(msg[1])
-         #print ( "RawBookUpdate  {:>12} {:>12}".format(msg[1][1], msg[1][2]) )
 
 
    # Trades
@@ -737,12 +731,10 @@ class BitfinexWSClient:
          # snapshot message
          trades = msg[1]
          self.trades[chanId] = bitfinexTrades(self.subscriptions[chanId], trades)
-         #for trade in trades:
-         #   print ( "{:>12} {:>12} {:>12}".format(trade[1], trade[2], trade[3]) )
       else:
          # update
          self.trades[chanId].update(msg[2])
-         #print ( "TradesUpdate  {:>12} {:>12} {:>12}".format(*msg[2][1:] ) )
+
 
    def getTrades(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -831,11 +823,6 @@ class BitfinexWSClient:
       self.tickers[chanId] = [float(x) for x in msg[1]]
       dispatcher.send(signal=self.subscriptions[chanId], sender='bitfinex', ticker=self.tickers[chanId])
 
-      # fmt = "{:^14}" * (len(msg[1]) - 1)
-      # print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC',
-      #                  'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
-      # print (fmt.format(*msg[1]))
-
 
    def getTicker(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -920,7 +907,6 @@ class BitfinexWSClient:
       if 'hb' in msg:
          return
 
-      print(msg)
       chanId = msg[0]
       if not self.candles.get(chanId, None):
          # snapshot message
