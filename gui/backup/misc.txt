@@ -254,3 +254,27 @@ Clicked event
       else:
          if itemClicked.text() == 'MACD':
             self.macdFrame.hide()
+
+
+
+
+TableWidget column resize and width
+-----------------------------------------------------------------
+
+
+      #self.tradesTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+
+      #self.tradesTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.Fixed)
+      #self.tradesTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+      #self.tradesTable.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.Fixed)
+
+
+
+
+      #width = self.tradesTable.width() - self.tradesTable.columnWidth(1)
+      #self.tradesTable.horizontalHeader().resizeSection(0, int(0.45*width))
+      #self.tradesTable.horizontalHeader().resizeSection(2, int(0.55*width))
+
+      #self.tradesTable.setColumnWidth(0, int(0.35*self.tradesTable.width()))
+      #self.tradesTable.setColumnWidth(1, int(0.25*self.tradesTable.width()))
+      #self.tradesTable.setColumnWidth(2, int(0.4*self.tradesTable.width()))

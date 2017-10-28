@@ -188,6 +188,10 @@ QLabel#totalLabel {
     margin: 5px 0px 5px 0px;
 }
 
+#orderBookLabel {
+    font-size: 11px;
+}
+
 
 /* Buttons
 --------------------------------------------------
@@ -276,6 +280,27 @@ QHeaderView::section {
 TableView#historyTable {
     border-left: 1px solid rgba(167, 174, 186, 50);
 }
+
+
+
+
+#tradesTable item {
+    font-size: 9px;
+}
+
+QTableView#tradesTable {
+    font-size: 9px;
+}
+
+QTableWidget#tradesTable {
+    font-size: 9px;
+}
+
+tradesTable {
+    font-size: 9px;
+}
+
+
 
 */
 

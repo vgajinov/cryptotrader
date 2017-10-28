@@ -1,9 +1,8 @@
 import sys
 from PyQt4 import QtGui
-from gui import ATMainWindow
-from gui.ATMainWindow import *
-
-
+from gui.ATMainWindow import ATMainWindow
+from pydispatch import dispatcher
+import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
 
 
 
@@ -15,7 +14,18 @@ def run():
    screenSize = app.desktop().screenGeometry()
    GUI = ATMainWindow(screenSize.width(), screenSize.height())
    GUI.show()
-   sys.exit(app.exec_())
+
+   # subsribe to the bitfinex OrderBook
+   client = bitfinexWS.BitfinexWSClient()
+   client.connect()
+   dispatcher.connect(GUI.updateOrderBook, sender='bitfinex', signal='book_BTCUSD')
+   #dispatcher.connect(GUI.updateTrades, sender='bitfinex', signal='candles_BTCUSD')
+   dispatcher.connect(GUI.updateTrades, sender='bitfinex', signal='trades_BTCUSD')
+   #dispatcher.connect(GUI.updateTicker, sender='bitfinex', signal='ticker_BTCUSD')
+
+   app.exec_()
+   client.disconnect()
+
 
 
 run()

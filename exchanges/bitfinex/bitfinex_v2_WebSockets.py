@@ -222,15 +222,9 @@ class OrderBook:
       amount = float(update[2])
       if count > 0:
          if amount > 0:
-            if self.bids.get(price, None):
-               self.bids[price] += amount
-            else:
-               self.bids[price] = amount
+            self.bids[price] = amount
          else:
-            if self.asks.get(price, None):
-               self.asks[price] += amount
-            else:
-               self.asks[price] = amount
+            self.asks[price] = amount
       else:
          if amount == 1:
             if self.bids.get(price, None):
@@ -241,8 +235,8 @@ class OrderBook:
       self._publish()
 
    def _sortBook(self):
-      bids = OrderedDict( reversed(sorted(self.bids.items(), key=lambda t: t[0])) )
-      asks = OrderedDict( reversed(sorted(self.asks.items(), key=lambda t: t[0])) )
+      bids = OrderedDict( sorted(self.bids.items(), key=lambda t: t[0]) )
+      asks = OrderedDict( sorted(self.asks.items(), key=lambda t: t[0]) )
       return bids, asks
 
    def _publish(self):
@@ -393,7 +387,7 @@ class BitfinexWSClient:
       event_callback = {
          'info'        : (self.info, [msg]),
          'pong'        : (self.printMsg, ['Pong received.']),
-         'subscribed'  : (self.channelSubcribed, [msg]),
+         'subscribed'  : (self.channelSubscribed, [msg]),
          'unsubscribed': (self.printMsg, ['Unsubscribed from channel.']),
          'error'       : (self.errorMsg, [msg]),
          'hb'          : (self.heartbeatMsg, [msg])
@@ -440,7 +434,7 @@ class BitfinexWSClient:
    def unsubscribe(self):
       pass
 
-   def channelSubcribed(self, msg):
+   def channelSubscribed(self, msg):
       if msg['channel'] == 'book':
          if msg['prec'] == 'R0':
             self.RawBookSubscribed(msg)
@@ -627,12 +621,12 @@ class BitfinexWSClient:
       self.updateHandlers[msg['chanId']] = self.RawBookUpdate
       self.subscriptions [msg['chanId']] = 'rawBook_' + msg['symbol'][1:]
 
-      logMsg  = '\nSubcribed to Raw Order Book channel\n'
+      logMsg  = '\nSubscribed to Raw Order Book channel\n'
       logMsg += '-' * 40 + '\n'
       logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
       logMsg += 'Pair      : ' + str(msg['symbol']) + '\n'
       logMsg += 'Precision : ' + str(msg['prec']) + '\n'
-      logMsg += 'Lenght    : ' + str(msg['len']) + '\n'
+      logMsg += 'Length    : ' + str(msg['len']) + '\n'
       logger.info(logMsg)
 
    def RawBookUpdate(self, msg):

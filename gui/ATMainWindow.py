@@ -11,6 +11,33 @@ from .TradesWidget import TradesWidget
 from .Separators import *
 
 
+# Exchange events
+class OrderBookUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, bids, asks):
+      super(OrderBookUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.bids = bids
+      self.asks = asks
+
+class TradesUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, trades):
+      super(TradesUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.trades = trades
+
+class TickerUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, ticker):
+      super(TickerUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.ticker = ticker
+
+class CandlesUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, candles):
+      super(CandlesUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.candles = candles
+
+
 
 class ATMainWindow(QtGui.QMainWindow):
    def __init__(self, width, height):
@@ -45,6 +72,7 @@ class ATMainWindow(QtGui.QMainWindow):
       qss = open(os.path.join(os.path.dirname(__file__),'style.qss'), 'r')
       self.setStyleSheet(qss.read())
       qss.close()
+
 
 
 
@@ -107,7 +135,6 @@ class ATMainWindow(QtGui.QMainWindow):
 
 
 
-
    # ------------------------------------------------------------------------------------
    # Predictor Tab
    # ------------------------------------------------------------------------------------
@@ -119,3 +146,35 @@ class ATMainWindow(QtGui.QMainWindow):
 
 
 
+   # ------------------------------------------------------------------------------------
+   # Update methods
+   # ------------------------------------------------------------------------------------
+
+   def customEvent(self, event):
+      #print('received event' + str(event.type()))
+      if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
+         self.OrderBookWidget.setOrderBookGraphData(event.bids, event.asks)
+         self.OrderBookWidget.setOrderBookNumericData(event.bids, event.asks)
+      if event.type() == TradesUpdateEvent.EVENT_TYPE:
+         self.OrderBookWidget.setOrderBookTradesData(event.trades)
+      if event.type() == TickerUpdateEvent.EVENT_TYPE:
+         lastPrice = event.ticker[6]
+         self.OrderBookWidget.setLastPrice(lastPrice)
+      if event.type() == CandlesUpdateEvent.EVENT_TYPE:
+         pass
+
+   # update OrderBook
+   def updateOrderBook(self, bids, asks):
+      QtGui.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
+
+   # update Trades
+   def updateTrades(self, trades):
+      QtGui.QApplication.postEvent(self, TradesUpdateEvent(trades))
+
+   # update Ticker
+   def updateTicker(self, ticker):
+      QtGui.QApplication.postEvent(self, TickerUpdateEvent(ticker))
+
+   # update Candles
+   def updateCandles(self, candles):
+      QtGui.QApplication.postEvent(self, CandlesUpdateEvent(candles))
