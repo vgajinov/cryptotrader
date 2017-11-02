@@ -19,7 +19,7 @@ def run():
    client = bitfinexWS.BitfinexWSClient()
    client.connect()
    dispatcher.connect(GUI.updateOrderBook, sender='bitfinex', signal='book_BTCUSD')
-   #dispatcher.connect(GUI.updateTrades, sender='bitfinex', signal='candles_BTCUSD')
+   #dispatcher.connect(GUI.updateCandles, sender='bitfinex', signal='candles_BTCUSD')
    dispatcher.connect(GUI.updateTrades, sender='bitfinex', signal='trades_BTCUSD')
    #dispatcher.connect(GUI.updateTicker, sender='bitfinex', signal='ticker_BTCUSD')
 

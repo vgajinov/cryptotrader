@@ -46,15 +46,21 @@ class OrderBookWidget(QtGui.QWidget):
       self.curveAsks.scale(1, -1)
       self.orderBookGraph.addItem(self.curveBids)
       self.orderBookGraph.addItem(self.curveAsks)
-      self.orderBookGraph.getViewBox().setLimits(xMin=0)
 
       tickFont = QtGui.QFont()
       tickFont.setPointSize(8)
+      tickFont.setStretch(QtGui.QFont.Condensed)
+      fm = QtGui.QFontMetrics(tickFont)
       self.orderBookGraph.getAxis('left').tickFont = tickFont
+      self.orderBookGraph.getAxis('left').setWidth(1.1*fm.width('5555555'))
       self.orderBookGraph.getAxis('bottom').tickFont = tickFont
 
       orderBookGraphLayout.addWidget(self.orderBookGraph)
-      orderBookGraphLayout.setContentsMargins(5,5,5,5)
+      orderBookGraphLayout.setContentsMargins(5,5,3,0)
+
+
+
+
 
 
    # OrderBook Numeric layout
@@ -90,6 +96,7 @@ class OrderBookWidget(QtGui.QWidget):
       self.bidLabelLayout.addWidget(self.bidLabelAmount, stretch=3)
       self.bidLabelLayout.addWidget(self.bidLabelSum, stretch=4)
 
+      # set names for stylesheet
       self.askLabelPrice.setObjectName('orderBookLabel')
       self.askLabelAmount.setObjectName('orderBookLabel')
       self.askLabelSum.setObjectName('orderBookLabel')
@@ -119,11 +126,12 @@ class OrderBookWidget(QtGui.QWidget):
       self.tradesTable.verticalHeader().setVisible(False)
       self.tradesTable.setShowGrid(False)
       self.tradesTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-      orderBookTradesLayout.addWidget(self.tradesTable)
-      orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
       self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
       self.tradesTable.verticalScrollBar().setDisabled(True)
       self.tradesTable.horizontalScrollBar().setDisabled(True)
+      orderBookTradesLayout.addWidget(self.tradesTable)
+      orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
+
 
 
    # ------------------------------------------------------------------------------------
@@ -172,6 +180,9 @@ class OrderBookWidget(QtGui.QWidget):
       for i in range(len(askAmounts) - 1):
          askSums[i + 1] = askSums[i] + askSums[i + 1]
 
+      lowerBound = lowerBound - 0.01*bound
+      upperBound = upperBound + 0.01*bound
+
       # add extra points to produce zig-zag curves
       bidPrices = [lowerBound] + [item for item in bidPrices for cnt in range(2)]
       bidSums = [item for item in bidSums for cnt in range(2)] + [0]
@@ -193,18 +204,25 @@ class OrderBookWidget(QtGui.QWidget):
          if (askSums[i + 1] - askSums[i]) / askMax > tickRatio:
             if not askPrices[i] - ticks[-1] < 0.05 * bound:
                ticks.append(askPrices[i + 1])
-      if not askPrices[-1] - ticks[-1] < 0.05 * bound:
+      if askPrices[-1] - ticks[-1] < 0.05 * bound:
+         ticks[-1] = upperBound
+      else:
          ticks.append(upperBound)
 
       # update graph data
       self.curveBids.setData(bidPrices, bidSums)
       self.curveAsks.setData(askPrices, askSums)
+      self.orderBookGraph.setYRange(lowerBound, upperBound, padding=0.01)
+      self.orderBookGraph.setXRange(0, 1.1*max(bidMax, askMax), padding=0.01)
+
+      # update Y axis (prices)
       ax = self.orderBookGraph.getAxis('left')
-      #ax.setPen(pg.mkPen(color='#000000', width=0))
-      ax.setTicks([[(t, "{0:.2f}".format(t)) for t in ticks]])
-      ax.setStyle(stopAxisAtTick=(True, False))
+      ax.setTicks([[(t, '{0:.2f}'.format(t)) for t in ticks]])
+      ax.setStyle(stopAxisAtTick=(True, True))
 
 
+
+   # set OrderBook numeric data
    def setOrderBookNumericData(self, bids, asks):
 
       numItems = int(self.askLabelPrice.height() / (self.askLabelPrice.fontInfo().pixelSize() + 2))
@@ -228,6 +246,7 @@ class OrderBookWidget(QtGui.QWidget):
       for i in range(len(bidAmounts) - 2, -1, -1):
          askSums[i] = askSums[i] + askSums[i+1]
 
+      # set labels
       self.askLabelPrice.setText ('\n'.join(['{:.2f}'.format(x) for x in askPrices]))
       self.askLabelAmount.setText('\n'.join(['{:.2f}'.format(x) for x in askAmounts]))
       self.askLabelSum.setText   ('\n'.join(['{:.2f}'.format(x) for x in askSums]))
@@ -237,10 +256,12 @@ class OrderBookWidget(QtGui.QWidget):
       self.bidLabelSum.setText   ('\n'.join(['{:.2f}'.format(x) for x in bidSums]))
 
 
+   # set price on the OrderBook numeric layout
    def setLastPrice(self, price):
       self.priceLabel.setText('{:.2f}'.format(price))
 
 
+   # set OrderBook trades data
    def setOrderBookTradesData(self, tradesData):
       rowHeight = self.tradesTable.font().pixelSize() + 3
       numItems   = int(self.tradesTable.height() / rowHeight)
@@ -254,6 +275,7 @@ class OrderBookWidget(QtGui.QWidget):
       for i in range(len(tradesData)):
          self.tradesTable.setRowHeight(i, rowHeight)
 
+         # prices
          priceString = '{:.4f}'.format(tradesData[i][2])
          priceItem = QtGui.QTableWidgetItem(priceString)
          if tradesData[i][1] < 0:
@@ -264,12 +286,14 @@ class OrderBookWidget(QtGui.QWidget):
          if len(priceString) > len(pItemMaxText):
             pItemMaxText = priceString
 
+         # amouns
          amountItem = QtGui.QTableWidgetItem('{:.4f}'.format(abs(tradesData[i][1])))
          amountItem.setTextAlignment(QtCore.Qt.AlignRight)
          if abs(tradesData[i][1]) > amountThreshold:
             amountItem.setForeground(QtCore.Qt.yellow)
          self.tradesTable.setItem(i, 1, amountItem)
 
+         # date/time
          dateItem = QtGui.QTableWidgetItem(datetime.datetime.utcfromtimestamp(tradesData[i][0]/1000).strftime('%H:%M:%S'))
          dateItem.setTextAlignment(QtCore.Qt.AlignRight)
          self.tradesTable.setItem(i, 2, dateItem)
@@ -279,18 +303,17 @@ class OrderBookWidget(QtGui.QWidget):
       pFactor = float(self.tradesTable.columnWidth(0)) / fm.width(pItemMaxText)
       dFactor = float(self.tradesTable.columnWidth(2)) / fm.width(dItemMaxText)
       fontFactor = (pFactor + dFactor) / 2
-
       if fontFactor < 1.1 or fontFactor > 1.25:
-         newFont = QtGui.QFont(self.tradesTable.font())
-         newFont.setPixelSize(int(0.9*fontFactor * self.tradesTable.font().pixelSize())-1)
-         self.tradesTable.setFont(newFont)
-         self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
-         self.tradesTable.verticalScrollBar().setDisabled(True)
-         self.tradesTable.horizontalScrollBar().setDisabled(True)
+         newSize = int(0.9*fontFactor * self.tradesTable.font().pixelSize())-1
+         newSize = min(13, max(7, newSize))
+         if newSize != self.tradesTable.font().pixelSize():
+            newFont = QtGui.QFont(self.tradesTable.font())
+            newFont.setPixelSize(newSize)
+            self.tradesTable.setFont(newFont)
+            self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
+            self.tradesTable.verticalScrollBar().setDisabled(True)
+            self.tradesTable.horizontalScrollBar().setDisabled(True)
 
-
-   def paintEvent(self, event):
-      QtGui.QWidget.paintEvent(self, event)
 
 
 

@@ -1,36 +1,36 @@
-28-10 19:47 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-28-10 19:47 bitfinex_websocket INFO     Websocket connection open.
-28-10 19:47 bitfinex_websocket INFO     version 2
-28-10 19:47 bitfinex_websocket INFO     Subscribing to order book ...
-28-10 19:47 bitfinex_websocket INFO     
+02-11 17:14 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+02-11 17:14 bitfinex_websocket INFO     Websocket connection open.
+02-11 17:14 bitfinex_websocket INFO     version 2
+02-11 17:14 bitfinex_websocket INFO     Subscribing to order book ...
+02-11 17:14 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 80
+ID        : 41
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-28-10 19:47 bitfinex_websocket INFO     Subscribing to trades ...
-28-10 19:47 bitfinex_websocket INFO     
+02-11 17:14 bitfinex_websocket INFO     Subscribing to trades ...
+02-11 17:14 bitfinex_websocket INFO     
 Subcribed to Trades channel
 ----------------------------------------
-ID        : 77
+ID        : 1
 Pair      : BTCUSD
 
-28-10 19:47 bitfinex_websocket INFO     Subscribing to ticker ...
-28-10 19:47 bitfinex_websocket INFO     
+02-11 17:14 bitfinex_websocket INFO     Subscribing to ticker ...
+02-11 17:14 bitfinex_websocket INFO     
 Subcribed to Ticker channel
 ----------------------------------------
-ID        : 3
+ID        : 8
 Pair      : BTCUSD
 
-28-10 19:47 bitfinex_websocket INFO     Subscribing to candels channel ...
-28-10 19:47 bitfinex_websocket INFO     
+02-11 17:14 bitfinex_websocket INFO     Subscribing to candels channel ...
+02-11 17:14 bitfinex_websocket INFO     
 Subcribed to Candles channel
 ----------------------------------------
-ID        : 91427
-Key       : trade:1m:tbtcusd
-Pair      : btcusd
+ID        : 131922
+Key       : trade:1m:tBTCUSD
+Pair      : BTCUSD
 
-28-10 19:49 bitfinex_websocket INFO     Connection to bitfinex closed.
+02-11 17:14 bitfinex_websocket INFO     Connection to bitfinex closed.

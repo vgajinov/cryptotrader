@@ -1,36 +1,35 @@
-08-09 23:49 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-08-09 23:49 bitfinex_websocket INFO     Websocket connection open.
-08-09 23:49 bitfinex_websocket INFO     version 2
-08-09 23:49 bitfinex_websocket INFO     Subscribing to order book ...
-08-09 23:49 bitfinex_websocket INFO     Subscribing to trades ...
-08-09 23:49 bitfinex_websocket INFO     Subscribing to ticker ...
-08-09 23:49 bitfinex_websocket INFO     Subscribing to candels channel ...
-08-09 23:49 bitfinex_websocket INFO     
+02-11 17:12 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+02-11 17:12 bitfinex_websocket INFO     Websocket connection open.
+02-11 17:12 bitfinex_websocket INFO     version 2
+02-11 17:12 bitfinex_websocket INFO     Subscribing to order book ...
+02-11 17:12 bitfinex_websocket INFO     Subscribing to trades ...
+02-11 17:12 bitfinex_websocket INFO     
 Subcribed to Trades channel
 ----------------------------------------
-ID        : 215696
+ID        : 286
 Pair      : BTCUSD
 
-08-09 23:49 bitfinex_websocket INFO     
-Subcribed to Ticker channel
-----------------------------------------
-ID        : 215604
-Pair      : BTCUSD
-
-08-09 23:49 bitfinex_websocket INFO     
-Subcribed to Candles channel
-----------------------------------------
-ID        : 315817
-Key       : trade:1m:tbtcusd
-Pair      : btcusd
-
-08-09 23:49 bitfinex_websocket INFO     
+02-11 17:12 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 304921
+ID        : 226919
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-08-09 23:49 bitfinex_websocket INFO     Connection to bitfinex closed.
+02-11 17:12 bitfinex_websocket INFO     Subscribing to ticker ...
+02-11 17:12 bitfinex_websocket INFO     
+Subcribed to Ticker channel
+----------------------------------------
+ID        : 1
+Pair      : BTCUSD
+
+02-11 17:12 bitfinex_websocket INFO     Subscribing to candels channel ...
+02-11 17:12 bitfinex_websocket INFO     
+Subcribed to Candles channel
+----------------------------------------
+ID        : 40309
+Key       : trade:1m:tBTCUSD
+Pair      : BTCUSD
+

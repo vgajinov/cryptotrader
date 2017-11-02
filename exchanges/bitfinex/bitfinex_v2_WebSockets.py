@@ -257,7 +257,7 @@ class bitfinexTrades:
    # Updates are in the form of a list [ ID, MTS, AMOUNT, PRICE ]
    def __init__(self, name, trades):
       self.name = name
-      self.trades = deque(maxlen=40)
+      self.trades = deque(maxlen=60)
       for trade in trades:
          self.trades.append(trade[1:])
       self._publish()
@@ -283,7 +283,7 @@ class bitfinexCandles:
    # Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
    def __init__(self, name, candles):
       self.name = name
-      self.candles = deque(maxlen=40)
+      self.candles = deque(maxlen=100)
       for candle in candles:
          self.candles.append(candle)
       self._publish()
@@ -331,7 +331,7 @@ class BitfinexWSClient:
 
    def _connect(self):
       logger.info ('Connecting to bitfinex websocket API ...')
-      # websocket.enableTrace(True)
+      #websocket.enableTrace(True)
       self.ws = websocket.WebSocketApp(WEBSOCKET_URI,
                                        on_message=self.on_message,
                                        on_error=self.on_error,
@@ -885,9 +885,12 @@ class BitfinexWSClient:
 
    def subscribeToCandles(self, params={}):
       logger.info( 'Subscribing to candels channel ...' )
-      pair  = params.get('pair', "BTCUSD")
-      scale = params.get('scale', "15m")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + scale + ':t' + pair.lower()}))
+      pair      = params.get('pair', "BTCUSD")
+      timeframe = params.get('scale', "15m")
+      valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
+      if timeframe not in valid_timeframes:
+         raise ValueError("timeframe must be any of %s" % valid_timeframes)
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + timeframe + ':t' + pair.upper()}))
 
 
    def CandlesSubscribed(self, msg):
@@ -913,6 +916,7 @@ class BitfinexWSClient:
          candles = msg[1]
          self.candles[chanId] = bitfinexCandles(self.subscriptions[chanId], candles)
          #header = ['MTS', 'OPEN', 'CLOSE', 'HIGH', 'LOW', 'VOLUME']
+         #fmt = "{:^14}" * len(header)
          #print( fmt.format(*header) )
          #for candle in candles:
          #   print( fmt.format(*candle) )

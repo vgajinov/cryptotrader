@@ -26,7 +26,10 @@ class MainWindow(QtGui.QMainWindow):
       self.resize(width, height)
       self.setWindowTitle('OrderBook')
 
+
       self.orderBookGraph = pg.PlotWidget()
+      self.setCentralWidget(self.orderBookGraph)
+
       self.orderBookGraph.invertX()
       self.orderBookGraph.showGrid(y=True, alpha=0.3)
 
@@ -38,16 +41,14 @@ class MainWindow(QtGui.QMainWindow):
       self.curveAsks.scale(1, -1)
       self.orderBookGraph.addItem(self.curveBids)
       self.orderBookGraph.addItem(self.curveAsks)
-      self.orderBookGraph.getViewBox().setLimits(xMin=0)
 
       tickFont = QtGui.QFont()
       tickFont.setPointSize(8)
+      tickFont.setStretch(QtGui.QFont.Condensed)
       self.orderBookGraph.getAxis('left').tickFont = tickFont
       self.orderBookGraph.getAxis('bottom').tickFont = tickFont
-      #self.orderBookGraph.hideAxis('bottom')
 
-      self.setCentralWidget(self.orderBookGraph)
-      self. threadID = QtCore.QThread.currentThreadId()
+
 
 
    def plotBook(self, bids, asks):
@@ -92,6 +93,8 @@ class MainWindow(QtGui.QMainWindow):
       for i in range(len(askAmounts) - 1):
          askSums[i + 1] = askSums[i] + askSums[i + 1]
 
+      lowerBound = lowerBound - 0.01*bound
+      upperBound = upperBound + 0.01*bound
       # add extra points to produce zig-zag curves
       bidPrices = [lowerBound] + [item for item in bidPrices for cnt in range(2)]
       bidSums = [item for item in bidSums for cnt in range(2)] + [0]
@@ -114,19 +117,23 @@ class MainWindow(QtGui.QMainWindow):
          if (askSums[i + 1] - askSums[i]) / askMax > tickRatio:
             if not askPrices[i] - ticks[-1] < 0.05 * bound:
                ticks.append(askPrices[i + 1])
-      if not askPrices[-1] - ticks[-1] < 0.05 * bound:
+      if askPrices[-1] - ticks[-1] < 0.05 * bound:
+         ticks[-1] = upperBound
+      else:
          ticks.append(upperBound)
 
       # update graph data
       self.curveBids.setData(bidPrices, bidSums)
       self.curveAsks.setData(askPrices, askSums)
+      self.orderBookGraph.setYRange(lowerBound, upperBound, padding=0.01)
+      self.orderBookGraph.setXRange(0, 1.1*max(bidMax, askMax), padding=0.01)
+
       ax = self.orderBookGraph.getAxis('left')
       ax.setTicks([[(t, "{0:.2f}".format(t)) for t in ticks]])
-      ax.setStyle(stopAxisAtTick=(True, False))
+      ax.setStyle(stopAxisAtTick=(True, True))
 
 
    def customEvent(self, event):
-      #print('received event' + str(event.type()))
       if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
          self.plotBook(event.bids, event.asks)
 

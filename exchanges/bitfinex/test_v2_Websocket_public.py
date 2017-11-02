@@ -108,7 +108,7 @@ def showCandles(candles):
    fmt = "{:^15}" * (len(header))
    print( fmt.format(*header) )
    for candle in candles:
-      print("{:>15}{:>15}{:>15}".format(*candle))
+      print(fmt.format(*candle))
 
 # listener for trade updates
 def handleCandles(sender, candles):
@@ -117,7 +117,7 @@ def handleCandles(sender, candles):
 def testCandles(client):
    candles = client.getCandles('BTCUSD')
    if candles:
-      handleTrades('bitfinex', candles.getCandles)
+      handleCandles('bitfinex', candles.getCandles)
    dispatcher.connect(handleCandles, signal='candles_BTCUSD', sender='bitfinex')
    time.sleep(10)
    dispatcher.disconnect(handleCandles, signal='candles_BTCUSD', sender='bitfinex')
