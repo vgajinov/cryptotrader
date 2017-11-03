@@ -1,8 +1,6 @@
 import os
 import numpy as np
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
-import pyqtgraph as pg
+from PyQt5 import QtCore, QtWidgets, QtGui
 from .ControlBarWidget import ControlBarWidget
 from .ChartWidget import ChartWidget
 from .PlaceOrderWidget import PlaceOrderWidget
@@ -39,30 +37,35 @@ class CandlesUpdateEvent(QtCore.QEvent):
 
 
 
-class ATMainWindow(QtGui.QMainWindow):
+class ATMainWindow(QtWidgets.QMainWindow):
    def __init__(self, width, height):
       super(ATMainWindow, self).__init__()
 
       # window properties
       self.setWindowTitle('AutoTrader')
       self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__),'logo.png')))
+      self.setMinimumSize(1280, 720)
+      width = max(1280, width)
+      height = max(720,height)
       self.resize(width, height)
 
       # menu
       self.createMenu()
 
       # set central widget
-      self.centralwidget = QtGui.QWidget(self)
+      self.centralwidget = QtWidgets.QWidget(self)
       self.setCentralWidget(self.centralwidget)
-      self.horizontalLayout = QtGui.QVBoxLayout(self.centralwidget)
+      self.horizontalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
 
       # add Tab widget
-      self.tabWidget = QtGui.QTabWidget(self.centralwidget)
-      self.tabCharts = QtGui.QWidget()
-      self.tabPredictors = QtGui.QWidget()
+      self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
+      self.tabWidget.setObjectName('mainTabWidget')
+      self.tabCharts = QtWidgets.QWidget()
+      self.tabPredictors = QtWidgets.QWidget()
       self.tabWidget.addTab(self.tabCharts, "Charts")
       self.tabWidget.addTab(self.tabPredictors, "Predictors")
       self.horizontalLayout.addWidget(self.tabWidget)
+      self.horizontalLayout.setContentsMargins(0,5,0,0)
 
       # create tabs
       self.createChartTab()
@@ -79,13 +82,13 @@ class ATMainWindow(QtGui.QMainWindow):
    # createMenu
    # ---------------------------------------------------------
    def createMenu(self):
-      quitAction = QtGui.QAction('Quit', self)
+      quitAction = QtWidgets.QAction('Quit', self)
       quitAction.setShortcut('Ctrl+q')
       quitAction.setStatusTip('Quit AutoTrader')
       #quitAction.triggered.connect(self.close)
 
-      self.menubar = QtGui.QMenuBar(self)
-      self.menuFile = QtGui.QMenu(self.menubar)
+      self.menubar = QtWidgets.QMenuBar(self)
+      self.menuFile = QtWidgets.QMenu(self.menubar)
       self.menuFile.setTitle("File")
       self.setMenuBar(self.menubar)
       self.menubar.addAction(self.menuFile.menuAction())
@@ -98,9 +101,9 @@ class ATMainWindow(QtGui.QMainWindow):
 
    def createChartTab(self):
       # main layout
-      self.ctMainLayout = QtGui.QHBoxLayout(self.tabCharts)
-      self.ctLeftLayout = QtGui.QVBoxLayout()
-      self.ctRightLayout = QtGui.QVBoxLayout()
+      self.ctMainLayout = QtWidgets.QHBoxLayout(self.tabCharts)
+      self.ctLeftLayout = QtWidgets.QVBoxLayout()
+      self.ctRightLayout = QtWidgets.QVBoxLayout()
       self.ctMainLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
       self.ctMainLayout.addLayout(self.ctLeftLayout, stretch=2)
       self.ctMainLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
@@ -166,16 +169,16 @@ class ATMainWindow(QtGui.QMainWindow):
 
    # update OrderBook
    def updateOrderBook(self, bids, asks):
-      QtGui.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
+      QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
 
    # update Trades
    def updateTrades(self, trades):
-      QtGui.QApplication.postEvent(self, TradesUpdateEvent(trades))
+      QtWidgets.QApplication.postEvent(self, TradesUpdateEvent(trades))
 
    # update Ticker
    def updateTicker(self, ticker):
-      QtGui.QApplication.postEvent(self, TickerUpdateEvent(ticker))
+      QtWidgets.QApplication.postEvent(self, TickerUpdateEvent(ticker))
 
    # update Candles
    def updateCandles(self, candles):
-      QtGui.QApplication.postEvent(self, CandlesUpdateEvent(candles))
+      QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(candles))

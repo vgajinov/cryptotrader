@@ -1,37 +1,37 @@
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
+from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import pyqtSlot
 
 
-class ControlBarWidget(QtGui.QWidget):
+class ControlBarWidget(QtWidgets.QWidget):
    def __init__(self, parent):
       super(ControlBarWidget, self).__init__()
 
       self.myParent = parent
-      mainLayout = QtGui.QHBoxLayout(self)
-      mainLayout.setMargin(0)
+      mainLayout = QtWidgets.QHBoxLayout(self)
+      mainLayout.setContentsMargins(0,0,0,0)
       mainLayout.setSpacing(0)
-      ctrlLeftLayout = QtGui.QHBoxLayout()
-      ctrlRightLayout = QtGui.QHBoxLayout()
+      ctrlLeftLayout = QtWidgets.QHBoxLayout()
+      ctrlRightLayout = QtWidgets.QHBoxLayout()
 
-      self.ctrlExchange = QtGui.QComboBox()
+      self.ctrlExchange = QtWidgets.QComboBox()
       self.ctrlExchange.setObjectName('exchangeCombo')
-      self.ctrlExchange.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
-      self.ctrlExchangeView = QtGui.QListView()
+      self.ctrlExchange.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+      self.ctrlExchangeView = QtWidgets.QListView()
       self.ctrlExchangeView.setObjectName('exchangeComboView')
       self.ctrlExchangeView.setSpacing(2)
       self.ctrlExchange.setView(self.ctrlExchangeView)
 
 
-      self.ctrlPair = QtGui.QComboBox()
+      self.ctrlPair = QtWidgets.QComboBox()
       self.ctrlPair.setObjectName('pairCombo')
-      self.ctrlPair.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
-      self.ctrlPairView = QtGui.QListView()
+      self.ctrlPair.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+      self.ctrlPairView = QtWidgets.QListView()
       self.ctrlPairView.setObjectName('pairComboView')
       self.ctrlPairView.setSpacing(2)
       self.ctrlPair.setView(self.ctrlPairView)
 
-      self.ctrlTime = QtGui.QComboBox()
-      self.ctrlTime.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+      self.ctrlTime = QtWidgets.QComboBox()
+      self.ctrlTime.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlTime.view().setSpacing(2)
       self.ctrlTime.setObjectName('timeCombo')
 
@@ -47,13 +47,13 @@ class ControlBarWidget(QtGui.QWidget):
       ctrlLeftLayout.setContentsMargins(5,5,5,5)
       ctrlLeftLayout.setAlignment(QtCore.Qt.AlignLeft)
 
-      self.ctrlOverlay = QtGui.QComboBox()
-      self.ctrlOverlay.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+      self.ctrlOverlay = QtWidgets.QComboBox()
+      self.ctrlOverlay.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlOverlay.view().setSpacing(2)
       self.ctrlOverlay.setObjectName('overlayCombo')
 
-      self.ctrlIndicator = QtGui.QComboBox()
-      self.ctrlIndicator.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+      self.ctrlIndicator = QtWidgets.QComboBox()
+      self.ctrlIndicator.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlIndicator.view().setSpacing(2)
       self.ctrlIndicator.setObjectName('indicatorCombo')
 
@@ -121,8 +121,7 @@ class ControlBarWidget(QtGui.QWidget):
       self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
 
 
-
-   @pyqtSlot(QtGui.QStandardItem)
+   #@pyqtSlot(QtGui.QStandardItem)
    def indicatorChanged(self, itemChanged):
       if (itemChanged.checkState() == QtCore.Qt.Checked):
          self.myParent.ChartWidget.showIndicator(itemChanged.text())

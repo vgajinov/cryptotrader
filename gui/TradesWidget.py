@@ -1,17 +1,17 @@
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
+from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import pyqtSlot
 from .Separators import *
 
 
-class TradesWidget(QtGui.QWidget):
+class TradesWidget(QtWidgets.QWidget):
    def __init__(self):
       super(TradesWidget, self).__init__()
 
-      self.mainLayout = QtGui.QHBoxLayout(self)
-      self.tabTradesWidget = QtGui.QTabWidget()
+      self.mainLayout = QtWidgets.QHBoxLayout(self)
+      self.tabTradesWidget = QtWidgets.QTabWidget()
       self.tabTradesWidget.setObjectName('tradesTabWidget')
-      self.tabOpenOrders = QtGui.QTableWidget()
-      self.tabHistory = QtGui.QTableWidget()
+      self.tabOpenOrders = QtWidgets.QTableWidget()
+      self.tabHistory = QtWidgets.QTableWidget()
       self.tabTradesWidget.addTab(self.tabOpenOrders, "Open Orders")
       self.tabTradesWidget.addTab(self.tabHistory, "History")
       self.mainLayout.addWidget(self.tabTradesWidget)
@@ -22,8 +22,8 @@ class TradesWidget(QtGui.QWidget):
       tableOpenOrdersHeader = ['Pair', 'Type', 'Amount', 'Price', 'Date', 'Filled%', '']
       self.tabOpenOrders.setColumnCount(len(tableOpenOrdersHeader))
       self.tabOpenOrders.setHorizontalHeaderLabels(tableOpenOrdersHeader)
-      self.tabOpenOrders.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
-      self.tabOpenOrders.horizontalHeader().setResizeMode(self.tabOpenOrders.columnCount( ) -1, QtGui.QHeaderView.ResizeToContents)
+      self.tabOpenOrders.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
+      self.tabOpenOrders.horizontalHeader().setResizeMode(self.tabOpenOrders.columnCount( ) -1, QtWidgets.QHeaderView.ResizeToContents)
       self.tabOpenOrders.verticalHeader().setVisible(False)
       self.tabOpenOrders.setShowGrid(False)
       self.tabOpenOrders.setAlternatingRowColors(True)
@@ -31,17 +31,18 @@ class TradesWidget(QtGui.QWidget):
       self.tabOpenOrders.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 
       # History tab
-      tabHistoryLayout = QtGui.QHBoxLayout(self.tabHistory)
-      tabHistoryControlsLayout = QtGui.QVBoxLayout()
-      self.tabHistoryTable = QtGui.QTableWidget()
+      tabHistoryLayout = QtWidgets.QHBoxLayout(self.tabHistory)
+      tabHistoryControlsLayout = QtWidgets.QVBoxLayout()
+      self.tabHistoryTable = QtWidgets.QTableWidget()
       self.tabHistoryTable.setObjectName('historyTable')
       tabHistoryLayout.addLayout(tabHistoryControlsLayout, stretch=1)
       tabHistoryLayout.addWidget(self.tabHistoryTable, stretch=40)
-      tabHistoryLayout.setMargin(0)
+      #tabHistoryLayout.setMargin(0)
+      tabHistoryLayout.setContentsMargins(0,0,0,0)
       tabHistoryLayout.setSpacing(0)
 
       periodList = ['1d', '3d', '1w', '1m']
-      self.historyPeriodCombo = QtGui.QComboBox()
+      self.historyPeriodCombo = QtWidgets.QComboBox()
       self.historyPeriodCombo.setObjectName('historyPeriodCombo')
       self.historyPeriodCombo.addItems(periodList)
       self.historyPeriodCombo.setMaxVisibleItems(len(periodList) + 1)
@@ -57,7 +58,7 @@ class TradesWidget(QtGui.QWidget):
       tableHistoryHeader = ['Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
       self.tabHistoryTable.setColumnCount(len(tableHistoryHeader))
       self.tabHistoryTable.setHorizontalHeaderLabels(tableHistoryHeader)
-      self.tabHistoryTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+      self.tabHistoryTable.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
       self.tabHistoryTable.verticalHeader().setVisible(False)
       self.tabHistoryTable.setShowGrid(False)
       self.tabHistoryTable.setAlternatingRowColors(True)
@@ -78,16 +79,16 @@ class TradesWidget(QtGui.QWidget):
       self.tabOpenOrders.insertRow(0)
       self.tabOpenOrders.setRowHeight(0, 25)
       for i, data in enumerate(rowData):
-         item = QtGui.QTableWidgetItem(data)
+         item = QtWidgets.QTableWidgetItem(data)
          item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
          item.setTextAlignment(QtCore.Qt.AlignCenter)
          if i == 1:
             if rowData[i] == 'Sell':
-               item.setTextColor(QtCore.Qt.red)
+               item.setForeground(QtCore.Qt.red)
             else:
-               item.setTextColor(QtCore.Qt.green)
+               item.setForeground(QtCore.Qt.green)
          self.tabOpenOrders.setItem(0, i, item)
-      cancelButton = QtGui.QPushButton('Cancel')
+      cancelButton = QtWidgets.QPushButton('Cancel')
       cancelButton.setObjectName('cancelButton')
       cancelButton.clicked.connect(self.cancelButtonClicked)
       cancelButton.adjustSize()
@@ -98,19 +99,19 @@ class TradesWidget(QtGui.QWidget):
       self.tabHistoryTable.insertRow(0)
       self.tabHistoryTable.setRowHeight(0, 25)
       for i, data in enumerate(rowData):
-         item = QtGui.QTableWidgetItem(data)
+         item = QtWidgets.QTableWidgetItem(data)
          item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
          item.setTextAlignment(QtCore.Qt.AlignCenter)
          if i == 2:
             if rowData[i] == 'Sell':
-               item.setTextColor(QtCore.Qt.red)
+               item.setForeground(QtCore.Qt.red)
             else:
-               item.setTextColor(QtCore.Qt.green)
+               item.setForeground(QtCore.Qt.green)
          self.tabHistoryTable.setItem(0, i, item)
 
 
    def cancelButtonClicked(self):
-      button = QtGui.qApp.focusWidget()
+      button = QtWidgets.qApp.focusWidget()
       # or button = self.sender()
       index = self.tabOpenOrders.indexAt(button.pos())
       if index.isValid():

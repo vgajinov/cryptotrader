@@ -1,6 +1,6 @@
-import datetime
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
+from datetime import datetime
+from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import pyqtSlot
 import pyqtgraph as pg
 from .Separators import *
 
@@ -9,17 +9,21 @@ COLOR_RED    = 'color: rgb(255, 0, 0)'
 COLOR_GREEN  = 'color: rgb(0, 255, 0)'
 
 
-class OrderBookWidget(QtGui.QWidget):
+class OrderBookWidget(QtWidgets.QWidget):
+   minFontSize = 8
+   maxFontSize = 12
+   tradesData = None
+
    def __init__(self):
       super(OrderBookWidget, self).__init__()
 
-      OrderBookLayout = QtGui.QHBoxLayout(self)
-      OrderBookLayout.setMargin(0)
+      OrderBookLayout = QtWidgets.QHBoxLayout(self)
+      OrderBookLayout.setContentsMargins(0,0,0,0)
       OrderBookLayout.setSpacing(0)
 
-      self.orderBookGraphLayout = QtGui.QVBoxLayout()
-      self.orderBookNumericLayout = QtGui.QVBoxLayout()
-      self.orderBookTradesLayout = QtGui.QHBoxLayout()
+      self.orderBookGraphLayout = QtWidgets.QVBoxLayout()
+      self.orderBookNumericLayout = QtWidgets.QVBoxLayout()
+      self.orderBookTradesLayout = QtWidgets.QHBoxLayout()
 
       OrderBookLayout.addLayout(self.orderBookGraphLayout, stretch=6)
       OrderBookLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
@@ -31,7 +35,8 @@ class OrderBookWidget(QtGui.QWidget):
       self.createOrderBookNumericLayout(self.orderBookNumericLayout)
       self.createOrderBookTradesLayout(self.orderBookTradesLayout)
 
-   # OrderBook Graph layout
+
+   # create OrderBook Graph layout
    def createOrderBookGraphLayout(self, orderBookGraphLayout):
       self.orderBookGraph = pg.PlotWidget()
       self.orderBookGraph.invertX()
@@ -59,39 +64,35 @@ class OrderBookWidget(QtGui.QWidget):
       orderBookGraphLayout.setContentsMargins(5,5,3,0)
 
 
-
-
-
-
-   # OrderBook Numeric layout
+   # create OrderBook Numeric layout
    def createOrderBookNumericLayout(self, orderBookNumericLayout):
       # asks
-      self.askLabelPrice = QtGui.QLabel()
+      self.askLabelPrice = QtWidgets.QLabel()
       self.askLabelPrice.setAlignment(QtCore.Qt.AlignLeft)
       self.askLabelPrice.setStyleSheet(COLOR_RED)
-      self.askLabelAmount = QtGui.QLabel()
+      self.askLabelAmount = QtWidgets.QLabel()
       self.askLabelAmount.setAlignment(QtCore.Qt.AlignRight)
-      self.askLabelSum = QtGui.QLabel()
+      self.askLabelSum = QtWidgets.QLabel()
       self.askLabelSum.setAlignment(QtCore.Qt.AlignRight)
-      self.askLabelLayout = QtGui.QHBoxLayout()
+      self.askLabelLayout = QtWidgets.QHBoxLayout()
       self.askLabelLayout.addWidget(self.askLabelPrice, stretch=3)
       self.askLabelLayout.addWidget(self.askLabelAmount, stretch=3)
       self.askLabelLayout.addWidget(self.askLabelSum, stretch=4)
 
       # last price
-      self.priceLabel = QtGui.QLabel()
+      self.priceLabel = QtWidgets.QLabel()
       self.priceLabel.setAlignment(QtCore.Qt.AlignCenter)
       self.priceLabel.setStyleSheet('font-size: 24px;')
 
       # bids
-      self.bidLabelPrice = QtGui.QLabel()
+      self.bidLabelPrice = QtWidgets.QLabel()
       self.bidLabelPrice.setAlignment(QtCore.Qt.AlignLeft)
       self.bidLabelPrice.setStyleSheet(COLOR_GREEN)
-      self.bidLabelAmount = QtGui.QLabel()
+      self.bidLabelAmount = QtWidgets.QLabel()
       self.bidLabelAmount.setAlignment(QtCore.Qt.AlignRight)
-      self.bidLabelSum = QtGui.QLabel()
+      self.bidLabelSum = QtWidgets.QLabel()
       self.bidLabelSum.setAlignment(QtCore.Qt.AlignRight)
-      self.bidLabelLayout = QtGui.QHBoxLayout()
+      self.bidLabelLayout = QtWidgets.QHBoxLayout()
       self.bidLabelLayout.addWidget(self.bidLabelPrice, stretch=3)
       self.bidLabelLayout.addWidget(self.bidLabelAmount, stretch=3)
       self.bidLabelLayout.addWidget(self.bidLabelSum, stretch=4)
@@ -111,24 +112,30 @@ class OrderBookWidget(QtGui.QWidget):
       orderBookNumericLayout.setContentsMargins(5, 5, 5, 2)
 
 
-   # OrderBook Trades layout
+   # create OrderBook Trades layout
    def createOrderBookTradesLayout(self, orderBookTradesLayout):
-      self.tradesTable = QtGui.QTableWidget()
+      self.tradesTable = QtWidgets.QTableWidget()
       self.tradesTable.setObjectName('tradeTable')
       font = self.tradesTable.font()
       font.setPixelSize(11)
       self.tradesTable.setFont(font)
       self.tradesTable.setColumnCount(3)
-      self.tradesTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-      self.tradesTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
-      self.tradesTable.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.Stretch)
+
+      self.tradesTable.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+      self.tradesTable.horizontalHeader().setResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+      self.tradesTable.horizontalHeader().setResizeMode(2, QtWidgets.QHeaderView.Stretch)
+      #self.tradesTable.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.Fixed)
+      #self.tradesTable.horizontalHeader().setResizeMode(1, QtWidgets.QHeaderView.Fixed)
+      #self.tradesTable.horizontalHeader().setResizeMode(2, QtWidgets.QHeaderView.Fixed)
+      #self.tradesTable.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Fixed)
+
       self.tradesTable.horizontalHeader().setVisible(False)
       self.tradesTable.verticalHeader().setVisible(False)
       self.tradesTable.setShowGrid(False)
       self.tradesTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
       self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
-      self.tradesTable.verticalScrollBar().setDisabled(True)
-      self.tradesTable.horizontalScrollBar().setDisabled(True)
+      self.tradesTable.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+      self.tradesTable.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
       orderBookTradesLayout.addWidget(self.tradesTable)
       orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
 
@@ -262,58 +269,137 @@ class OrderBookWidget(QtGui.QWidget):
 
 
    # set OrderBook trades data
+#   def setOrderBookTradesData(self, tradesData):
+#      rowHeight = self.tradesTable.font().pixelSize() + 3
+#      numItems   = int(self.tradesTable.height() / rowHeight)
+#      tradesData = list(reversed(tradesData[-numItems:]))
+#      self.tradesTable.setRowCount(len(tradesData))
+#
+#      # set items
+#      pItemMaxText = ''
+#      dItemMaxText = datetime.fromtimestamp(tradesData[0][0]/1000).strftime('%H:%M:%S')
+#      amountThreshold = 0.1 * sum([abs(x[1]) for x in tradesData])
+#      for i in range(len(tradesData)):
+#         self.tradesTable.setRowHeight(i, rowHeight)
+#
+#         # prices
+#         priceString = '{:.4f}'.format(tradesData[i][2])
+#         priceItem = QtWidgets.QTableWidgetItem(priceString)
+#         if tradesData[i][1] < 0:
+#            priceItem.setForeground(QtCore.Qt.red)
+#         else:
+#            priceItem.setForeground(QtCore.Qt.green)
+#         self.tradesTable.setItem(i, 0, priceItem)
+#         if len(priceString) > len(pItemMaxText):
+#            pItemMaxText = priceString
+#
+#         # amounts
+#         amountItem = QtWidgets.QTableWidgetItem('{:.4f}'.format(abs(tradesData[i][1])))
+#         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
+#         if abs(tradesData[i][1]) > amountThreshold:
+#            amountItem.setForeground(QtCore.Qt.yellow)
+#         self.tradesTable.setItem(i, 1, amountItem)
+#
+#         # date/time
+#         dateItem = QtWidgets.QTableWidgetItem(datetime.fromtimestamp(tradesData[i][0]/1000).strftime('%H:%M:%S'))
+#         dateItem.setTextAlignment(QtCore.Qt.AlignRight)
+#         self.tradesTable.setItem(i, 2, dateItem)
+#
+#      # adjust font to fit text into columns
+#      fm = QtGui.QFontMetrics(self.tradesTable.font())
+#      pFactor = float(self.tradesTable.columnWidth(0)) / fm.width(pItemMaxText)
+#      dFactor = float(self.tradesTable.columnWidth(2)) / fm.width(dItemMaxText)
+#      fontFactor = (pFactor + dFactor) / 2
+#      if fontFactor < 1.1 or fontFactor > 1.25:
+#         newSize = int(0.9*fontFactor * self.tradesTable.font().pixelSize())-1
+#         newSize = min(13, max(7, newSize))
+#         if newSize != self.tradesTable.font().pixelSize():
+#            newFont = QtGui.QFont(self.tradesTable.font())
+#            newFont.setPixelSize(newSize)
+#            self.tradesTable.setFont(newFont)
+#            self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
+#            self.tradesTable.verticalScrollBar().setDisabled(True)
+#            self.tradesTable.horizontalScrollBar().setDisabled(True)
+
+
+
    def setOrderBookTradesData(self, tradesData):
-      rowHeight = self.tradesTable.font().pixelSize() + 3
-      numItems   = int(self.tradesTable.height() / rowHeight)
-      tradesData = list(reversed(tradesData[-numItems:]))
-      self.tradesTable.setRowCount(len(tradesData))
+      self.tradesData = tradesData
+      self.fitDataAndColumns()
+      self.update()
+
+
+   def resizeEvent(self, QResizeEvent):
+      self.fitDataAndColumns()
+      QtWidgets.QWidget.resizeEvent(self, QResizeEvent)
+
+
+
+   def fitDataAndColumns(self):
+      if self.tradesData == None:
+         return
+
+      # get list of strings from raw data
+      priceStrings = ['{:.4f}'.format(x[2]) for x in self.tradesData]
+      amountStrings = ['{:.4f}'.format(abs(x[1])) for x in self.tradesData]
+      dateStrings = [datetime.fromtimestamp(x[0]/1000).strftime('%H:%M:%S') for x in self.tradesData]
+
+      # find the string with maximum length for each category
+      priceStrMaxLen = max(priceStrings, key=len)
+      amountStrMaxLen = max(amountStrings, key=len)
+      dateStrMaxLen = dateStrings[0]
+      fullStrMaxLen = priceStrMaxLen + amountStrMaxLen + dateStrMaxLen
+
+      # find the most suitable font size based on strings and the table width
+      tableWidth = self.tradesTable.width()
+      font = QtGui.QFont(self.tradesTable.font())
+      fontSize = self.minFontSize
+      while(fontSize <= self.maxFontSize):
+         font.setPixelSize(fontSize+1)
+         fm = QtGui.QFontMetrics(font)
+         if fm.width(fullStrMaxLen) < 0.7*tableWidth:
+            fontSize += 1
+         else:
+            break
+
+      # set the font size and column widths
+      self.tradesTable.setFont(font)
+      fm = QtGui.QFontMetrics(font)
+      fullStrWidth = fm.width(fullStrMaxLen)
+      priceColWidth  = int((float(fm.width(priceStrMaxLen)) / fullStrWidth) * tableWidth)
+      amountColWidth = int((float(fm.width(amountStrMaxLen)) / fullStrWidth) * tableWidth)
+      dateColWidth   = int((float(fm.width(dateStrMaxLen)) / fullStrWidth) * tableWidth)
+      self.tradesTable.horizontalHeader().resizeSection(0, priceColWidth)
+      self.tradesTable.horizontalHeader().resizeSection(1, amountColWidth)
+      self.tradesTable.horizontalHeader().resizeSection(2, dateColWidth)
+
+      # find and set the number of rows
+      rowHeight = fm.height()
+      numRows = int(self.tradesTable.height() / rowHeight)
+      numRows = min(numRows, len(self.tradesData))
+      self.tradesTable.setRowCount(numRows)
 
       # set items
-      pItemMaxText = ''
-      dItemMaxText = datetime.datetime.utcfromtimestamp(tradesData[0][0]/1000).strftime('%H:%M:%S')
-      amountThreshold = 0.1 * sum([abs(x[1]) for x in tradesData])
-      for i in range(len(tradesData)):
+      amountThreshold = 0.1 * sum([abs(x[1]) for x in self.tradesData])
+      for i in range(numRows):
          self.tradesTable.setRowHeight(i, rowHeight)
 
          # prices
-         priceString = '{:.4f}'.format(tradesData[i][2])
-         priceItem = QtGui.QTableWidgetItem(priceString)
-         if tradesData[i][1] < 0:
+         priceItem = QtWidgets.QTableWidgetItem(priceStrings[i])
+         if self.tradesData[i][1] < 0:
             priceItem.setForeground(QtCore.Qt.red)
          else:
             priceItem.setForeground(QtCore.Qt.green)
          self.tradesTable.setItem(i, 0, priceItem)
-         if len(priceString) > len(pItemMaxText):
-            pItemMaxText = priceString
 
-         # amouns
-         amountItem = QtGui.QTableWidgetItem('{:.4f}'.format(abs(tradesData[i][1])))
+         # amounts
+         amountItem = QtWidgets.QTableWidgetItem(amountStrings[i])
          amountItem.setTextAlignment(QtCore.Qt.AlignRight)
-         if abs(tradesData[i][1]) > amountThreshold:
+         if abs(self.tradesData[i][1]) > amountThreshold:
             amountItem.setForeground(QtCore.Qt.yellow)
          self.tradesTable.setItem(i, 1, amountItem)
 
          # date/time
-         dateItem = QtGui.QTableWidgetItem(datetime.datetime.utcfromtimestamp(tradesData[i][0]/1000).strftime('%H:%M:%S'))
+         dateItem = QtWidgets.QTableWidgetItem(dateStrings[i])
          dateItem.setTextAlignment(QtCore.Qt.AlignRight)
          self.tradesTable.setItem(i, 2, dateItem)
-
-      # adjust font to fit text into columns
-      fm = QtGui.QFontMetrics(self.tradesTable.font())
-      pFactor = float(self.tradesTable.columnWidth(0)) / fm.width(pItemMaxText)
-      dFactor = float(self.tradesTable.columnWidth(2)) / fm.width(dItemMaxText)
-      fontFactor = (pFactor + dFactor) / 2
-      if fontFactor < 1.1 or fontFactor > 1.25:
-         newSize = int(0.9*fontFactor * self.tradesTable.font().pixelSize())-1
-         newSize = min(13, max(7, newSize))
-         if newSize != self.tradesTable.font().pixelSize():
-            newFont = QtGui.QFont(self.tradesTable.font())
-            newFont.setPixelSize(newSize)
-            self.tradesTable.setFont(newFont)
-            self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
-            self.tradesTable.verticalScrollBar().setDisabled(True)
-            self.tradesTable.horizontalScrollBar().setDisabled(True)
-
-
-
-

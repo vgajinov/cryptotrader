@@ -1,0 +1,52 @@
+Install Qt5.9
+=================================
+
+Download Qt5.9 setup from this address:
+   https://download.qt.io/official_releases/qt/5.9/5.9.0/qt-opensource-linux-x64-5.9.0.run
+
+Follow installation instructions from this page:
+   https://wiki.qt.io/Install_Qt_5_on_Ubuntu
+or alternatively from here:
+   https://www.linuxhint.com/install-qt-5-9-1-qt-creator-4-3-1-ubuntu/
+   
+In my case, setup didn't select any of the Qt options, so I selected all except Android related options.
+
+
+Install PyQt5
+=================================
+
+Go to the PyQt website,
+   https://pypi.python.org/pypi/PyQt5
+and download wheel file for linux:
+   PyQt5-5.9-5.9.1-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
+   
+You first need to install SIP:
+   pip3 install sip
+This will not work for python version < 3.6
+
+Use pip to install the pyqt module:
+   pip3 install PyQt5-5.9-5.9.1-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
+If you are missing wheel use pip to install it first:
+   pip3 install wheel
+   
+In case of problems checkout the following page:
+   https://www.riverbankcomputing.com/software/pyqt/download5
+   
+Install PyQtChart
+===================================
+
+   pip3 install PyQtChart
+or visit the page:
+   https://www.riverbankcomputing.com/software/pyqtchart/download
+and select PyQtChart from right menu
+
+
+Install PyQtGraph
+===================================
+
+You need the version 0.10.0 since it is the first version that support Qt5
+
+First try installing through pip:
+   pip3 install pyqtgraph
+If that installs older version, go to the website and download debian package:
+   http://www.pyqtgraph.org/

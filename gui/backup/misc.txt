@@ -278,3 +278,67 @@ TableWidget column resize and width
       #self.tradesTable.setColumnWidth(0, int(0.35*self.tradesTable.width()))
       #self.tradesTable.setColumnWidth(1, int(0.25*self.tradesTable.width()))
       #self.tradesTable.setColumnWidth(2, int(0.4*self.tradesTable.width()))
+
+
+
+
+
+
+
+
+
+
+
+/*
+/* Tabs
+--------------------------------------------------
+*/
+QTabBar::tab {
+    font: bold 13px;
+}
+
+#mainTabWidget {
+    background-color: rgb(0,0,0);
+}
+
+#placeOrderTabWidget {
+    background-color: rgb(0,0,0);
+}
+
+
+
+/* tradesTabWidget
+--------------------------------------------------
+*/
+#tradesTabWidget::pane  {
+    border: 0px solid white;
+    border-top: 1px solid white;
+    padding: 0px;
+}
+
+#tradesTabBar::tab:selected {
+    background-color: rgb(167,174,186,50);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+}
+
+#tradesTabBar::tab:!selected {
+    background-color: rgb(0,0,0);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+    margin-top: 3px;
+}
+
+#tradesTabBar::tab {
+    margin-left: -1px;
+}
+
+#tradesTabBar::tab:first {
+    margin-left: 4px;
+}
+*/
+

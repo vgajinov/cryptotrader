@@ -1,7 +1,7 @@
 import sys
 from pydispatch import dispatcher
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
 import time
 
@@ -19,7 +19,7 @@ class TradesUpdateEvent(QtCore.QEvent):
       super(TradesUpdateEvent, self).__init__(self.EVENT_TYPE)
 
 
-class MainWindow(QtGui.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
    def __init__(self, width, height):
       super(MainWindow, self).__init__()
 
@@ -140,12 +140,12 @@ class MainWindow(QtGui.QMainWindow):
 
 
    def bookUpdate(self, bids, asks):
-      QtGui.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
+      QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
 
 
 
 if __name__ == '__main__':
-   app = QtGui.QApplication(sys.argv)
+   app = QtWidgets.QApplication(sys.argv)
    GUI = MainWindow(350, 800)
    GUI.show()
 

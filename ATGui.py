@@ -1,16 +1,14 @@
 import sys
-from PyQt4 import QtGui
+from PyQt5 import QtWidgets
 from gui.ATMainWindow import ATMainWindow
 from pydispatch import dispatcher
 import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
 
 
 
-# =================================================================================
-#   Run qt app
-# =================================================================================
-def run():
-   app = QtGui.QApplication(sys.argv)
+
+if __name__ == '__main__':
+   app = QtWidgets.QApplication(sys.argv)
    screenSize = app.desktop().screenGeometry()
    GUI = ATMainWindow(screenSize.width(), screenSize.height())
    GUI.show()
@@ -28,4 +26,3 @@ def run():
 
 
 
-run()

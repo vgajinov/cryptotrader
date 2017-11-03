@@ -1,17 +1,18 @@
 import numpy as np
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import pyqtSlot
 import pyqtgraph as pg
 from .Separators import *
 
 
 
-class ChartWidget(QtGui.QWidget):
+class ChartWidget(QtWidgets.QWidget):
    def __init__(self):
       super(ChartWidget, self).__init__()
 
-      self.mainLayout = QtGui.QVBoxLayout(self)
-      self.mainLayout.setMargin(0)
+      self.mainLayout = QtWidgets.QVBoxLayout(self)
+      #self.mainLayout.setMargin(0)
+      self.mainLayout.setContentsMargins(0,0,0,0)
       self.mainLayout.setSpacing(0)
 
       candleChart = pg.PlotWidget()
@@ -27,8 +28,8 @@ class ChartWidget(QtGui.QWidget):
       x = np.sin(np.linspace(0, 2 * np.pi, 1000))
       self.macdChart.plot(x)
 
-      self.macdFrame = QtGui.QFrame()
-      self.macdLayout = QtGui.QVBoxLayout()
+      self.macdFrame = QtWidgets.QFrame()
+      self.macdLayout = QtWidgets.QVBoxLayout()
       self.macdLayout.setSpacing(0)
       self.macdLayout.setMargin(0)
       self.macdFrame.setLayout(self.macdLayout)
@@ -43,8 +44,8 @@ class ChartWidget(QtGui.QWidget):
       x = np.cos(np.linspace(0, 2 * np.pi, 1000))
       self.rsaChart.plot(x)
 
-      self.rsaFrame = QtGui.QFrame()
-      self.rsaLayout = QtGui.QVBoxLayout()
+      self.rsaFrame = QtWidgets.QFrame()
+      self.rsaLayout = QtWidgets.QVBoxLayout()
       self.rsaLayout.setSpacing(0)
       self.rsaLayout.setMargin(0)
       self.rsaFrame.setLayout(self.rsaLayout)

@@ -1,24 +1,25 @@
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSlot
+from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import pyqtSlot
 
 
 
-class PlaceOrderWidget(QtGui.QWidget):
+class PlaceOrderWidget(QtWidgets.QWidget):
    def __init__(self):
       super(PlaceOrderWidget, self).__init__()
 
-      self.tabOrderLayout = QtGui.QHBoxLayout()
-      self.tabOrderWidget = QtGui.QTabWidget()
-      self.tabLimitOrder = QtGui.QWidget()
-      self.tabMarketOrder = QtGui.QWidget()
+      self.tabOrderLayout = QtWidgets.QHBoxLayout()
+      self.tabOrderWidget = QtWidgets.QTabWidget()
+      self.tabOrderWidget.setObjectName('placeOrderTabWidget')
+      self.tabLimitOrder = QtWidgets.QWidget()
+      self.tabMarketOrder = QtWidgets.QWidget()
       self.tabOrderWidget.addTab(self.tabLimitOrder, "Limit")
       self.tabOrderWidget.addTab(self.tabMarketOrder, "Market")
       self.tabOrderLayout.addWidget(self.tabOrderWidget)
       self.tabOrderLayout.setContentsMargins(0, 5, 0, 0)
       self.setLayout(self.tabOrderLayout)
 
-      self.ctLimitOrderLayout = QtGui.QHBoxLayout(self.tabLimitOrder)
-      self.ctMarketOrderLayout = QtGui.QHBoxLayout(self.tabMarketOrder)
+      self.ctLimitOrderLayout = QtWidgets.QHBoxLayout(self.tabLimitOrder)
+      self.ctMarketOrderLayout = QtWidgets.QHBoxLayout(self.tabMarketOrder)
 
       self.addLimitOrderLayout(self.ctLimitOrderLayout)
       self.setLimitData()
@@ -30,8 +31,8 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Limit Order Layout
    # ---------------------------------------------------
    def addLimitOrderLayout(self, parentLayout):
-      self.ctLimitOrderBuyLayout = QtGui.QGridLayout()
-      self.ctLimitOrderSellLayout = QtGui.QGridLayout()
+      self.ctLimitOrderBuyLayout = QtWidgets.QGridLayout()
+      self.ctLimitOrderSellLayout = QtWidgets.QGridLayout()
 
       self.addLimitBuyLayout(self.ctLimitOrderBuyLayout)
       self.addLimitSellLayout(self.ctLimitOrderSellLayout)
@@ -44,29 +45,29 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Limit BUY Layout
    # ---------------------------------------------------
    def addLimitBuyLayout(self, parentLayout):
-      self.limitBuyInfoLabel = QtGui.QLabel()
+      self.limitBuyInfoLabel = QtWidgets.QLabel()
       self.limitBuyInfoLabel.setStyleSheet('font: bold 16px;')
 
-      self.limitBuyBalanceLabel = QtGui.QLabel()
-      self.limitBuyBalanceAmountLabel = QtGui.QLabel()
+      self.limitBuyBalanceLabel = QtWidgets.QLabel()
+      self.limitBuyBalanceAmountLabel = QtWidgets.QLabel()
       self.limitBuyBalanceLabel.setObjectName('grayedLabel')
       self.limitBuyBalanceAmountLabel.setObjectName('grayedLabel')
 
-      limitBuyPriceLabel = QtGui.QLabel('Price:')
-      self.limitBuyPriceInput = QtGui.QLineEdit()
+      limitBuyPriceLabel = QtWidgets.QLabel('Price:')
+      self.limitBuyPriceInput = QtWidgets.QLineEdit()
       self.limitBuyPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
 
-      limitBuyAmountLabel = QtGui.QLabel('Amount:')
-      self.limitBuyAmountInput = QtGui.QLineEdit()
+      limitBuyAmountLabel = QtWidgets.QLabel('Amount:')
+      self.limitBuyAmountInput = QtWidgets.QLineEdit()
 
-      limitBuyTotalLabel = QtGui.QLabel('Total:')
-      self.limitBuyTotalValueLabel = QtGui.QLabel()
+      limitBuyTotalLabel = QtWidgets.QLabel('Total:')
+      self.limitBuyTotalValueLabel = QtWidgets.QLabel()
       limitBuyTotalLabel.setObjectName('totalLabel')
 
-      self.limitBuyButton = QtGui.QPushButton()
+      self.limitBuyButton = QtWidgets.QPushButton()
       self.limitBuyButton.setMinimumHeight(40)
       self.limitBuyButton.setText('BUY')
-      self.limitBuyButton.setObjectName('limitBuyButton')
+      self.limitBuyButton.setObjectName('buyButton')
 
       parentLayout.addWidget(self.limitBuyInfoLabel, 0, 0)
       parentLayout.addWidget(self.limitBuyBalanceLabel, 1, 0)
@@ -89,29 +90,29 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Limit SELL Layout
    # ---------------------------------------------------
    def addLimitSellLayout(self, parentLayout):
-      self.limitSellInfoLabel = QtGui.QLabel()
+      self.limitSellInfoLabel = QtWidgets.QLabel()
       self.limitSellInfoLabel.setStyleSheet('font: bold 16px;')
 
-      self.limitSellBalanceLabel = QtGui.QLabel()
-      self.limitSellBalanceAmountLabel = QtGui.QLabel()
+      self.limitSellBalanceLabel = QtWidgets.QLabel()
+      self.limitSellBalanceAmountLabel = QtWidgets.QLabel()
       self.limitSellBalanceLabel.setObjectName('grayedLabel')
       self.limitSellBalanceAmountLabel.setObjectName('grayedLabel')
 
-      limitSellPriceLabel = QtGui.QLabel('Price:')
-      self.limitSellPriceInput = QtGui.QLineEdit()
+      limitSellPriceLabel = QtWidgets.QLabel('Price:')
+      self.limitSellPriceInput = QtWidgets.QLineEdit()
       self.limitSellPriceInput.setValidator(QtGui.QDoubleValidator(0, 100000.0, 2))
 
-      limitSellAmountLabel = QtGui.QLabel('Amount:')
-      self.limitSellAmountInput = QtGui.QLineEdit()
+      limitSellAmountLabel = QtWidgets.QLabel('Amount:')
+      self.limitSellAmountInput = QtWidgets.QLineEdit()
 
-      limitSellTotalLabel = QtGui.QLabel('Total:')
-      self.limitSellTotalValueLabel = QtGui.QLabel()
+      limitSellTotalLabel = QtWidgets.QLabel('Total:')
+      self.limitSellTotalValueLabel = QtWidgets.QLabel()
       limitSellTotalLabel.setObjectName('totalLabel')
 
-      self.limitSellButton = QtGui.QPushButton()
+      self.limitSellButton = QtWidgets.QPushButton()
       self.limitSellButton.setMinimumHeight(40)
       self.limitSellButton.setText('SELL')
-      self.limitSellButton.setObjectName('limitSellButton')
+      self.limitSellButton.setObjectName('sellButton')
 
       parentLayout.addWidget(self.limitSellInfoLabel, 0, 0)
       parentLayout.addWidget(self.limitSellBalanceLabel, 1, 0)
@@ -145,8 +146,8 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Market Order Layout
    # ---------------------------------------------------
    def addMarketOrderLayout(self, parentLayout):
-      self.ctMarketOrderBuyLayout = QtGui.QGridLayout()
-      self.ctMarketOrderSellLayout = QtGui.QGridLayout()
+      self.ctMarketOrderBuyLayout = QtWidgets.QGridLayout()
+      self.ctMarketOrderSellLayout = QtWidgets.QGridLayout()
 
       self.addMarketBuyLayout(self.ctMarketOrderBuyLayout)
       self.addMarketSellLayout(self.ctMarketOrderSellLayout)
@@ -158,32 +159,32 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Market BUY Layout
    # ---------------------------------------------------
    def addMarketBuyLayout(self, parentLayout):
-      self.marketBuyInfoLabel = QtGui.QLabel()
+      self.marketBuyInfoLabel = QtWidgets.QLabel()
       self.marketBuyInfoLabel.setStyleSheet('font: bold 16px;')
 
-      self.marketBuyBalanceLabel = QtGui.QLabel()
-      self.marketBuyBalanceAmountLabel = QtGui.QLabel()
+      self.marketBuyBalanceLabel = QtWidgets.QLabel()
+      self.marketBuyBalanceAmountLabel = QtWidgets.QLabel()
       self.marketBuyBalanceLabel.setObjectName('grayedLabel')
       self.marketBuyBalanceAmountLabel.setObjectName('grayedLabel')
 
-      marketBuyPriceLabel = QtGui.QLabel('Price:')
+      marketBuyPriceLabel = QtWidgets.QLabel('Price:')
       marketBuyPriceLabel.setObjectName('grayedLabel')
-      self.marketBuyPriceInput = QtGui.QLineEdit()
+      self.marketBuyPriceInput = QtWidgets.QLineEdit()
       self.marketBuyPriceInput.setText('Market price')
       self.marketBuyPriceInput.setDisabled(True)
       self.marketBuyPriceInput.setObjectName('disabledInput')
 
-      marketBuyAmountLabel = QtGui.QLabel('Amount:')
-      self.marketBuyAmountInput = QtGui.QLineEdit()
+      marketBuyAmountLabel = QtWidgets.QLabel('Amount:')
+      self.marketBuyAmountInput = QtWidgets.QLineEdit()
 
-      marketBuyTotalLabel = QtGui.QLabel('Total:')
-      self.marketBuyTotalValueLabel = QtGui.QLabel()
+      marketBuyTotalLabel = QtWidgets.QLabel('Total:')
+      self.marketBuyTotalValueLabel = QtWidgets.QLabel()
       marketBuyTotalLabel.setObjectName('totalLabel')
 
-      self.marketBuyButton = QtGui.QPushButton()
+      self.marketBuyButton = QtWidgets.QPushButton()
       self.marketBuyButton.setMinimumHeight(40)
       self.marketBuyButton.setText('BUY')
-      self.marketBuyButton.setObjectName('marketBuyButton')
+      self.marketBuyButton.setObjectName('buyButton')
 
       parentLayout.addWidget(self.marketBuyInfoLabel, 0, 0)
       parentLayout.addWidget(self.marketBuyBalanceLabel, 1, 0)
@@ -206,32 +207,32 @@ class PlaceOrderWidget(QtGui.QWidget):
    # Market SELL Layout
    # ---------------------------------------------------
    def addMarketSellLayout(self, parentLayout):
-      self.marketSellInfoLabel = QtGui.QLabel()
+      self.marketSellInfoLabel = QtWidgets.QLabel()
       self.marketSellInfoLabel.setStyleSheet('font: bold 16px;')
 
-      self.marketSellBalanceLabel = QtGui.QLabel()
-      self.marketSellBalanceAmountLabel = QtGui.QLabel()
+      self.marketSellBalanceLabel = QtWidgets.QLabel()
+      self.marketSellBalanceAmountLabel = QtWidgets.QLabel()
       self.marketSellBalanceLabel.setObjectName('grayedLabel')
       self.marketSellBalanceAmountLabel.setObjectName('grayedLabel')
 
-      marketSellPriceLabel = QtGui.QLabel('Price:')
+      marketSellPriceLabel = QtWidgets.QLabel('Price:')
       marketSellPriceLabel.setObjectName('grayedLabel')
-      self.marketSellPriceInput = QtGui.QLineEdit()
+      self.marketSellPriceInput = QtWidgets.QLineEdit()
       self.marketSellPriceInput.setText('Market price')
       self.marketSellPriceInput.setDisabled(True)
       self.marketSellPriceInput.setObjectName('disabledInput')
 
-      marketSellAmountLabel = QtGui.QLabel('Amount:')
-      self.marketSellAmountInput = QtGui.QLineEdit()
+      marketSellAmountLabel = QtWidgets.QLabel('Amount:')
+      self.marketSellAmountInput = QtWidgets.QLineEdit()
 
-      marketSellTotalLabel = QtGui.QLabel('Total:')
-      self.marketSellTotalValueLabel = QtGui.QLabel()
+      marketSellTotalLabel = QtWidgets.QLabel('Total:')
+      self.marketSellTotalValueLabel = QtWidgets.QLabel()
       marketSellTotalLabel.setObjectName('totalLabel')
 
-      self.marketSellButton = QtGui.QPushButton()
+      self.marketSellButton = QtWidgets.QPushButton()
       self.marketSellButton.setMinimumHeight(40)
       self.marketSellButton.setText('SELL')
-      self.marketSellButton.setObjectName('marketSellButton')
+      self.marketSellButton.setObjectName('sellButton')
 
       parentLayout.addWidget(self.marketSellInfoLabel, 0, 0)
       parentLayout.addWidget(self.marketSellBalanceLabel, 1, 0)

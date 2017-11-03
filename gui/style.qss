@@ -196,29 +196,26 @@ QLabel#totalLabel {
 /* Buttons
 --------------------------------------------------
 */
-QPushButton#limitBuyButton {
-    background-color: rgb(0,255,0,180);
+QPushButton#buyButton {
     font: bold 16px;
+    border: 2px solid #00bb00;
+    border-radius: 6px;
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #00bb00, stop: 1 #33bb33);
 }
 
-QPushButton#limitSellButton {
-    background-color: rgb(255,0,0,180);
+QPushButton#sellButton {
     font: bold 16px;
+    border: 2px solid #ff0000;
+    border-radius: 6px;
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #ff0000, stop: 1 #ff3333);
 }
 
-QPushButton#marketBuyButton {
-    background-color: rgb(0,255,0,180);
-    font: bold 16px;
-}
-
-QPushButton#marketSellButton {
-    background-color: rgb(255,0,0,180);
-    font: bold 16px;
-}
 
 
 QPushButton#cancelButton {
-    background-color: rgb(0,0,0,180);
+    background-color: rgb(0,0,0);
     color: red;
     border-radius: 4px;
     border: 1px solid rgb(255,0,0);
@@ -276,11 +273,6 @@ QHeaderView::section {
 #historyTable {
     border-left: 1px solid rgba(167, 174, 186, 50);
 }
-
-TableView#historyTable {
-    border-left: 1px solid rgba(167, 174, 186, 50);
-}
-
 */
 
 
@@ -288,21 +280,20 @@ TableView#historyTable {
 /* Tabs
 --------------------------------------------------
 */
-QTabBar::tab {
+
+QTabWidget {
     font: bold 13px;
+    background-color: rgb(0,0,0);
 }
 
 
-/* tradesTabWidget
---------------------------------------------------
-*/
-#tradesTabWidget::pane  {
+QTabWidget::pane  {
     border: 0px solid white;
     border-top: 1px solid white;
     padding: 0px;
 }
 
-#tradesTabBar::tab:selected {
+QTabBar::tab:selected {
     background-color: rgb(167,174,186,50);
     border: 1px solid white;
     border-bottom: 0px solid white;
@@ -310,7 +301,7 @@ QTabBar::tab {
     min-width: 14ex;
 }
 
-#tradesTabBar::tab:!selected {
+QTabBar::tab:!selected {
     background-color: rgb(0,0,0);
     border: 1px solid white;
     border-bottom: 0px solid white;
@@ -319,10 +310,13 @@ QTabBar::tab {
     margin-top: 3px;
 }
 
-#tradesTabBar::tab {
+QTabBar::tab {
     margin-left: -1px;
 }
 
-#tradesTabBar::tab:first {
+QTabBar::tab:first {
     margin-left: 4px;
 }
+
+
+
