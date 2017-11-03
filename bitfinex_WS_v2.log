@@ -1,36 +1,36 @@
-03-11 19:40 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-03-11 19:40 bitfinex_websocket INFO     Websocket connection open.
-03-11 19:40 bitfinex_websocket INFO     version 2
-03-11 19:40 bitfinex_websocket INFO     Subscribing to order book ...
-03-11 19:40 bitfinex_websocket INFO     Subscribing to trades ...
-03-11 19:40 bitfinex_websocket INFO     
-Subcribed to Trades channel
-----------------------------------------
-ID        : 85
-Pair      : BTCUSD
-
-03-11 19:40 bitfinex_websocket INFO     Subscribing to ticker ...
-03-11 19:40 bitfinex_websocket INFO     
+03-11 23:38 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+03-11 23:38 bitfinex_websocket INFO     Websocket connection open.
+03-11 23:38 bitfinex_websocket INFO     version 2
+03-11 23:38 bitfinex_websocket INFO     Subscribing to order book ...
+03-11 23:38 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 13011
+ID        : 1238
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-03-11 19:40 bitfinex_websocket INFO     
-Subcribed to Ticker channel
+03-11 23:38 bitfinex_websocket INFO     Subscribing to trades ...
+03-11 23:38 bitfinex_websocket INFO     
+Subcribed to Trades channel
 ----------------------------------------
-ID        : 1
+ID        : 82
 Pair      : BTCUSD
 
-03-11 19:40 bitfinex_websocket INFO     Subscribing to candels channel ...
-03-11 19:40 bitfinex_websocket INFO     
+03-11 23:38 bitfinex_websocket INFO     Subscribing to ticker ...
+03-11 23:38 bitfinex_websocket INFO     
+Subcribed to Ticker channel
+----------------------------------------
+ID        : 5
+Pair      : BTCUSD
+
+03-11 23:38 bitfinex_websocket INFO     Subscribing to candels channel ...
+03-11 23:38 bitfinex_websocket INFO     
 Subcribed to Candles channel
 ----------------------------------------
-ID        : 93
+ID        : 760
 Key       : trade:1m:tBTCUSD
 Pair      : BTCUSD
 
-03-11 19:43 bitfinex_websocket INFO     Connection to bitfinex closed.
+03-11 23:38 bitfinex_websocket INFO     Connection to bitfinex closed.

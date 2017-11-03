@@ -9,6 +9,74 @@ COLOR_RED    = 'color: rgb(255, 0, 0)'
 COLOR_GREEN  = 'color: rgb(0, 255, 0)'
 
 
+# ======================================================================
+# Class that defines a TableWidget customized for displaying
+# OrderBook column data. It adjusts the column widths and the
+# font size for displaying content. Table data must be suplied
+# in the from of a list of list of strings, one for each column.
+# ======================================================================
+class CustomTableWidget(QtWidgets.QTableWidget):
+   minFontSize = 8
+   maxFontSize = 12
+   rowHeight = 10
+   tableData = None
+
+   def __init__(self):
+      super(CustomTableWidget, self).__init__()
+
+      self.setColumnCount(3)
+      self.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Fixed)
+      self.horizontalHeader().setVisible(False)
+      self.verticalHeader().setVisible(False)
+      self.setShowGrid(False)
+      self.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+      self.setTextElideMode(QtCore.Qt.ElideNone)
+      self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+      self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+
+   def fitDataAndColumns(self):
+      if self.tableData == None:
+         return
+
+      # find the string with maximum length for each column and total length of all max strings
+      maxStrLen = []
+      for i in range(len(self.tableData)):
+         maxStrLen.append(max(self.tableData[i], key=len))
+      maxJoinStr = ''.join(maxStrLen)
+
+      # find the most suitable font size based on strings and the table width
+      tableWidth = self.width()
+      font = QtGui.QFont(self.font())
+      fontSize = self.minFontSize
+      while(fontSize <= self.maxFontSize):
+         font.setPixelSize(fontSize+1)
+         fm = QtGui.QFontMetrics(font)
+         if fm.width(maxJoinStr) < 0.7*tableWidth:
+            fontSize += 1
+         else:
+            break
+
+      # set the font size and column widths
+      self.setFont(font)
+      fm = QtGui.QFontMetrics(font)
+      fullStrWidth = fm.width(maxJoinStr)
+      for i in range(len(self.tableData)):
+         newWidth = int((float(fm.width(maxStrLen[i])) / fullStrWidth) * tableWidth)
+         self.horizontalHeader().resizeSection(i, newWidth)
+
+      # find and set the number of rows
+      self.rowHeight = fm.height()
+      numRows = int(self.height() / self.rowHeight)
+      numRows = min(numRows, len(self.tableData[0]))
+      self.setRowCount(numRows)
+
+
+
+# ======================================================================
+# OrderBookWidget class that provides the OrderBook graph,
+# OrderBook numeric column display and the most recent trades
+# ======================================================================
 class OrderBookWidget(QtWidgets.QWidget):
    minFontSize = 8
    maxFontSize = 12
@@ -114,28 +182,9 @@ class OrderBookWidget(QtWidgets.QWidget):
 
    # create OrderBook Trades layout
    def createOrderBookTradesLayout(self, orderBookTradesLayout):
-      self.tradesTable = QtWidgets.QTableWidget()
+      self.tradesTable = CustomTableWidget()
       self.tradesTable.setObjectName('tradeTable')
-      font = self.tradesTable.font()
-      font.setPixelSize(11)
-      self.tradesTable.setFont(font)
       self.tradesTable.setColumnCount(3)
-
-      self.tradesTable.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-      self.tradesTable.horizontalHeader().setResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-      self.tradesTable.horizontalHeader().setResizeMode(2, QtWidgets.QHeaderView.Stretch)
-      #self.tradesTable.horizontalHeader().setResizeMode(0, QtWidgets.QHeaderView.Fixed)
-      #self.tradesTable.horizontalHeader().setResizeMode(1, QtWidgets.QHeaderView.Fixed)
-      #self.tradesTable.horizontalHeader().setResizeMode(2, QtWidgets.QHeaderView.Fixed)
-      #self.tradesTable.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Fixed)
-
-      self.tradesTable.horizontalHeader().setVisible(False)
-      self.tradesTable.verticalHeader().setVisible(False)
-      self.tradesTable.setShowGrid(False)
-      self.tradesTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-      self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
-      self.tradesTable.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-      self.tradesTable.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
       orderBookTradesLayout.addWidget(self.tradesTable)
       orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
 
@@ -269,120 +318,18 @@ class OrderBookWidget(QtWidgets.QWidget):
 
 
    # set OrderBook trades data
-#   def setOrderBookTradesData(self, tradesData):
-#      rowHeight = self.tradesTable.font().pixelSize() + 3
-#      numItems   = int(self.tradesTable.height() / rowHeight)
-#      tradesData = list(reversed(tradesData[-numItems:]))
-#      self.tradesTable.setRowCount(len(tradesData))
-#
-#      # set items
-#      pItemMaxText = ''
-#      dItemMaxText = datetime.fromtimestamp(tradesData[0][0]/1000).strftime('%H:%M:%S')
-#      amountThreshold = 0.1 * sum([abs(x[1]) for x in tradesData])
-#      for i in range(len(tradesData)):
-#         self.tradesTable.setRowHeight(i, rowHeight)
-#
-#         # prices
-#         priceString = '{:.4f}'.format(tradesData[i][2])
-#         priceItem = QtWidgets.QTableWidgetItem(priceString)
-#         if tradesData[i][1] < 0:
-#            priceItem.setForeground(QtCore.Qt.red)
-#         else:
-#            priceItem.setForeground(QtCore.Qt.green)
-#         self.tradesTable.setItem(i, 0, priceItem)
-#         if len(priceString) > len(pItemMaxText):
-#            pItemMaxText = priceString
-#
-#         # amounts
-#         amountItem = QtWidgets.QTableWidgetItem('{:.4f}'.format(abs(tradesData[i][1])))
-#         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
-#         if abs(tradesData[i][1]) > amountThreshold:
-#            amountItem.setForeground(QtCore.Qt.yellow)
-#         self.tradesTable.setItem(i, 1, amountItem)
-#
-#         # date/time
-#         dateItem = QtWidgets.QTableWidgetItem(datetime.fromtimestamp(tradesData[i][0]/1000).strftime('%H:%M:%S'))
-#         dateItem.setTextAlignment(QtCore.Qt.AlignRight)
-#         self.tradesTable.setItem(i, 2, dateItem)
-#
-#      # adjust font to fit text into columns
-#      fm = QtGui.QFontMetrics(self.tradesTable.font())
-#      pFactor = float(self.tradesTable.columnWidth(0)) / fm.width(pItemMaxText)
-#      dFactor = float(self.tradesTable.columnWidth(2)) / fm.width(dItemMaxText)
-#      fontFactor = (pFactor + dFactor) / 2
-#      if fontFactor < 1.1 or fontFactor > 1.25:
-#         newSize = int(0.9*fontFactor * self.tradesTable.font().pixelSize())-1
-#         newSize = min(13, max(7, newSize))
-#         if newSize != self.tradesTable.font().pixelSize():
-#            newFont = QtGui.QFont(self.tradesTable.font())
-#            newFont.setPixelSize(newSize)
-#            self.tradesTable.setFont(newFont)
-#            self.tradesTable.setTextElideMode(QtCore.Qt.ElideNone)
-#            self.tradesTable.verticalScrollBar().setDisabled(True)
-#            self.tradesTable.horizontalScrollBar().setDisabled(True)
-
-
-
    def setOrderBookTradesData(self, tradesData):
-      self.tradesData = tradesData
-      self.fitDataAndColumns()
-      self.update()
-
-
-   def resizeEvent(self, QResizeEvent):
-      self.fitDataAndColumns()
-      QtWidgets.QWidget.resizeEvent(self, QResizeEvent)
-
-
-
-   def fitDataAndColumns(self):
-      if self.tradesData == None:
-         return
-
-      # get list of strings from raw data
+      self.tradesData = list(reversed(tradesData))
       priceStrings = ['{:.4f}'.format(x[2]) for x in self.tradesData]
       amountStrings = ['{:.4f}'.format(abs(x[1])) for x in self.tradesData]
       dateStrings = [datetime.fromtimestamp(x[0]/1000).strftime('%H:%M:%S') for x in self.tradesData]
-
-      # find the string with maximum length for each category
-      priceStrMaxLen = max(priceStrings, key=len)
-      amountStrMaxLen = max(amountStrings, key=len)
-      dateStrMaxLen = dateStrings[0]
-      fullStrMaxLen = priceStrMaxLen + amountStrMaxLen + dateStrMaxLen
-
-      # find the most suitable font size based on strings and the table width
-      tableWidth = self.tradesTable.width()
-      font = QtGui.QFont(self.tradesTable.font())
-      fontSize = self.minFontSize
-      while(fontSize <= self.maxFontSize):
-         font.setPixelSize(fontSize+1)
-         fm = QtGui.QFontMetrics(font)
-         if fm.width(fullStrMaxLen) < 0.7*tableWidth:
-            fontSize += 1
-         else:
-            break
-
-      # set the font size and column widths
-      self.tradesTable.setFont(font)
-      fm = QtGui.QFontMetrics(font)
-      fullStrWidth = fm.width(fullStrMaxLen)
-      priceColWidth  = int((float(fm.width(priceStrMaxLen)) / fullStrWidth) * tableWidth)
-      amountColWidth = int((float(fm.width(amountStrMaxLen)) / fullStrWidth) * tableWidth)
-      dateColWidth   = int((float(fm.width(dateStrMaxLen)) / fullStrWidth) * tableWidth)
-      self.tradesTable.horizontalHeader().resizeSection(0, priceColWidth)
-      self.tradesTable.horizontalHeader().resizeSection(1, amountColWidth)
-      self.tradesTable.horizontalHeader().resizeSection(2, dateColWidth)
-
-      # find and set the number of rows
-      rowHeight = fm.height()
-      numRows = int(self.tradesTable.height() / rowHeight)
-      numRows = min(numRows, len(self.tradesData))
-      self.tradesTable.setRowCount(numRows)
+      self.tradesTable.tableData = [priceStrings, amountStrings, dateStrings]
+      self.tradesTable.fitDataAndColumns()
 
       # set items
       amountThreshold = 0.1 * sum([abs(x[1]) for x in self.tradesData])
-      for i in range(numRows):
-         self.tradesTable.setRowHeight(i, rowHeight)
+      for i in range(self.tradesTable.rowCount()):
+         self.tradesTable.setRowHeight(i, self.tradesTable.rowHeight)
 
          # prices
          priceItem = QtWidgets.QTableWidgetItem(priceStrings[i])
@@ -403,3 +350,17 @@ class OrderBookWidget(QtWidgets.QWidget):
          dateItem = QtWidgets.QTableWidgetItem(dateStrings[i])
          dateItem.setTextAlignment(QtCore.Qt.AlignRight)
          self.tradesTable.setItem(i, 2, dateItem)
+
+      # update tradesTable
+      self.tradesTable.update()
+
+
+   # ------------------------------------------------------------------------------------
+   # Event Handlers
+   # ------------------------------------------------------------------------------------
+
+   def resizeEvent(self, QResizeEvent):
+      self.tradesTable.fitDataAndColumns()
+      QtWidgets.QWidget.resizeEvent(self, QResizeEvent)
+
+
