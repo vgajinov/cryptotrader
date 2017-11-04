@@ -4,10 +4,6 @@ from PyQt5.QtCore import pyqtSlot
 import pyqtgraph as pg
 from .Separators import *
 
-# colors
-COLOR_RED    = 'color: rgb(255, 0, 0)'
-COLOR_GREEN  = 'color: rgb(0, 255, 0)'
-
 
 # ======================================================================
 # Class that defines a TableWidget customized for displaying
@@ -134,49 +130,22 @@ class OrderBookWidget(QtWidgets.QWidget):
 
    # create OrderBook Numeric layout
    def createOrderBookNumericLayout(self, orderBookNumericLayout):
-      # asks
-      self.askLabelPrice = QtWidgets.QLabel()
-      self.askLabelPrice.setAlignment(QtCore.Qt.AlignLeft)
-      self.askLabelPrice.setStyleSheet(COLOR_RED)
-      self.askLabelAmount = QtWidgets.QLabel()
-      self.askLabelAmount.setAlignment(QtCore.Qt.AlignRight)
-      self.askLabelSum = QtWidgets.QLabel()
-      self.askLabelSum.setAlignment(QtCore.Qt.AlignRight)
-      self.askLabelLayout = QtWidgets.QHBoxLayout()
-      self.askLabelLayout.addWidget(self.askLabelPrice, stretch=3)
-      self.askLabelLayout.addWidget(self.askLabelAmount, stretch=3)
-      self.askLabelLayout.addWidget(self.askLabelSum, stretch=4)
+      self.asksTable = CustomTableWidget()
+      self.asksTable.setObjectName('asksTable')
+      self.asksTable.setColumnCount(3)
+
+      self.bidsTable = CustomTableWidget()
+      self.bidsTable.setObjectName('bidsTable')
+      self.bidsTable.setColumnCount(3)
 
       # last price
       self.priceLabel = QtWidgets.QLabel()
       self.priceLabel.setAlignment(QtCore.Qt.AlignCenter)
-      self.priceLabel.setStyleSheet('font-size: 24px;')
-
-      # bids
-      self.bidLabelPrice = QtWidgets.QLabel()
-      self.bidLabelPrice.setAlignment(QtCore.Qt.AlignLeft)
-      self.bidLabelPrice.setStyleSheet(COLOR_GREEN)
-      self.bidLabelAmount = QtWidgets.QLabel()
-      self.bidLabelAmount.setAlignment(QtCore.Qt.AlignRight)
-      self.bidLabelSum = QtWidgets.QLabel()
-      self.bidLabelSum.setAlignment(QtCore.Qt.AlignRight)
-      self.bidLabelLayout = QtWidgets.QHBoxLayout()
-      self.bidLabelLayout.addWidget(self.bidLabelPrice, stretch=3)
-      self.bidLabelLayout.addWidget(self.bidLabelAmount, stretch=3)
-      self.bidLabelLayout.addWidget(self.bidLabelSum, stretch=4)
-
-      # set names for stylesheet
-      self.askLabelPrice.setObjectName('orderBookLabel')
-      self.askLabelAmount.setObjectName('orderBookLabel')
-      self.askLabelSum.setObjectName('orderBookLabel')
-      self.bidLabelPrice.setObjectName('orderBookLabel')
-      self.bidLabelAmount.setObjectName('orderBookLabel')
-      self.bidLabelSum.setObjectName('orderBookLabel')
 
       # add widgets to layout
-      orderBookNumericLayout.addLayout(self.askLabelLayout, stretch=5)
-      orderBookNumericLayout.addWidget(self.priceLabel, stretch=1)
-      orderBookNumericLayout.addLayout(self.bidLabelLayout, stretch=5)
+      orderBookNumericLayout.addWidget(self.asksTable)
+      orderBookNumericLayout.addWidget(self.priceLabel)
+      orderBookNumericLayout.addWidget(self.bidsTable)
       orderBookNumericLayout.setContentsMargins(5, 5, 5, 2)
 
 
@@ -280,41 +249,84 @@ class OrderBookWidget(QtWidgets.QWidget):
 
    # set OrderBook numeric data
    def setOrderBookNumericData(self, bids, asks):
-
-      numItems = int(self.askLabelPrice.height() / (self.askLabelPrice.fontInfo().pixelSize() + 2))
-
-      askItems   = list(asks.items())[:numItems]
-      askItems   = list(reversed(askItems))
-      askPrices  = [item[0] for item in askItems]
-      askAmounts = [-item[1] for item in askItems]
-
-      bidItems   = list(bids.items())[-numItems:]
-      bidItems   = list(reversed(bidItems))
-      bidPrices  = [item[0] for item in bidItems]
-      bidAmounts = [item[1] for item in bidItems]
-
-      # calculate sums
-      bidSums = bidAmounts[:]
-      for i in range(len(bidAmounts) - 1):
-         bidSums[i+1] = bidSums[i] + bidSums[i+1]
-
-      askSums = askAmounts[:]
-      for i in range(len(bidAmounts) - 2, -1, -1):
+      askItems = list(reversed(list(asks.items())))
+      askSums = [abs(x[1]) for x in askItems]
+      for i in range(len(askSums) - 2, -1, -1):
          askSums[i] = askSums[i] + askSums[i+1]
+      askSumStrings    = ['{:.4f}'.format(x) for x in askSums]
+      askPriceStrings  = ['{:.4f}'.format(x[0]) for x in askItems]
+      askAmountStrings = ['{:.4f}'.format(abs(x[1])) for x in askItems]
 
-      # set labels
-      self.askLabelPrice.setText ('\n'.join(['{:.2f}'.format(x) for x in askPrices]))
-      self.askLabelAmount.setText('\n'.join(['{:.2f}'.format(x) for x in askAmounts]))
-      self.askLabelSum.setText   ('\n'.join(['{:.2f}'.format(x) for x in askSums]))
+      self.asksTable.tableData = [askPriceStrings, askAmountStrings, askSumStrings]
+      self.asksTable.fitDataAndColumns()
 
-      self.bidLabelPrice.setText ('\n'.join(['{:.2f}'.format(x) for x in bidPrices]))
-      self.bidLabelAmount.setText('\n'.join(['{:.2f}'.format(x) for x in bidAmounts]))
-      self.bidLabelSum.setText   ('\n'.join(['{:.2f}'.format(x) for x in bidSums]))
+      bidItems = list(reversed(list(bids.items())))
+      bidSums = [abs(x[1]) for x in bidItems]
+      for i in range(len(bidSums) - 1):
+         bidSums[i+1] = bidSums[i] + bidSums[i+1]
+      bidSumStrings    = ['{:.4f}'.format(x) for x in bidSums]
+      bidPriceStrings  = ['{:.4f}'.format(x[0]) for x in bidItems]
+      bidAmountStrings = ['{:.4f}'.format(abs(x[1])) for x in bidItems]
+
+      self.bidsTable.tableData = [bidPriceStrings, bidAmountStrings, bidSumStrings]
+      self.bidsTable.fitDataAndColumns()
+
+      # set ask items
+      numItems = self.asksTable.rowCount()
+      for i in range(numItems):
+         self.asksTable.setRowHeight(i, self.asksTable.rowHeight)
+
+         # prices
+         priceItem = QtWidgets.QTableWidgetItem(askPriceStrings[-numItems + i])
+         priceItem.setForeground(QtCore.Qt.red)
+         self.asksTable.setItem(i, 0, priceItem)
+
+         # amounts
+         amountItem = QtWidgets.QTableWidgetItem(askAmountStrings[-numItems + i])
+         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
+         self.asksTable.setItem(i, 1, amountItem)
+
+         # sums
+         sumItem = QtWidgets.QTableWidgetItem(askSumStrings[-numItems + i])
+         sumItem.setTextAlignment(QtCore.Qt.AlignRight)
+         self.asksTable.setItem(i, 2, sumItem)
+
+      # set bid items
+      for i in range(self.bidsTable.rowCount()):
+         self.bidsTable.setRowHeight(i, self.bidsTable.rowHeight)
+
+         # prices
+         priceItem = QtWidgets.QTableWidgetItem(bidPriceStrings[i])
+         priceItem.setForeground(QtCore.Qt.green)
+         self.bidsTable.setItem(i, 0, priceItem)
+
+         # amounts
+         amountItem = QtWidgets.QTableWidgetItem(bidAmountStrings[i])
+         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
+         self.bidsTable.setItem(i, 1, amountItem)
+
+         # sums
+         sumItem = QtWidgets.QTableWidgetItem(bidSumStrings[i])
+         sumItem.setTextAlignment(QtCore.Qt.AlignRight)
+         self.bidsTable.setItem(i, 2, sumItem)
+
+      # update asks and bids tables
+      self.asksTable.update()
+      self.bidsTable.update()
 
 
    # set price on the OrderBook numeric layout
    def setLastPrice(self, price):
       self.priceLabel.setText('{:.2f}'.format(price))
+
+   # format LastPrice label
+   def formatLastPrice(self):
+      newHeight = min(40, int(0.07 * self.height()))
+      self.priceLabel.setFixedHeight(newHeight)
+      font = QtGui.QFont(self.priceLabel.font())
+      font.setPixelSize(int(0.6 * newHeight))
+      self.priceLabel.setFont(font)
+      self.priceLabel.update()
 
 
    # set OrderBook trades data
@@ -361,6 +373,9 @@ class OrderBookWidget(QtWidgets.QWidget):
 
    def resizeEvent(self, QResizeEvent):
       self.tradesTable.fitDataAndColumns()
+      self.formatLastPrice()
+      self.asksTable.fitDataAndColumns()
+      self.bidsTable.fitDataAndColumns()
       QtWidgets.QWidget.resizeEvent(self, QResizeEvent)
 
 
