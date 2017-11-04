@@ -99,7 +99,7 @@ class ControlBarWidget(QtWidgets.QWidget):
          overlayModel.setItem(i+1, item)
       self.ctrlOverlay.setModel(overlayModel)
       self.ctrlOverlay.view().setMinimumWidth(1.5 * self.ctrlOverlay.view().sizeHintForColumn(0))
-      self.ctrlOverlay.view().setMinimumHeight(overlayModel.rowCount() * (self.ctrlOverlay.view().sizeHintForRow(1) + 3))
+      #self.ctrlOverlay.view().setMinimumHeight(overlayModel.rowCount() * (self.ctrlOverlay.view().sizeHintForRow(1) + 3))
       self.ctrlOverlay.model().item(0,0).setSizeHint(QtCore.QSize(0,0))
 
       # Set indicators

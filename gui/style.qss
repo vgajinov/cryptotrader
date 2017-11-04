@@ -112,7 +112,7 @@ QListView::item:hover {
 }
 
 #overlayCombo QAbstractItemView {
-    color: rgb(0,0,0);
+    color: black; /*rgb(0,0,0); */
     border: 1px solid rgb(0,0,0);
     background-color: rgba(255,255,0,200);
 }
