@@ -31,7 +31,7 @@ class ChartWidget(QtWidgets.QWidget):
       self.macdFrame = QtWidgets.QFrame()
       self.macdLayout = QtWidgets.QVBoxLayout()
       self.macdLayout.setSpacing(0)
-      self.macdLayout.setMargin(0)
+      self.macdLayout.setContentsMargins(0,0,0,0)
       self.macdFrame.setLayout(self.macdLayout)
       self.macdLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
                                                     spacecolor='rgb(0,0,0)', stroke=1, width=3))
@@ -47,7 +47,7 @@ class ChartWidget(QtWidgets.QWidget):
       self.rsaFrame = QtWidgets.QFrame()
       self.rsaLayout = QtWidgets.QVBoxLayout()
       self.rsaLayout.setSpacing(0)
-      self.rsaLayout.setMargin(0)
+      self.rsaLayout.setContentsMargins(0,0,0,0)
       self.rsaFrame.setLayout(self.rsaLayout)
       self.rsaLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
                                                    spacecolor='rgb(0,0,0)', stroke=1, width=3))
