@@ -281,16 +281,37 @@ class bitfinexTrades:
 
 class bitfinexCandles:
    # Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
+   # Direction of updates in the list is from the most recent to the least recent
    def __init__(self, name, candles):
       self.name = name
-      self.candles = deque(maxlen=100)
-      for candle in candles:
-         self.candles.append(candle)
+      for i in range(len(candles)):
+         # TODO: improve this swapping, i.e. use numpy
+         close = candles[i][2]
+         candles[i][2] = candles[i][3]
+         candles[i][3] = candles[i][4]
+         candles[i][4] = close
+      self.candles = deque(list(reversed(candles))) #, maxlen=100)
       self._publish()
 
    def update(self, candle):
-      self.candles.append(candle)
-      self._publish()
+      close = candle[2]
+      candle[2] = candle[3]
+      candle[3] = candle[4]
+      candle[4] = close
+      last = self.candles.pop()
+      if candle[0] > last[0]:
+         # add new candle
+         self.candles.append(last)
+         self.candles.append(candle)
+         self._publish()
+      elif candle[0] == last[0]:
+         # update last candle
+         self.candles.append(candle)
+         self._publish()
+      else:
+         # bitfinex sometimes also send old candles. We just ignore it.
+         self.candles.append(last)
+
 
    def _publish(self):
       # send updated book to listeners
