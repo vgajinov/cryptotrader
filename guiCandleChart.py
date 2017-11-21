@@ -19,13 +19,13 @@ class CandleChart(QtChart.QChart):
    def __init__(self):
       super(CandleChart, self).__init__()
 
-      self.legend().setVisible(True)
-      self.legend().setAlignment(QtCore.Qt.AlignBottom)
       self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
       self.setBackgroundPen(QtGui.QPen(QtGui.QColor(255, 80, 80), 0.5))
       self.setBackgroundRoundness(0)
-      self.setContentsMargins(0,0,0,0)
-      self.setWindowFrameMargins(0,0,0,0)
+      self.layout().setContentsMargins(0, 0, 0, 0)
+      self.setMargins(QtCore.QMargins(0,0,0,0))
+      self.setContentsMargins(0, 0, 0, 0)
+      #self.setWindowFrameMargins(0,0,0,0)
       self.legend().hide()
       chartFont = QtGui.QFont(self.font())
       chartFont.setPixelSize(9)
@@ -39,6 +39,7 @@ class CandleChart(QtChart.QChart):
 
       self.hoverLinePriceTag = QtWidgets.QGraphicsSimpleTextItem(self)
       self.hoverLinePriceTag.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
+      self.hoverLinePriceTag.setOpacity(1.0)
       self.hoverLine = QtChart.QLineSeries()
       hoverPen = QtGui.QPen(QtCore.Qt.DashLine)
       hoverPen.setColor(QtCore.Qt.white)
@@ -180,6 +181,9 @@ class CandleChart(QtChart.QChart):
    def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
       self.hoverLine.show()
 
+
+
+# OVERLAYS
 #=======================================================================================
 
 
@@ -199,6 +203,7 @@ class CandleChart(QtChart.QChart):
       psarValues = psarValues[-self.numCandlesVisible:]
       for i in range(self.numCandlesVisible):
          self.psarOverlay.append(i+0.5, psarValues[i])
+
 
 
    def parabolicSAR(self, data, iaf=0.02, maxaf=0.2):
@@ -254,6 +259,162 @@ class CandleChart(QtChart.QChart):
       return psar
 
 
+# INDICATORS
+#=======================================================================================
+
+class Indicator(QtChart.QChart):
+   type = None
+   types = ['macd']
+
+   def __init__(self):
+      super(Indicator, self).__init__()
+      self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
+      self.setBackgroundPen(QtGui.QPen(QtGui.QColor(255, 80, 80), 0.5))
+      self.setBackgroundRoundness(0)
+      self.setMargins(QtCore.QMargins(0, 0, 0, 0))
+      self.layout().setContentsMargins(0, 0, 0, 0);
+      self.setContentsMargins(0, 0, 0, 0);
+      self.legend().hide()
+      chartFont = QtGui.QFont(self.font())
+      chartFont.setPixelSize(9)
+      self.setFont(chartFont)
+
+
+   def setIndicator(self, type):
+      if type not in self.types:
+         return
+      if type == 'macd':
+         self.setMACD()
+      self.type = type
+
+
+   def setMACD(self):
+      self.macdLine   = QtChart.QLineSeries()
+      self.macdSignal = QtChart.QLineSeries()
+      #self.macdBars   = QtChart.QBarSeries()
+      #self.macdBarSet = QtChart.QBarSet('')
+      self.addSeries(self.macdLine)
+      self.addSeries(self.macdSignal)
+      #self.addSeries(self.macdBars)
+      self.candlestickSeries = QtChart.QCandlestickSeries()
+      self.candlestickSeries.setIncreasingColor(QtCore.Qt.black)
+      self.candlestickSeries.setDecreasingColor(QtCore.Qt.red)
+      self.addSeries(self.candlestickSeries)
+
+
+   def updateIndicator(self, data, N):
+      if self.type == 'macd':
+         self.updateMACD(data, N)
+
+   def setCandleColors(self, candleSet : QtChart.QCandlestickSet):
+      if candleSet.close() < candleSet.open():
+         candleSet.setPen(QtGui.QPen(QtCore.Qt.red, 1))
+         candleSet.setBrush(QtGui.QBrush(QtCore.Qt.red))
+      else:
+         candleSet.setPen(QtGui.QPen(QtCore.Qt.green, 1))
+         candleSet.setBrush(QtGui.QBrush(QtCore.Qt.black))
+
+   def updateMACD(self, data, N):
+      macdLine, macdSignal, macdBars = self.macd(data)
+      macdLine = macdLine[-N:]
+      macdSignal = macdSignal[-N:]
+      macdBars = macdBars[-N:]
+      print(macdBars)
+
+      for ax in self.macdLine.attachedAxes():
+         self.macdLine.detachAxis(ax)
+      for ax in self.macdSignal.attachedAxes():
+         self.macdSignal.detachAxis(ax)
+      #for ax in self.macdBars.attachedAxes():
+      #   self.macdBars.detachAxis(ax)
+      for ax in self.candlestickSeries.attachedAxes():
+         self.candlestickSeries.detachAxis(ax)
+      for ax in self.axes():
+         self.removeAxis(ax)
+
+      self.macdLine.clear()
+      self.macdSignal.clear()
+      #self.macdBars.clear()  # Qt bug in this call
+      #if self.macdBarSet:
+      #   self.macdBarSet.remove(0, self.macdBarSet.count())
+      #self.macdBarSet.append(macdBars)
+      #self.macdBars.append(self.macdBarSet)
+      if self.candlestickSeries.count() > 0:
+         self.candlestickSeries.remove(self.candlestickSeries.sets())
+
+      candlestickSetList = []
+      for i, bar in enumerate(macdBars):
+         set = None
+         if bar > 0:
+            set = QtChart.QCandlestickSet(0, bar, 0, bar, timestamp=i)
+         else:
+            set = QtChart.QCandlestickSet(0, 0, bar, bar, timestamp=i)
+         self.setCandleColors(set)
+         candlestickSetList.append(set)
+      self.candlestickSeries.append(candlestickSetList)
+
+      for i in range(N):
+         self.macdLine.append(i + 0.5, macdLine[i])
+         self.macdSignal.append(i + 0.5, macdSignal[i])
+
+      ax = QtChart.QValueAxis()
+      ax.setRange(0,N)
+      ax.hide()
+
+      ay = QtChart.QValueAxis()
+      bound = max(abs(min(macdLine)), abs(max(macdLine)))
+      ay.setRange(-bound, bound)
+      ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
+      ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
+      ay.applyNiceNumbers()
+
+      ac = QtChart.QBarCategoryAxis()
+      ac.append( [str(x) for x in range(N)] )
+      ac.hide()
+
+      self.addAxis(ax, QtCore.Qt.AlignBottom)
+      self.addAxis(ac, QtCore.Qt.AlignBottom)
+      self.addAxis(ay, QtCore.Qt.AlignRight)
+      self.macdLine.attachAxis(ax)
+      self.macdLine.attachAxis(ay)
+      self.macdSignal.attachAxis(ax)
+      self.macdSignal.attachAxis(ay)
+      #self.macdBars.attachAxis(ac)
+      #self.macdBars.attachAxis(ay)
+      self.candlestickSeries.attachAxis(ac)
+      self.candlestickSeries.attachAxis(ay)
+
+
+
+
+
+   def sma(self, data, N):
+      cumsum, sma = [0], []
+      for i, x in enumerate(data, 1):
+         cumsum.append(cumsum[i - 1] + x)
+         if i >= N:
+            sma.append((cumsum[i] - cumsum[i - N]) / N)
+      return sma
+
+   def ema(self, data, N):
+      c = 2.0 / (N + 1)
+      ema = [sum(data[:N])/N]  # self.sma(data, N)
+      for val in data[N:]:
+         ema.append( (c * val) + ((1-c) * ema[-1]) )
+      return ema
+
+   def macd(self, data, p1=12, p2=26, ps=9):
+      me1 = self.ema(data, p1)
+      me2 = self.ema(data, p2)
+      me1 = me1[-len(me2):]
+      macdLine   = [me1[i] - me2[i] for i in range(len(me2))]
+      macdSignal = self.ema(macdLine, ps)
+      macdLine = macdLine[-len(macdSignal):]
+      macdBars   = [macdLine[i] - macdSignal[i] for i in range(len(macdSignal))]
+      return macdLine, macdSignal, macdBars
+
+
+
 
 #=======================================================================================
 
@@ -263,16 +424,31 @@ class ChartWidget(QtWidgets.QWidget):
    def __init__(self):
       super(ChartWidget, self).__init__()
 
+      self.setContentsMargins(0,0,0,0)
+
+
       self.mainLayout = QtWidgets.QVBoxLayout(self)
+      self.mainLayout.setSpacing(0)
+      self.mainLayout.setContentsMargins(0,0,0,0)
 
       self.candleGraph = CandleChart()
       chartView = QtChart.QChartView(self.candleGraph)
+      chartView.setContentsMargins(0, 0, 0, 0)
       chartView.setRenderHint(QtGui.QPainter.Antialiasing)
-      self.mainLayout.addWidget(chartView)
+
+      self.macd = Indicator()
+      self.macd.setIndicator('macd')
+      macdView = QtChart.QChartView(self.macd)
+      macdView.setContentsMargins(0,0,0,0)
+      macdView.setRenderHint(QtGui.QPainter.Antialiasing)
+
+      self.mainLayout.addWidget(chartView, stretch=4)
+      self.mainLayout.addWidget(macdView, stretch=1)
+
 
    def setCandlestickData(self, data):
       self.candleGraph.setCandlestickData(data)
-
+      self.macd.updateIndicator([x[4] for x in data], 50)
 
 
 
@@ -319,5 +495,14 @@ if __name__ == '__main__':
    client.connect()
    dispatcher.connect(GUI.updateCandles, sender='bitfinex', signal='candles_BTCUSD')
 
-   app.exec_()
+   try:
+      app.exec_()
+   except TypeError:
+      import traceback
+      traceback.print_exception()
+      traceback.print_stack()
+   except:
+      import sys
+      print("Unexpected error:", sys.exc_info()[0])
+
    client.disconnect()

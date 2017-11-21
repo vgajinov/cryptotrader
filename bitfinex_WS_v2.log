@@ -1,36 +1,36 @@
-17-11 23:15 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-17-11 23:15 bitfinex_websocket INFO     Websocket connection open.
-17-11 23:15 bitfinex_websocket INFO     version 2
-17-11 23:15 bitfinex_websocket INFO     Subscribing to order book ...
-17-11 23:15 bitfinex_websocket INFO     
+21-11 08:34 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+21-11 08:34 bitfinex_websocket INFO     Websocket connection open.
+21-11 08:34 bitfinex_websocket INFO     version 2
+21-11 08:34 bitfinex_websocket INFO     Subscribing to order book ...
+21-11 08:34 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 27588
+ID        : 50578
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-17-11 23:15 bitfinex_websocket INFO     Subscribing to trades ...
-17-11 23:15 bitfinex_websocket INFO     
+21-11 08:34 bitfinex_websocket INFO     Subscribing to trades ...
+21-11 08:34 bitfinex_websocket INFO     
 Subcribed to Trades channel
 ----------------------------------------
-ID        : 213
+ID        : 182
 Pair      : BTCUSD
 
-17-11 23:15 bitfinex_websocket INFO     Subscribing to ticker ...
-17-11 23:15 bitfinex_websocket INFO     
+21-11 08:34 bitfinex_websocket INFO     Subscribing to ticker ...
+21-11 08:34 bitfinex_websocket INFO     
 Subcribed to Ticker channel
 ----------------------------------------
-ID        : 2
+ID        : 3
 Pair      : BTCUSD
 
-17-11 23:15 bitfinex_websocket INFO     Subscribing to candels channel ...
-17-11 23:15 bitfinex_websocket INFO     
+21-11 08:34 bitfinex_websocket INFO     Subscribing to candels channel ...
+21-11 08:34 bitfinex_websocket INFO     
 Subcribed to Candles channel
 ----------------------------------------
-ID        : 3701
+ID        : 6773
 Key       : trade:1m:tBTCUSD
 Pair      : BTCUSD
 
-17-11 23:16 bitfinex_websocket INFO     Connection to bitfinex closed.
+21-11 08:35 bitfinex_websocket INFO     Connection to bitfinex closed.
