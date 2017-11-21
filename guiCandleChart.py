@@ -291,15 +291,12 @@ class Indicator(QtChart.QChart):
    def setMACD(self):
       self.macdLine   = QtChart.QLineSeries()
       self.macdSignal = QtChart.QLineSeries()
-      #self.macdBars   = QtChart.QBarSeries()
-      #self.macdBarSet = QtChart.QBarSet('')
+      self.macdBars = QtChart.QCandlestickSeries()
+      self.macdBars.setIncreasingColor(QtCore.Qt.black)
+      self.macdBars.setDecreasingColor(QtCore.Qt.red)
       self.addSeries(self.macdLine)
       self.addSeries(self.macdSignal)
-      #self.addSeries(self.macdBars)
-      self.candlestickSeries = QtChart.QCandlestickSeries()
-      self.candlestickSeries.setIncreasingColor(QtCore.Qt.black)
-      self.candlestickSeries.setDecreasingColor(QtCore.Qt.red)
-      self.addSeries(self.candlestickSeries)
+      self.addSeries(self.macdBars)
 
 
    def updateIndicator(self, data, N):
@@ -319,30 +316,22 @@ class Indicator(QtChart.QChart):
       macdLine = macdLine[-N:]
       macdSignal = macdSignal[-N:]
       macdBars = macdBars[-N:]
-      print(macdBars)
 
       for ax in self.macdLine.attachedAxes():
          self.macdLine.detachAxis(ax)
       for ax in self.macdSignal.attachedAxes():
          self.macdSignal.detachAxis(ax)
-      #for ax in self.macdBars.attachedAxes():
-      #   self.macdBars.detachAxis(ax)
-      for ax in self.candlestickSeries.attachedAxes():
-         self.candlestickSeries.detachAxis(ax)
+      for ax in self.macdBars.attachedAxes():
+         self.macdBars.detachAxis(ax)
       for ax in self.axes():
          self.removeAxis(ax)
 
       self.macdLine.clear()
       self.macdSignal.clear()
-      #self.macdBars.clear()  # Qt bug in this call
-      #if self.macdBarSet:
-      #   self.macdBarSet.remove(0, self.macdBarSet.count())
-      #self.macdBarSet.append(macdBars)
-      #self.macdBars.append(self.macdBarSet)
-      if self.candlestickSeries.count() > 0:
-         self.candlestickSeries.remove(self.candlestickSeries.sets())
+      if self.macdBars.count() > 0:
+         self.macdBars.remove(self.macdBars.sets())
 
-      candlestickSetList = []
+      macdBarSetList = []
       for i, bar in enumerate(macdBars):
          set = None
          if bar > 0:
@@ -350,8 +339,9 @@ class Indicator(QtChart.QChart):
          else:
             set = QtChart.QCandlestickSet(0, 0, bar, bar, timestamp=i)
          self.setCandleColors(set)
-         candlestickSetList.append(set)
-      self.candlestickSeries.append(candlestickSetList)
+         macdBarSetList.append(set)
+      self.macdBars.append(macdBarSetList)
+      print(macdBarSetList)
 
       for i in range(N):
          self.macdLine.append(i + 0.5, macdLine[i])
@@ -379,10 +369,8 @@ class Indicator(QtChart.QChart):
       self.macdLine.attachAxis(ay)
       self.macdSignal.attachAxis(ax)
       self.macdSignal.attachAxis(ay)
-      #self.macdBars.attachAxis(ac)
-      #self.macdBars.attachAxis(ay)
-      self.candlestickSeries.attachAxis(ac)
-      self.candlestickSeries.attachAxis(ay)
+      self.macdBars.attachAxis(ac)
+      self.macdBars.attachAxis(ay)
 
 
 
