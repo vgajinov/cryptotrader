@@ -1,36 +1,36 @@
-27-11 21:12 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-27-11 21:12 bitfinex_websocket INFO     Websocket connection open.
-27-11 21:12 bitfinex_websocket INFO     version 2
-27-11 21:12 bitfinex_websocket INFO     Subscribing to order book ...
-27-11 21:12 bitfinex_websocket INFO     
+27-11 23:49 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+27-11 23:49 bitfinex_websocket INFO     Websocket connection open.
+27-11 23:49 bitfinex_websocket INFO     version 2
+27-11 23:49 bitfinex_websocket INFO     Subscribing to order book ...
+27-11 23:49 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 1800
+ID        : 18090
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-27-11 21:12 bitfinex_websocket INFO     Subscribing to trades ...
-27-11 21:12 bitfinex_websocket INFO     
+27-11 23:49 bitfinex_websocket INFO     Subscribing to trades ...
+27-11 23:49 bitfinex_websocket INFO     
 Subcribed to Trades channel
 ----------------------------------------
-ID        : 89
+ID        : 2
 Pair      : BTCUSD
 
-27-11 21:12 bitfinex_websocket INFO     Subscribing to ticker ...
-27-11 21:12 bitfinex_websocket INFO     
+27-11 23:49 bitfinex_websocket INFO     Subscribing to ticker ...
+27-11 23:49 bitfinex_websocket INFO     
 Subcribed to Ticker channel
 ----------------------------------------
-ID        : 1
+ID        : 3
 Pair      : BTCUSD
 
-27-11 21:12 bitfinex_websocket INFO     Subscribing to candels channel ...
-27-11 21:12 bitfinex_websocket INFO     
+27-11 23:49 bitfinex_websocket INFO     Subscribing to candels channel ...
+27-11 23:49 bitfinex_websocket INFO     
 Subcribed to Candles channel
 ----------------------------------------
-ID        : 94
+ID        : 3665
 Key       : trade:1m:tBTCUSD
 Pair      : BTCUSD
 
-27-11 21:14 bitfinex_websocket INFO     Connection to bitfinex closed.
+27-11 23:56 bitfinex_websocket INFO     Connection to bitfinex closed.

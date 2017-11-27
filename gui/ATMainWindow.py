@@ -165,7 +165,8 @@ class ATMainWindow(QtWidgets.QMainWindow):
          lastPrice = event.ticker[6]
          self.OrderBookWidget.setLastPrice(lastPrice)
       if event.type() == CandlesUpdateEvent.EVENT_TYPE:
-         pass
+         self.ChartWidget.setData(event.candles)
+         self.ChartWidget.updateChart()
 
    # update OrderBook
    def updateOrderBook(self, bids, asks):
