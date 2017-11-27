@@ -290,7 +290,7 @@ class bitfinexCandles:
          candles[i][2] = candles[i][3]
          candles[i][3] = candles[i][4]
          candles[i][4] = close
-      self.candles = deque(list(reversed(candles))) #, maxlen=100)
+      self.candles = deque(list(reversed(candles)))
       self._publish()
 
    def update(self, candle):

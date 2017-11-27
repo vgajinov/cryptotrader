@@ -6,7 +6,18 @@ import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
 
 
 
+class NumCandlesChanged(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, numCandles):
+      super(NumCandlesChanged, self).__init__(self.EVENT_TYPE)
+      self.numCandles = numCandles
+
+
 class CandleChart(QtChart.QChart):
+   candleData = None
+   numCandlesVisible = 50
+   minCandlesVisible = 20
+   maxCandlesVisible = 200
    minTicks = 5
    maxTicks = 10
    timeframes = [1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 4320, 10080]
@@ -17,6 +28,7 @@ class CandleChart(QtChart.QChart):
 
       # set margins, colors and font
       self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
+      #self.setBackgroundPen(QtGui.QPen(QtGui.QColor(255, 80, 80), 0.5))
       self.setBackgroundRoundness(0)
       self.layout().setContentsMargins(0, 0, 0, 0)
       self.setMargins(QtCore.QMargins(0,0,0,0))
@@ -53,22 +65,32 @@ class CandleChart(QtChart.QChart):
       self.addOverlays()
 
 
+   # set candle data
+   def setCandlestickData(self, data):
+      self.candleData = data
+      self.updateCandleChart()
+
+
    # update candle chart
-   def updateCandleChart(self, timestamp, open, high, low, close):
+   def updateCandleChart(self):
+      data = self.candleData[-self.numCandlesVisible:]
+      linuxTimestamps = [x[0]/1000 for x in data]
+      timestamps = [QtCore.QDateTime.fromMSecsSinceEpoch(x[0]).toString('HH:mm') for x in data]
+      categories = self.extractNiceCategories(linuxTimestamps)
+
       # remove candlestick data
       if self.candlestickSeries.count() > 0:
          self.candlestickSeries.remove(self.candlestickSeries.sets())
 
       # add new candlestick data
-      for i, ts in enumerate(timestamp):
-         set = QtChart.QCandlestickSet(open[i], high[i], low[i], close[i], timestamp=ts)
+      self.candlestickSetList = [QtChart.QCandlestickSet(x[1], x[2], x[3], x[4], timestamp=x[0]) for x in data]
+      for set in self.candlestickSetList:
          self.setCandleColors(set)
-         self.candlestickSeries.append(set)
+      self.candlestickSeries.append(self.candlestickSetList)
 
       # set candlestick time axes (hidden)
       axisXtime = QtChart.QBarCategoryAxis()
-      timestamps = [QtCore.QDateTime.fromMSecsSinceEpoch(x).toString('HH:mm') for x in timestamp]
-      axisXtime.setCategories(timestamps)
+      axisXtime.setCategories([QtCore.QDateTime.fromMSecsSinceEpoch(x[0]).toString('HH:mm') for x in data])
       axisXtime.setGridLineVisible(False)
       axisXtime.hide()
 
@@ -80,8 +102,6 @@ class CandleChart(QtChart.QChart):
       # set visible time axes with selexted time ticks
       axisXticks = QtChart.QCategoryAxis()
       axisXticks.setLabelsPosition(QtChart.QCategoryAxis.AxisLabelsPositionOnValue)
-      linuxTimestamps = [x/1000 for x in timestamp]
-      categories = self.extractNiceCategories(linuxTimestamps)
       for tst in categories:
          axisXticks.append(tst, timestamps.index(tst))
       axisXticks.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
@@ -89,8 +109,8 @@ class CandleChart(QtChart.QChart):
       axisXticks.setStartValue(-1)
 
       # set y axes (prices)
-      maxVal = max(high)
-      minVal = min(low)
+      maxVal = max([x[2] for x in data])
+      minVal = min([x[3] for x in data])
       self.ay = QtChart.QValueAxis()
       self.ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
       self.ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
@@ -119,11 +139,14 @@ class CandleChart(QtChart.QChart):
          self.hoverLine.detachAxis(axis)
       self.hoverLine.attachAxis(self.ay)
 
+      # update overlays
+      self.updateOverlays()
+
 
    # choose ticks for visible time axes
    def extractNiceCategories(self, timestamps):
       # we want to show approximately 5 ticks on the time axes
-      for delta in self.timeframes:  #[self.currTimeframeIndex : ]:
+      for delta in self.timeframes[self.currTimeframeIndex : ]:
          minuteDelta = 60 * delta
          timestamps = [ t for t in timestamps if t%(minuteDelta) == 0 ]
          if len(timestamps) < self.maxTicks:
@@ -139,6 +162,20 @@ class CandleChart(QtChart.QChart):
       else:
          candleSet.setPen(QtGui.QPen(QtCore.Qt.green, 1))
          candleSet.setBrush(QtGui.QBrush(QtCore.Qt.black))
+
+
+   # handle mouse wheel event for zooming
+   def wheelEvent(self, QWheelEvent):
+      if QWheelEvent.delta() < 0:
+         # wheel down - zoom out
+         self.numCandlesVisible = min(self.numCandlesVisible + 10, self.maxCandlesVisible)
+         self.updateCandleChart()
+      else:
+         # wheel up - zoom in
+         self.numCandlesVisible = max(self.numCandlesVisible - 10, self.minCandlesVisible)
+         self.currTimeframeIndex = max(1, self.currTimeframeIndex - 1)
+         self.updateCandleChart()
+      QtGui.QApplication.postEvent(self, NumCandlesChanged(self.numCandlesVisible))
 
 
    # handle hover event by showing hover price line
@@ -176,24 +213,32 @@ class CandleChart(QtChart.QChart):
       self.addSeries(self.psarOverlay)
 
 
-   def updateOverlays(self, open, high, low, close):
+   def updateOverlays(self):
+      if not self.candleData:
+         return
       self.psarOverlay.clear()
       self.psarOverlay.attachAxis(self.axisXvalue)
       self.psarOverlay.attachAxis(self.ay)
-      psarValues = self.parabolicSAR(high, low, close)
-      for i, val in enumerate(psarValues):
-         self.psarOverlay.append(i+0.5, val)
+      psarValues = self.parabolicSAR(self.candleData)
+      psarValues = psarValues[-self.numCandlesVisible:]
+      for i in range(self.numCandlesVisible):
+         self.psarOverlay.append(i+0.5, psarValues[i])
 
 
 
-   def parabolicSAR(self, high, low, close, iaf=0.02, maxaf=0.2):
-      psar = close[:]
+   def parabolicSAR(self, data, iaf=0.02, maxaf=0.2):
+      length = len(data)
+      high = [x[2] for x in data]
+      low = [x[3] for x in data]
+      close = [x[4] for x in data]
+      psar = close[0:len(close)]
+
       bull = True
       af = iaf
       ep = low[0]
       hp = high[0]
       lp = low[0]
-      for i in range(2, len(close)):
+      for i in range(2, length):
          if bull:
             psar[i] = psar[i - 1] + af * (hp - psar[i - 1])
          else:
@@ -230,6 +275,7 @@ class CandleChart(QtChart.QChart):
                   psar[i] = high[i - 1]
                if high[i - 2] > psar[i]:
                   psar[i] = high[i - 2]
+
       return psar
 
 
@@ -269,11 +315,11 @@ class Indicator(QtChart.QChart):
       self.type = type
 
 
-   def updateIndicator(self, open, close, volume, N=-1):
+   def updateIndicator(self, data, N):
       if self.type == 'volume':
-         self.updateVolume(open, close, volume)
+         self.updateVolume(data, N)
       if self.type == 'macd':
-         self.updateMACD(close, N)
+         self.updateMACD(data, N)
 
    def setVolume(self):
       self.volumeBars = QtChart.QCandlestickSeries()
@@ -283,22 +329,27 @@ class Indicator(QtChart.QChart):
       self.addSeries(self.volumeBars)
       self.IndicatorName.setText('Volume')
 
-   def updateVolume(self, open, close, volume):
+   def updateVolume(self, data, N):
       ''' data is a tuple of lists (open, close, volume)'''
+      openPrice = data[0][-N:]
+      closePrice = data[1][-N:]
+      volumeBars = data[2][-N:]
+
+      #print (openPrice, closePrice, volumeBars)
 
       # remove old set
       if self.volumeBars.count() > 0:
          self.volumeBars.remove(self.volumeBars.sets())
 
       # add new volume bar data
-      for i, val in enumerate(volume):
+      for i, bar in enumerate(volumeBars):
          set = None
-         if close[i] > open[i]:
-            set = QtChart.QCandlestickSet(0, val, 0, val, timestamp=i)
+         if closePrice[i] > openPrice[i]:
+            set = set = QtChart.QCandlestickSet(0, bar, 0, bar, timestamp=i)
             set.setPen(QtGui.QPen(QtCore.Qt.green, 1))
             set.setBrush(QtGui.QBrush(QtCore.Qt.black))
          else:
-            set = QtChart.QCandlestickSet(val, val, 0, 0, timestamp=i)
+            set = set = QtChart.QCandlestickSet(bar, 0, bar, 0, timestamp=i)
             set.setPen(QtGui.QPen(QtCore.Qt.red, 1))
             set.setBrush(QtGui.QBrush(QtCore.Qt.red))
          self.volumeBars.append(set)
@@ -311,12 +362,12 @@ class Indicator(QtChart.QChart):
 
       # set hidden x axis for volume bars
       ac = QtChart.QBarCategoryAxis()
-      ac.append( [str(x) for x in range(len(volume))] )
+      ac.append( [str(x) for x in range(N)] )
       ac.hide()
 
       # set y volume axis
       ay = QtChart.QValueAxis()
-      ay.setRange(0, max(volume))
+      ay.setRange(0, max(volumeBars))
       ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
       ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
       ay.setLabelFormat("%-6.2f")
@@ -347,7 +398,7 @@ class Indicator(QtChart.QChart):
 
    def updateMACD(self, data, N):
       ''' data is a list of close prices'''
-      macdLine, macdSignal, macdBars = self.macd(data)[-N-26:]  # assuming p2=26
+      macdLine, macdSignal, macdBars = self.macd(data)
       macdLine = macdLine[-N:]
       macdSignal = macdSignal[-N:]
       macdBars = macdBars[-N:]
@@ -418,6 +469,9 @@ class Indicator(QtChart.QChart):
       self.macdBars.attachAxis(ay)
 
 
+
+
+
    def sma(self, data, N):
       cumsum, sma = [0], []
       for i, x in enumerate(data, 1):
@@ -451,22 +505,13 @@ class Indicator(QtChart.QChart):
 
 
 class ChartWidget(QtWidgets.QWidget):
-   data = None
-   numCandlesVisible = 50
-   minCandlesVisible = 20
-   maxCandlesVisible = 200
-
    def __init__(self):
       super(ChartWidget, self).__init__()
 
       self.setContentsMargins(0,0,0,0)
-      palette = QtGui.QPalette()
-      palette.setColor(QtGui.QPalette.Background, QtCore.Qt.black)
-      self.setAutoFillBackground(True)
-      self.setPalette(palette)
 
       self.mainLayout = QtWidgets.QVBoxLayout(self)
-      self.mainLayout.setSpacing(10)
+      self.mainLayout.setSpacing(0)
       self.mainLayout.setContentsMargins(0,0,0,0)
 
       self.candleGraph = CandleChart()
@@ -488,33 +533,21 @@ class ChartWidget(QtWidgets.QWidget):
       self.mainLayout.addWidget(macdView, stretch=1)
 
 
-   def setData(self, data):
-      self.data = data
-
-   def updateChart(self):
-      data = self.data[-self.numCandlesVisible:]
-      timestamp = [x[0] for x in data]
-      open      = [x[1] for x in data]
-      high      = [x[2] for x in data]
-      low       = [x[3] for x in data]
-      close     = [x[4] for x in data]
-      volume    = [x[5] for x in data]
-      self.candleGraph.updateCandleChart(timestamp, open, high, low, close)
-      self.candleGraph.updateOverlays(open, high, low, close)
-      self.volume.updateIndicator(open, close, volume)
-      # we need entire list of close prices for MACD
-      self.macd.updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
+   def setCandlestickData(self, data):
+      self.candleGraph.setCandlestickData(data)
+      self.volume.updateIndicator(([x[1] for x in data], [x[4] for x in data], [x[5] for x in data]),
+                                   self.candleGraph.numCandlesVisible)
+      self.macd.updateIndicator([x[4] for x in data], self.candleGraph.numCandlesVisible)
 
 
-   # handle mouse wheel event for zooming
-   def wheelEvent(self, QWheelEvent):
-      if QWheelEvent.angleDelta().y() < 0:
-         # wheel down - zoom out
-         self.numCandlesVisible = min(self.numCandlesVisible + 10, self.maxCandlesVisible)
-      else:
-         # wheel up - zoom in
-         self.numCandlesVisible = max(self.numCandlesVisible - 10, self.minCandlesVisible)
-      self.updateChart()
+   def customEvent(self, event):
+      if event.type() == NumCandlesChanged.EVENT_TYPE:
+         self.macd.updateIndicator([x[4] for x in self.candleGraph.candleData], event.numCandles)
+         self.volume.updateIndicator(( [x[1] for x in self.candleGraph.candleData],
+                                       [x[4] for x in self.candleGraph.candleData],
+                                       [x[5] for x in self.candleGraph.candleData] ),
+                                      event.numCandles)
+
 
 
 class CandlesUpdateEvent(QtCore.QEvent):
@@ -535,8 +568,7 @@ class MainWindow(QtGui.QMainWindow):
       self.setCentralWidget(self.CandleGraph)
 
    def plotCandles(self, candles):
-      self.CandleGraph.setData(candles)
-      self.CandleGraph.updateChart()
+      self.CandleGraph.setCandlestickData(candles)
 
    def customEvent(self, event):
       if event.type() == CandlesUpdateEvent.EVENT_TYPE:
@@ -569,5 +601,3 @@ if __name__ == '__main__':
       print("Unexpected error:", sys.exc_info()[0])
 
    client.disconnect()
-
-
