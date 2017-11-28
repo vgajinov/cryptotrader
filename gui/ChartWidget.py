@@ -10,6 +10,7 @@ class ChartWidget(QtWidgets.QWidget):
    numCandlesVisible = 50
    minCandlesVisible = 20
    maxCandlesVisible = 200
+   indicators = {}
 
    def __init__(self):
       super(ChartWidget, self).__init__()
@@ -28,23 +29,41 @@ class ChartWidget(QtWidgets.QWidget):
       chartView = QtChart.QChartView(self.candleGraph)
       chartView.setRenderHint(QtGui.QPainter.Antialiasing)
 
-      self.volume = Indicator()
-      self.volume.setIndicator('volume')
-      volumeView = QtChart.QChartView(self.volume)
-      volumeView.setRenderHint(QtGui.QPainter.Antialiasing)
-
-      self.macd = Indicator()
-      self.macd.setIndicator('macd')
-      macdView = QtChart.QChartView(self.macd)
-      macdView.setRenderHint(QtGui.QPainter.Antialiasing)
+      # self.volume = Indicator()
+      # self.volume.setIndicator('volume')
+      # volumeView = QtChart.QChartView(self.volume)
+      # volumeView.setRenderHint(QtGui.QPainter.Antialiasing)
+      #
+      # self.macd = Indicator()
+      # self.macd.setIndicator('macd')
+      # macdView = QtChart.QChartView(self.macd)
+      # macdView.setRenderHint(QtGui.QPainter.Antialiasing)
 
       self.mainLayout.addWidget(chartView, stretch=4)
-      self.mainLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
-                                                    spacecolor='rgb(0,0,0)', stroke=1, width=3))
-      self.mainLayout.addWidget(volumeView, stretch=1)
-      self.mainLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
-                                                    spacecolor='rgb(0,0,0)', stroke=1, width=3))
-      self.mainLayout.addWidget(macdView, stretch=1)
+      # self.mainLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
+      #                                               spacecolor='rgb(0,0,0)', stroke=1, width=3))
+      # self.mainLayout.addWidget(volumeView, stretch=1)
+      # self.mainLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
+      #                                               spacecolor='rgb(0,0,0)', stroke=1, width=3))
+      # self.mainLayout.addWidget(macdView, stretch=1)
+
+
+   def addIndicator(self, name):
+      newIndicator = Indicator()
+      newIndicator.setIndicator(name)
+      indView = QtChart.QChartView(newIndicator)
+      indView.setRenderHint(QtGui.QPainter.Antialiasing)
+
+      indFrame = QtWidgets.QFrame()
+      indLayout = QtWidgets.QVBoxLayout()
+      indLayout.setSpacing(0)
+      indLayout.setContentsMargins(0,0,0,0)
+      indFrame.setLayout(indLayout)
+      indLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
+                                              spacecolor='rgb(0,0,0)', stroke=1, width=3))
+      indLayout.addWidget(newIndicator)
+      self.mainLayout.addWidget(self.macdFrame, stretch=1)
+      self.indicators[name] = (indFrame, newIndicator)
 
 
    def setData(self, data):
@@ -60,9 +79,15 @@ class ChartWidget(QtWidgets.QWidget):
       volume    = [x[5] for x in data]
       self.candleGraph.updateCandleChart(timestamp, open, high, low, close)
       self.candleGraph.updateOverlays(open, high, low, close)
-      self.volume.updateIndicator(open, close, volume)
-      # we need entire list of close prices for MACD
-      self.macd.updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
+      # self.volume.updateIndicator(open, close, volume)
+      # # we need entire list of close prices for MACD
+      # self.macd.updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
+
+      for name, indicator in self.indicators:
+         if name == 'volume':
+            indicator[1].updateIndicator(open, close, volume)
+         if name == 'macd':
+            indicator[1].updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
 
 
    # handle mouse wheel event for zooming
@@ -79,25 +104,32 @@ class ChartWidget(QtWidgets.QWidget):
 
 
    def showIndicator(self, name):
-      if name == 'MACD':
-         try:
-            self.macd.show()
-         except AttributeError:
-            pass
-            #self.addMACD()
-      if name == 'Volume':
-         try:
-            self.volume.show()
-         except AttributeError:
-            pass
-            #self.addRSA()
+      try:
+         self.indicators[name.lower()][0].show()
+      except:
+         self.addIndicator(name.lower())
+
+      # if name == 'MACD':
+      #    try:
+      #       self.macd.show()
+      #    except AttributeError:
+      #       self.addIndicator('macd')
+      # if name == 'Volume':
+      #    try:
+      #       self.volume.show()
+      #    except AttributeError:
+      #       self.addIndicator('volume')
 
 
    def hideIndicator(self, name):
-      if name == 'MACD':
-         self.macd.hide()
-      if name == 'RSA':
-         self.volume.hide()
+      try:
+         self.indicators[name.lower()][0].hide()
+      except:
+         pass
+      # if name == 'MACD':
+      #    self.indicators[name][0].hide()
+      # if name == 'RSA':
+      #    self.volume.hide()
 
 
 
