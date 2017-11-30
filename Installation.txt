@@ -50,3 +50,19 @@ First try installing through pip:
    pip3 install pyqtgraph
 If that installs older version, go to the website and download debian package:
    http://www.pyqtgraph.org/
+
+Indicators
+===================================
+
+Install TA-lib C++ library:
+    https://www.ta-lib.org/hdr_dw.html
+
+    configure
+    make
+    sudo make install
+
+Install python wrapper for TA-lib
+    pip install TA-lib
+
+If you get errors that some library cannot be found:
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
