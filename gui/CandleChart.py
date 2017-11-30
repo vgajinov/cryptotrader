@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 import numpy as np
+import talib
 
 
 
@@ -176,7 +177,8 @@ class CandleChart(QtChart.QChart):
       self.psarOverlay.clear()
       self.psarOverlay.attachAxis(self.axisXvalue)
       self.psarOverlay.attachAxis(self.ay)
-      psarValues = self.parabolicSAR(high, low, close)
+      #psarValues = self.parabolicSAR(high, low, close)
+      psarValues = talib.SAR(np.array(high), np.array(low), acceleration=0, maximum=0)
       for i, val in enumerate(psarValues):
          self.psarOverlay.append(i+0.5, val)
 

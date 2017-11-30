@@ -157,6 +157,14 @@ import numpy as np
 # WMA                 Weighted Moving Average
 
 
+# implement:
+# RSI, Stochastic RSI, stochastic
+# Money Flow Index, Momentum, Rate of change Percentage, BOP - Balance Of Power,
+# AROON - Aroon, AROONOSC - Aroon Oscillator
+
+# Overlays:
+# Bollinger Bands (BBANDS), EMA - Exponential Moving Average,
+
 # INDICATORS
 #=======================================================================================
 
@@ -272,7 +280,6 @@ class Indicator(QtChart.QChart):
 
    def updateMACD(self, close, N):
       ''' data is a list of close prices'''
-      #macdLine, macdSignal, macdBars = self.macd(close)[-N-26:]  # assuming p2=26
       macdLine, macdSignal, macdBars = talib.MACD(np.array(close), fastperiod=12, slowperiod=26, signalperiod=9)
       macdLine = macdLine[-N:]
       macdSignal = macdSignal[-N:]
@@ -344,29 +351,5 @@ class Indicator(QtChart.QChart):
       self.macdBars.attachAxis(ay)
 
 
-   def sma(self, data, N):
-      cumsum, sma = [0], []
-      for i, x in enumerate(data, 1):
-         cumsum.append(cumsum[i - 1] + x)
-         if i >= N:
-            sma.append((cumsum[i] - cumsum[i - N]) / N)
-      return sma
-
-   def ema(self, data, N):
-      c = 2.0 / (N + 1)
-      ema = [sum(data[:N])/N]  # self.sma(data, N)
-      for val in data[N:]:
-         ema.append( (c * val) + ((1-c) * ema[-1]) )
-      return ema
-
-   def macd(self, data, p1=12, p2=26, ps=9):
-      me1 = self.ema(data, p1)
-      me2 = self.ema(data, p2)
-      me1 = me1[-len(me2):]
-      macdLine   = [me1[i] - me2[i] for i in range(len(me2))]
-      macdSignal = self.ema(macdLine, ps)
-      macdLine = macdLine[-len(macdSignal):]
-      macdBars   = [macdLine[i] - macdSignal[i] for i in range(len(macdSignal))]
-      return macdLine, macdSignal, macdBars
 
 
