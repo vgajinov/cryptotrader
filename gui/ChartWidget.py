@@ -1,7 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 import numpy as np
 from .CandleChart import CandleChart
-from .Indicators import Indicator
+from .Overlays   import *
+from .Indicators import *
 from .Separators import *
 
 
@@ -10,6 +11,7 @@ class ChartWidget(QtWidgets.QWidget):
    numCandlesVisible = 50
    minCandlesVisible = 20
    maxCandlesVisible = 200
+   overlays = {}
    indicators = {}
 
    def __init__(self):
@@ -31,10 +33,19 @@ class ChartWidget(QtWidgets.QWidget):
       self.mainLayout.addWidget(chartView, stretch=4)
 
 
+   def addOverlay(self, name):
+      newOverlay = OverlayFactory.createOverlay(name)
+      newOverlay.addToChart(self.candleGraph)
+      self.overlays[name] = newOverlay
+      self.updateChart()
+
+   def removeOverlay(self, name):
+      self.overlays[name].removeFromChart(self.candleGraph)
+      self.overlays.pop(name)
+
 
    def addIndicator(self, name):
-      newIndicator = Indicator()
-      newIndicator.setIndicator(name)
+      newIndicator = IndicatorFactory.createIndicator(name)
       indView = QtChart.QChartView(newIndicator)
       indView.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -52,39 +63,31 @@ class ChartWidget(QtWidgets.QWidget):
 
    def showIndicator(self, name):
       try:
-         self.indicators[name.lower()][0].show()
+         self.indicators[name][0].show()
       except:
-         self.addIndicator(name.lower())
+         self.addIndicator(name)
+      self.updateChart()
 
 
    def hideIndicator(self, name):
       try:
-         self.indicators[name.lower()][0].hide()
+         self.indicators[name][0].hide()
       except:
          pass
 
 
    def setData(self, data):
-      self.data = data
+      self.data = np.transpose(np.array(data))
 
 
    def updateChart(self):
-      data = self.data[-self.numCandlesVisible:]
-      timestamp = [x[0] for x in data]
-      open      = [x[1] for x in data]
-      high      = [x[2] for x in data]
-      low       = [x[3] for x in data]
-      close     = [x[4] for x in data]
-      volume    = [x[5] for x in data]
-      self.candleGraph.updateCandleChart(timestamp, open, high, low, close)
-      self.candleGraph.updateOverlays(open, high, low, close)
-
-      # update indicators
+      self.candleGraph.updateCandleChart(self.data, self.numCandlesVisible)
+      for name, overlay in self.overlays.items():
+         overlay.update(self.data, self.numCandlesVisible, self.candleGraph)
       for name, indicator in self.indicators.items():
-         if name == 'volume':
-            indicator[1].updateIndicator(open, close, volume)
-         if name == 'macd':
-            indicator[1].updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
+         if indicator[0].isVisible:
+            indicator[1].updateIndicator(self.data, self.numCandlesVisible)
+
 
 
    # handle mouse wheel event for zooming

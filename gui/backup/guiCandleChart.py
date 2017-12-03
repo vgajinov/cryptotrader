@@ -481,10 +481,10 @@ class Indicator(QtChart.QChart):
       return sma
 
    def ema(self, data, N):
-      c = 2.0 / (N + 1)
+      k = 2.0 / (N + 1)
       ema = [sum(data[:N])/N]  # self.sma(data, N)
       for val in data[N:]:
-         ema.append( (c * val) + ((1-c) * ema[-1]) )
+         ema.append( k * val + (1-k) * ema[-1] )
       return ema
 
    def macd(self, data, p1=12, p2=26, ps=9):

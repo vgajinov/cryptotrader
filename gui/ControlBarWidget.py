@@ -1,5 +1,7 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSlot
+from .Overlays import OverlayFactory
+from .Indicators import IndicatorFactory
 
 
 class ControlComboBox(QtWidgets.QComboBox):
@@ -96,7 +98,7 @@ class ControlBarWidget(QtWidgets.QWidget):
          self.ctrlTime.setItemData(i, QtCore.Qt.AlignCenter, QtCore.Qt.TextAlignmentRole)
 
       # Set overlays
-      overlayList = ['Grid', 'EMA', 'SMA', 'Parabolic SAR', 'SomeLongOverlayExample',  'Grid', 'EMA', 'SMA', 'Parabolic SAR', 'SomeLongOverlayExample', 'Grid', 'EMA', 'SMA', 'Parabolic SAR', 'SomeLongOverlayExample']
+      overlayList = OverlayFactory.getOverlayNames()
       self.ctrlOverlay.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
                                                        # which happens only with Fusion style
       self.ctrlOverlay.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
@@ -114,7 +116,7 @@ class ControlBarWidget(QtWidgets.QWidget):
          overlayModel.setItem(i+1, item)
 
       # Set indicators
-      indicatorList = ['MACD', 'RSA', 'StockRSA']
+      indicatorList = IndicatorFactory.getIndicatorNames()
       self.ctrlIndicator.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
                                                          # which happens only with Fusion style
       self.ctrlIndicator.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
@@ -131,7 +133,17 @@ class ControlBarWidget(QtWidgets.QWidget):
          item.setCheckState(QtCore.Qt.Unchecked)
          indicatorModel.setItem(i+1, item)
 
+      self.ctrlOverlay.model().itemChanged.connect(self.overlayChanged)
       self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
+
+
+   #@pyqtSlot(QtGui.QStandardItem)
+   def overlayChanged(self, itemChanged):
+      if self.itemChangedByUser:
+         if (itemChanged.checkState() == QtCore.Qt.Checked):
+            self.myParent.ChartWidget.addOverlay(itemChanged.text())
+         else:
+            self.myParent.ChartWidget.removeOverlay(itemChanged.text())
 
 
    #@pyqtSlot(QtGui.QStandardItem)

@@ -1,10 +1,16 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
+from abc import ABC, abstractmethod
 import numpy as np
 import talib
 
 
+# ------------------------------------------------------------------------------------
+# Candle Chart
+# ------------------------------------------------------------------------------------
 
 class CandleChart(QtChart.QChart):
+   ax = None
+   ay = None
    minTicks = 5
    maxTicks = 10
    timeframes = [1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 4320, 10080]
@@ -48,11 +54,19 @@ class CandleChart(QtChart.QChart):
       self.hoverLine.attachAxis(self.hoverLineAxisX)
 
       # add overlays
-      self.addOverlays()
+      #self.addOverlays()
+      # self.psar = OverlayFactory.createOverlay('ParabolicSAR')
+      # self.psar.addOverlay(self)
 
 
    # update candle chart
-   def updateCandleChart(self, timestamp, open, high, low, close):
+   def updateCandleChart(self, data, N):
+      timestamp = data[0,-N:].tolist()
+      open      = data[1,-N:].tolist()
+      high      = data[2,-N:].tolist()
+      low       = data[3,-N:].tolist()
+      close     = data[4,-N:].tolist()
+
       # remove candlestick data
       if self.candlestickSeries.count() > 0:
          self.candlestickSeries.remove(self.candlestickSeries.sets())
@@ -70,10 +84,10 @@ class CandleChart(QtChart.QChart):
       axisXtime.setGridLineVisible(False)
       axisXtime.hide()
 
-      self.axisXvalue = QtChart.QValueAxis()
-      self.axisXvalue.setRange(0, len(axisXtime))
-      self.axisXvalue.setGridLineVisible(False)
-      self.axisXvalue.hide()
+      self.ax = QtChart.QValueAxis()
+      self.ax.setRange(0, len(axisXtime))
+      self.ax.setGridLineVisible(False)
+      self.ax.hide()
 
       # set visible time axes with selexted time ticks
       axisXticks = QtChart.QCategoryAxis()
@@ -103,8 +117,8 @@ class CandleChart(QtChart.QChart):
 
       # add updated axes
       self.addAxis(axisXtime, QtCore.Qt.AlignTop)
-      self.addAxis(self.axisXvalue, QtCore.Qt.AlignBottom)
       self.addAxis(axisXticks, QtCore.Qt.AlignBottom)
+      self.addAxis(self.ax, QtCore.Qt.AlignBottom)
       self.addAxis(self.ay, QtCore.Qt.AlignRight)
 
       # attach updated axes to data series
@@ -163,69 +177,3 @@ class CandleChart(QtChart.QChart):
       self.hoverLine.show()
 
 
-# OVERLAYS
-#=======================================================================================
-
-
-   def addOverlays(self):
-      self.psarOverlay = QtChart.QScatterSeries()
-      self.psarOverlay.setMarkerSize(1)
-      self.addSeries(self.psarOverlay)
-
-
-   def updateOverlays(self, open, high, low, close):
-      self.psarOverlay.clear()
-      self.psarOverlay.attachAxis(self.axisXvalue)
-      self.psarOverlay.attachAxis(self.ay)
-      #psarValues = self.parabolicSAR(high, low, close)
-      psarValues = talib.SAR(np.array(high), np.array(low), acceleration=0, maximum=0)
-      for i, val in enumerate(psarValues):
-         self.psarOverlay.append(i+0.5, val)
-
-
-
-   def parabolicSAR(self, high, low, close, iaf=0.02, maxaf=0.2):
-      psar = close[:]
-      bull = True
-      af = iaf
-      ep = low[0]
-      hp = high[0]
-      lp = low[0]
-      for i in range(2, len(close)):
-         if bull:
-            psar[i] = psar[i - 1] + af * (hp - psar[i - 1])
-         else:
-            psar[i] = psar[i - 1] + af * (lp - psar[i - 1])
-         reverse = False
-         if bull:
-            if low[i] < psar[i]:
-               bull = False
-               reverse = True
-               psar[i] = hp
-               lp = low[i]
-               af = iaf
-         else:
-            if high[i] > psar[i]:
-               bull = True
-               reverse = True
-               psar[i] = lp
-               hp = high[i]
-               af = iaf
-         if not reverse:
-            if bull:
-               if high[i] > hp:
-                  hp = high[i]
-                  af = min(af + iaf, maxaf)
-               if low[i - 1] < psar[i]:
-                  psar[i] = low[i - 1]
-               if low[i - 2] < psar[i]:
-                  psar[i] = low[i - 2]
-            else:
-               if low[i] < lp:
-                  lp = low[i]
-                  af = min(af + iaf, maxaf)
-               if high[i - 1] > psar[i]:
-                  psar[i] = high[i - 1]
-               if high[i - 2] > psar[i]:
-                  psar[i] = high[i - 2]
-      return psar

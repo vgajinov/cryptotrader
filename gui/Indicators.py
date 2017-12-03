@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 import talib
 import numpy as np
@@ -161,17 +162,44 @@ import numpy as np
 # RSI, Stochastic RSI, stochastic
 # Money Flow Index, Momentum, Rate of change Percentage, BOP - Balance Of Power,
 # AROON - Aroon, AROONOSC - Aroon Oscillator
+# ADOSC - Chaikin A/D Oscillator
 
-# Overlays:
-# Bollinger Bands (BBANDS), EMA - Exponential Moving Average,
 
-# INDICATORS
-#=======================================================================================
+# CCI                 Commodity Channel Index
+
+
+# ------------------------------------------------------------------------------------
+# Indicator Factory
+# ------------------------------------------------------------------------------------
+
+class IndicatorFactory(object):
+   indicators = None
+
+   @staticmethod
+   def createIndicator(name):
+      if not IndicatorFactory.indicators:
+         IndicatorFactory.indicators = {}
+         for ind in Indicator.__subclasses__():
+            IndicatorFactory.indicators[ind.__name__] = ind
+      if name in IndicatorFactory.indicators.keys():
+         return IndicatorFactory.indicators[name]()
+      else:
+         print('Indicator not defined')
+
+   @staticmethod
+   def getIndicatorNames():
+      if not IndicatorFactory.indicators:
+         IndicatorFactory.indicators = {}
+         for ind in Indicator.__subclasses__():
+            IndicatorFactory.indicators[ind.__name__] = ind
+      return sorted(list(IndicatorFactory.indicators.keys()))
+
+
+# ------------------------------------------------------------------------------------
+# Indicator base class
+# ------------------------------------------------------------------------------------
 
 class Indicator(QtChart.QChart):
-   type = None
-   types = ['volume', 'macd']
-
    def __init__(self):
       super(Indicator, self).__init__()
       self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
@@ -189,26 +217,18 @@ class Indicator(QtChart.QChart):
       self.IndicatorName.setOpacity(1.0)
       self.IndicatorName.setPos(0,0)
 
+   @abstractmethod
+   def updateIndicator(self, data, N):
+      pass
 
 
+# ------------------------------------------------------------------------------------
+# Volume
+# ------------------------------------------------------------------------------------
 
-   def setIndicator(self, type):
-      if type not in self.types:
-         return
-      if type == 'volume':
-         self.setVolume()
-      if type == 'macd':
-         self.setMACD()
-      self.type = type
-
-
-   def updateIndicator(self, open, close, volume, N=-1):
-      if self.type == 'volume':
-         self.updateVolume(open, close, volume)
-      if self.type == 'macd':
-         self.updateMACD(close, N)
-
-   def setVolume(self):
+class Volume(Indicator):
+   def __init__(self):
+      super(Volume, self).__init__()
       self.volumeBars = QtChart.QCandlestickSeries()
       self.volumeBars.setIncreasingColor(QtCore.Qt.black)
       self.volumeBars.setDecreasingColor(QtCore.Qt.red)
@@ -216,8 +236,10 @@ class Indicator(QtChart.QChart):
       self.addSeries(self.volumeBars)
       self.IndicatorName.setText('Volume')
 
-   def updateVolume(self, open, close, volume):
-      ''' data is a tuple of lists (open, close, volume)'''
+   def updateIndicator(self, data, N):
+      open   = data[1,-N:].tolist()
+      close  = data[4,-N:].tolist()
+      volume = data[5,-N:].tolist()
 
       # remove old set
       if self.volumeBars.count() > 0:
@@ -263,7 +285,13 @@ class Indicator(QtChart.QChart):
       self.volumeBars.attachAxis(ay)
 
 
-   def setMACD(self):
+# ------------------------------------------------------------------------------------
+# MACD
+# ------------------------------------------------------------------------------------
+
+class MACD(Indicator):
+   def __init__(self):
+      super(MACD, self).__init__()
       self.macdBars = QtChart.QCandlestickSeries()
       self.macdBars.setIncreasingColor(QtCore.Qt.black)
       self.macdBars.setDecreasingColor(QtCore.Qt.red)
@@ -278,9 +306,9 @@ class Indicator(QtChart.QChart):
       self.IndicatorName.setText('MACD')
 
 
-   def updateMACD(self, close, N):
-      ''' data is a list of close prices'''
-      macdLine, macdSignal, macdBars = talib.MACD(np.array(close), fastperiod=12, slowperiod=26, signalperiod=9)
+   def updateIndicator(self, data, N):
+      close  = data[4]
+      macdLine, macdSignal, macdBars = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
       macdLine = macdLine[-N:]
       macdSignal = macdSignal[-N:]
       macdBars = macdBars[-N:]

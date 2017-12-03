@@ -1,7 +1,9 @@
 import sys
 from pydispatch import dispatcher
-import pyqtgraph as pg
+from abc import ABC, abstractmethod
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
+import talib
+import numpy as np
 import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
 
 
@@ -236,10 +238,30 @@ class CandleChart(QtChart.QChart):
 # INDICATORS
 #=======================================================================================
 
-class Indicator(QtChart.QChart):
-   type = None
-   types = ['volume', 'macd']
+class IndicatorFactory(object):
+   indicators = None
 
+   @staticmethod
+   def createIndicator(name):
+      if not IndicatorFactory.indicators:
+         IndicatorFactory.indicators = {}
+         for ind in Indicator.__subclasses__():
+            IndicatorFactory.indicators[ind.__name__] = ind
+      if name in IndicatorFactory.indicators.keys():
+         return IndicatorFactory.indicators[name]()
+      else:
+         print('Indicator not defined')
+
+   @staticmethod
+   def getIndicatorNames():
+      if not IndicatorFactory.indicators:
+         IndicatorFactory.indicators = {}
+         for ind in Indicator.__subclasses__():
+            IndicatorFactory.indicators[ind.__name__] = ind
+      return sorted(list(IndicatorFactory.indicators.keys()))
+
+
+class Indicator(QtChart.QChart):
    def __init__(self):
       super(Indicator, self).__init__()
       self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
@@ -257,33 +279,29 @@ class Indicator(QtChart.QChart):
       self.IndicatorName.setOpacity(1.0)
       self.IndicatorName.setPos(0,0)
 
+   # @abstractmethod
+   # def setIndicator(self, type):
+   #    pass
+
+   @abstractmethod
+   def updateIndicator(self):
+      pass
 
 
-   def setIndicator(self, type):
-      if type not in self.types:
-         return
-      if type == 'volume':
-         self.setVolume()
-      if type == 'macd':
-         self.setMACD()
-      self.type = type
 
-
-   def updateIndicator(self, open, close, volume, N=-1):
-      if self.type == 'volume':
-         self.updateVolume(open, close, volume)
-      if self.type == 'macd':
-         self.updateMACD(close, N)
-
-   def setVolume(self):
+class Volume(Indicator):
+   def __init__(self):
+      super(Volume, self).__init__()
+      self.IndicatorName.setText(self.__class__.__name__)
       self.volumeBars = QtChart.QCandlestickSeries()
       self.volumeBars.setIncreasingColor(QtCore.Qt.black)
       self.volumeBars.setDecreasingColor(QtCore.Qt.red)
       self.volumeBars.setBodyWidth(0.7)
       self.addSeries(self.volumeBars)
-      self.IndicatorName.setText('Volume')
 
-   def updateVolume(self, open, close, volume):
+
+
+   def updateIndicator(self, open, close, volume):
       ''' data is a tuple of lists (open, close, volume)'''
 
       # remove old set
@@ -330,7 +348,11 @@ class Indicator(QtChart.QChart):
       self.volumeBars.attachAxis(ay)
 
 
-   def setMACD(self):
+
+class MACD(Indicator):
+   def __init__(self):
+      super(MACD, self).__init__()
+      self.IndicatorName.setText(self.__class__.__name__)
       self.macdBars = QtChart.QCandlestickSeries()
       self.macdBars.setIncreasingColor(QtCore.Qt.black)
       self.macdBars.setDecreasingColor(QtCore.Qt.red)
@@ -342,12 +364,11 @@ class Indicator(QtChart.QChart):
       self.addSeries(self.macdBars)
       self.addSeries(self.macdLine)
       self.addSeries(self.macdSignal)
-      self.IndicatorName.setText('MACD')
 
 
-   def updateMACD(self, data, N):
+   def updateIndicator(self, close, N):
       ''' data is a list of close prices'''
-      macdLine, macdSignal, macdBars = self.macd(data)[-N-26:]  # assuming p2=26
+      macdLine, macdSignal, macdBars = talib.MACD(np.array(close), fastperiod=12, slowperiod=26, signalperiod=9)
       macdLine = macdLine[-N:]
       macdSignal = macdSignal[-N:]
       macdBars = macdBars[-N:]
@@ -418,31 +439,6 @@ class Indicator(QtChart.QChart):
       self.macdBars.attachAxis(ay)
 
 
-   def sma(self, data, N):
-      cumsum, sma = [0], []
-      for i, x in enumerate(data, 1):
-         cumsum.append(cumsum[i - 1] + x)
-         if i >= N:
-            sma.append((cumsum[i] - cumsum[i - N]) / N)
-      return sma
-
-   def ema(self, data, N):
-      c = 2.0 / (N + 1)
-      ema = [sum(data[:N])/N]  # self.sma(data, N)
-      for val in data[N:]:
-         ema.append( (c * val) + ((1-c) * ema[-1]) )
-      return ema
-
-   def macd(self, data, p1=12, p2=26, ps=9):
-      me1 = self.ema(data, p1)
-      me2 = self.ema(data, p2)
-      me1 = me1[-len(me2):]
-      macdLine   = [me1[i] - me2[i] for i in range(len(me2))]
-      macdSignal = self.ema(macdLine, ps)
-      macdLine = macdLine[-len(macdSignal):]
-      macdBars   = [macdLine[i] - macdSignal[i] for i in range(len(macdSignal))]
-      return macdLine, macdSignal, macdBars
-
 
 
 
@@ -473,13 +469,11 @@ class ChartWidget(QtWidgets.QWidget):
       chartView = QtChart.QChartView(self.candleGraph)
       chartView.setRenderHint(QtGui.QPainter.Antialiasing)
 
-      self.volume = Indicator()
-      self.volume.setIndicator('volume')
+      self.volume = IndicatorFactory.createIndicator('Volume')
       volumeView = QtChart.QChartView(self.volume)
       volumeView.setRenderHint(QtGui.QPainter.Antialiasing)
 
-      self.macd = Indicator()
-      self.macd.setIndicator('macd')
+      self.macd = IndicatorFactory.createIndicator('MACD')
       macdView = QtChart.QChartView(self.macd)
       macdView.setRenderHint(QtGui.QPainter.Antialiasing)
 
@@ -503,7 +497,7 @@ class ChartWidget(QtWidgets.QWidget):
       self.candleGraph.updateOverlays(open, high, low, close)
       self.volume.updateIndicator(open, close, volume)
       # we need entire list of close prices for MACD
-      self.macd.updateIndicator(None, [x[4] for x in self.data], None, self.numCandlesVisible)
+      self.macd.updateIndicator([x[4] for x in self.data], self.numCandlesVisible)
 
 
    # handle mouse wheel event for zooming
@@ -525,7 +519,7 @@ class CandlesUpdateEvent(QtCore.QEvent):
 
 
 
-class MainWindow(QtGui.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
    def __init__(self, width, height):
       super(MainWindow, self).__init__()
 
@@ -543,13 +537,13 @@ class MainWindow(QtGui.QMainWindow):
          self.plotCandles(event.candles)
 
    def updateCandles(self, candles):
-      QtGui.QApplication.postEvent(self, CandlesUpdateEvent(candles))
+      QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(candles))
 
 
 
 if __name__ == '__main__':
-   QtGui.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling);
-   app = QtGui.QApplication(sys.argv)
+   QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling);
+   app = QtWidgets.QApplication(sys.argv)
    GUI = MainWindow(800, 600)
    GUI.show()
 

@@ -1,36 +1,36 @@
-30-11 23:30 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
-30-11 23:30 bitfinex_websocket INFO     Websocket connection open.
-30-11 23:30 bitfinex_websocket INFO     version 2
-30-11 23:30 bitfinex_websocket INFO     Subscribing to order book ...
-30-11 23:30 bitfinex_websocket INFO     
+03-12 21:06 bitfinex_websocket INFO     Connecting to bitfinex websocket API ...
+03-12 21:06 bitfinex_websocket INFO     Websocket connection open.
+03-12 21:06 bitfinex_websocket INFO     version 2
+03-12 21:06 bitfinex_websocket INFO     Subscribing to order book ...
+03-12 21:06 bitfinex_websocket INFO     
 Subcribed to Book channel
 ----------------------------------------
-ID        : 26847
+ID        : 71660
 Pair      : tBTCUSD
 Precision : P0
 Frequency : F0
 Lenght    : 100
 
-30-11 23:30 bitfinex_websocket INFO     Subscribing to trades ...
-30-11 23:30 bitfinex_websocket INFO     
+03-12 21:06 bitfinex_websocket INFO     Subscribing to trades ...
+03-12 21:06 bitfinex_websocket INFO     
 Subcribed to Trades channel
 ----------------------------------------
-ID        : 26720
+ID        : 87
 Pair      : BTCUSD
 
-30-11 23:30 bitfinex_websocket INFO     Subscribing to ticker ...
-30-11 23:30 bitfinex_websocket INFO     
+03-12 21:06 bitfinex_websocket INFO     Subscribing to ticker ...
+03-12 21:06 bitfinex_websocket INFO     
 Subcribed to Ticker channel
 ----------------------------------------
-ID        : 26731
+ID        : 2
 Pair      : BTCUSD
 
-30-11 23:30 bitfinex_websocket INFO     Subscribing to candels channel ...
-30-11 23:30 bitfinex_websocket INFO     
+03-12 21:06 bitfinex_websocket INFO     Subscribing to candels channel ...
+03-12 21:06 bitfinex_websocket INFO     
 Subcribed to Candles channel
 ----------------------------------------
-ID        : 26840
+ID        : 680
 Key       : trade:1m:tBTCUSD
 Pair      : BTCUSD
 
-30-11 23:33 bitfinex_websocket INFO     Connection to bitfinex closed.
+03-12 21:07 bitfinex_websocket INFO     Connection to bitfinex closed.
