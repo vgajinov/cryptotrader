@@ -222,15 +222,9 @@ class OrderBook:
       amount = float(update[2])
       if count > 0:
          if amount > 0:
-            if self.bids.get(price, None):
-               self.bids[price] += amount
-            else:
-               self.bids[price] = amount
+            self.bids[price] = amount
          else:
-            if self.asks.get(price, None):
-               self.asks[price] += amount
-            else:
-               self.asks[price] = amount
+            self.asks[price] = amount
       else:
          if amount == 1:
             if self.bids.get(price, None):
@@ -241,8 +235,8 @@ class OrderBook:
       self._publish()
 
    def _sortBook(self):
-      bids = OrderedDict( reversed(sorted(self.bids.items(), key=lambda t: t[0])) )
-      asks = OrderedDict( reversed(sorted(self.asks.items(), key=lambda t: t[0])) )
+      bids = OrderedDict( sorted(self.bids.items(), key=lambda t: t[0]) )
+      asks = OrderedDict( sorted(self.asks.items(), key=lambda t: t[0]) )
       return bids, asks
 
    def _publish(self):
@@ -263,7 +257,7 @@ class bitfinexTrades:
    # Updates are in the form of a list [ ID, MTS, AMOUNT, PRICE ]
    def __init__(self, name, trades):
       self.name = name
-      self.trades = deque(maxlen=40)
+      self.trades = deque(maxlen=60)
       for trade in trades:
          self.trades.append(trade[1:])
       self._publish()
@@ -287,16 +281,37 @@ class bitfinexTrades:
 
 class bitfinexCandles:
    # Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
+   # Direction of updates in the list is from the most recent to the least recent
    def __init__(self, name, candles):
       self.name = name
-      self.candles = deque(maxlen=40)
-      for candle in candles:
-         self.candles.append(candle)
+      for i in range(len(candles)):
+         # TODO: improve this swapping, i.e. use numpy
+         close = candles[i][2]
+         candles[i][2] = candles[i][3]
+         candles[i][3] = candles[i][4]
+         candles[i][4] = close
+      self.candles = deque(list(reversed(candles)))
       self._publish()
 
    def update(self, candle):
-      self.candles.append(candle)
-      self._publish()
+      close = candle[2]
+      candle[2] = candle[3]
+      candle[3] = candle[4]
+      candle[4] = close
+      last = self.candles.pop()
+      if candle[0] > last[0]:
+         # add new candle
+         self.candles.append(last)
+         self.candles.append(candle)
+         self._publish()
+      elif candle[0] == last[0]:
+         # update last candle
+         self.candles.append(candle)
+         self._publish()
+      else:
+         # bitfinex sometimes also send old candles. We just ignore it.
+         self.candles.append(last)
+
 
    def _publish(self):
       # send updated book to listeners
@@ -337,7 +352,7 @@ class BitfinexWSClient:
 
    def _connect(self):
       logger.info ('Connecting to bitfinex websocket API ...')
-      # websocket.enableTrace(True)
+      #websocket.enableTrace(True)
       self.ws = websocket.WebSocketApp(WEBSOCKET_URI,
                                        on_message=self.on_message,
                                        on_error=self.on_error,
@@ -360,8 +375,11 @@ class BitfinexWSClient:
       # automatically subscribe to default channels
       for pair in SYMBOLS:
          self.subscribeToBook({'pair': pair, 'prec': "P0", 'freq': "F0", 'len': "100"})
+         time.sleep(1)
          self.subscribeToTrades({'pair': pair})
+         time.sleep(1)
          self.subscribeToTicker({'pair': pair})
+         time.sleep(1)
          self.subscribeToCandles({'pair': pair, 'scale': "1m"})
 
    def disconnect(self):
@@ -390,7 +408,7 @@ class BitfinexWSClient:
       event_callback = {
          'info'        : (self.info, [msg]),
          'pong'        : (self.printMsg, ['Pong received.']),
-         'subscribed'  : (self.channelSubcribed, [msg]),
+         'subscribed'  : (self.channelSubscribed, [msg]),
          'unsubscribed': (self.printMsg, ['Unsubscribed from channel.']),
          'error'       : (self.errorMsg, [msg]),
          'hb'          : (self.heartbeatMsg, [msg])
@@ -437,7 +455,7 @@ class BitfinexWSClient:
    def unsubscribe(self):
       pass
 
-   def channelSubcribed(self, msg):
+   def channelSubscribed(self, msg):
       if msg['channel'] == 'book':
          if msg['prec'] == 'R0':
             self.RawBookSubscribed(msg)
@@ -551,12 +569,10 @@ class BitfinexWSClient:
          # snapshot message
          orders = msg[1]
          self.book[chanId] = OrderBook(self.subscriptions[chanId], orders)
-         #for order in orders:
-         #   print ( "{:>12} {:>12}".format(order[0], order[2]) )
       else:
          # update
          self.book[chanId].updateBook(msg[1])
-         #print ( "BookUpdate {:>12} ::: {:>12} {:>12} {:>12}".format(msg[0], msg[1][0], msg[1][1], msg[1][2]) )
+
 
    def getOrderBook(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -624,12 +640,12 @@ class BitfinexWSClient:
       self.updateHandlers[msg['chanId']] = self.RawBookUpdate
       self.subscriptions [msg['chanId']] = 'rawBook_' + msg['symbol'][1:]
 
-      logMsg  = '\nSubcribed to Raw Order Book channel\n'
+      logMsg  = '\nSubscribed to Raw Order Book channel\n'
       logMsg += '-' * 40 + '\n'
       logMsg += 'ID        : ' + str(msg['chanId']) + '\n'
       logMsg += 'Pair      : ' + str(msg['symbol']) + '\n'
       logMsg += 'Precision : ' + str(msg['prec']) + '\n'
-      logMsg += 'Lenght    : ' + str(msg['len']) + '\n'
+      logMsg += 'Length    : ' + str(msg['len']) + '\n'
       logger.info(logMsg)
 
    def RawBookUpdate(self, msg):
@@ -641,13 +657,9 @@ class BitfinexWSClient:
          # snapshot message
          orders = msg[1]
          self.book[chanId] = orders
-         #for order in orders:
-         #   print ( "{:>12} {:>12}".format(order[1], order[2]) )
-         #print
       else:
          # update
          self.book[chanId].append(msg[1])
-         #print ( "RawBookUpdate  {:>12} {:>12}".format(msg[1][1], msg[1][2]) )
 
 
    # Trades
@@ -740,12 +752,10 @@ class BitfinexWSClient:
          # snapshot message
          trades = msg[1]
          self.trades[chanId] = bitfinexTrades(self.subscriptions[chanId], trades)
-         #for trade in trades:
-         #   print ( "{:>12} {:>12} {:>12}".format(trade[1], trade[2], trade[3]) )
       else:
          # update
          self.trades[chanId].update(msg[2])
-         #print ( "TradesUpdate  {:>12} {:>12} {:>12}".format(*msg[2][1:] ) )
+
 
    def getTrades(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -834,11 +844,6 @@ class BitfinexWSClient:
       self.tickers[chanId] = [float(x) for x in msg[1]]
       dispatcher.send(signal=self.subscriptions[chanId], sender='bitfinex', ticker=self.tickers[chanId])
 
-      # fmt = "{:^14}" * (len(msg[1]) - 1)
-      # print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC',
-      #                  'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
-      # print (fmt.format(*msg[1]))
-
 
    def getTicker(self, pair):
       revsubs = dict([reversed(i) for i in self.subscriptions.items()])
@@ -901,9 +906,12 @@ class BitfinexWSClient:
 
    def subscribeToCandles(self, params={}):
       logger.info( 'Subscribing to candels channel ...' )
-      pair  = params.get('pair', "BTCUSD")
-      scale = params.get('scale', "15m")
-      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + scale + ':t' + pair.lower()}))
+      pair      = params.get('pair', "BTCUSD")
+      timeframe = params.get('scale', "15m")
+      valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
+      if timeframe not in valid_timeframes:
+         raise ValueError("timeframe must be any of %s" % valid_timeframes)
+      self.ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + timeframe + ':t' + pair.upper()}))
 
 
    def CandlesSubscribed(self, msg):
@@ -929,6 +937,7 @@ class BitfinexWSClient:
          candles = msg[1]
          self.candles[chanId] = bitfinexCandles(self.subscriptions[chanId], candles)
          #header = ['MTS', 'OPEN', 'CLOSE', 'HIGH', 'LOW', 'VOLUME']
+         #fmt = "{:^14}" * len(header)
          #print( fmt.format(*header) )
          #for candle in candles:
          #   print( fmt.format(*candle) )

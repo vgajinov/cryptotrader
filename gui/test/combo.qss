@@ -1,0 +1,10 @@
+
+
+
+QComboBox QAbstractItemView {
+    subcontrol-origin: content;
+    subcontrol-position: top left;
+    background-origin: content;
+    background-position: top left;
+    selection-background-color: rgb(167,174,186,50);
+}

@@ -1,0 +1,286 @@
+
+* {
+    color: white;
+}
+
+QMainWindow {
+    background-color: rgb(0, 0, 0);
+    color: white;
+}
+
+QMenuBar {
+    background-color: rgb(167,174,186,50);
+    padding: 2px;
+}
+
+
+
+/* ComboBox
+--------------------------------------------------
+*/
+QComboBox {
+    background-color: rgb(0, 0, 0);
+    padding: 2px 10px 2px 10px;
+    font: normal 14px;
+}
+
+/* hide drop-down arrow */
+QComboBox::drop-down {
+    height: 0px;
+    width: 0px;
+    border: none;
+}
+
+QComboBox QAbstractItemView {
+    background-color: rgb(0,0,0);
+    selection-background-color: rgb(96,96,96);
+}
+
+
+
+#exchangeCombo {
+    color: rgb(192,96,255);
+    border: 1px solid rgb(127,0,176);
+    selection-color: rgb(255,255,255);
+    selection-background-color: rgb(127,0,176);
+}
+#exchangeCombo QAbstractItemView {
+    border: 1px solid rgb(127,0,175);
+    background-color: rgb(0,0,0);
+}
+
+
+#pairCombo {
+    color: rgb(64,192,255);
+    border: 1px solid rgb(0,80,176);
+    selection-color: rgb(255,255,255);
+    selection-background-color: rgb(0,80,175);
+}
+#pairCombo QAbstractItemView {
+    border: 1px solid rgb(0,80,176);
+    background-color: rgb(0,0,0);
+}
+
+
+#timeCombo {
+    color: rgb(255,180,0);
+    border: 1px solid rgb(255,127,0);
+    selection-color: rgb(255,255,255);
+    selection-background-color: rgb(255,127,0);
+}
+#timeCombo QAbstractItemView {
+    border: 1px solid rgb(255,127,0);
+    background-color: rgb(0,0,0);
+}
+
+
+
+#overlayCombo {
+    color: rgb(255,255,0);
+    border: 1px solid rgb(255,255,0);
+}
+
+#overlayCombo QAbstractItemView {
+    font: normal 14px;
+    color: rgb(0,0,0);
+    border: 1px solid rgb(255,255,0);
+    background-color: rgb(255,255,0);
+}
+
+
+
+#indicatorCombo {
+    color: rgb(255,255,0);
+    border: 1px solid rgb(255,255,0);
+}
+
+#indicatorCombo QAbstractItemView {
+    font: normal 14px;
+    color: rgb(0,0,0);
+    border: 1px solid rgb(255,255,0);
+    background-color: rgb(255,255,0);
+}
+
+
+
+
+
+#historyPeriodCombo {
+    color: rgb(255,225,225);
+    border: 1px solid rgb(180,0,0);
+    background-color: rgb(100,0,0);
+    height: 12;
+    width: 16;
+    margin-right:0px;
+}
+
+#historyPeriodCombo QAbstractItemView {
+    color: rgb(255,225,225);
+    border: 1px solid rgb(100,0,0);
+    background-color: rgb(20,0,0);
+}
+
+
+
+
+/* LineEdit
+--------------------------------------------------
+*/
+QLineEdit {
+    background-color: rgb(0, 0, 0);
+    border: 1px solid rgb(255,255,255,200);
+    padding: 3px 3px 3px 3px;
+}
+
+QLineEdit#disabledInput {
+    background-color: rgb(0, 0, 0);
+    border: none;
+    padding: 3px 3px 3px 0px;
+    color: rgb(167,174,186,100);
+}
+
+
+/* Labels
+--------------------------------------------------
+*/
+QLabel {
+    color: white;
+}
+
+QLabel#grayedLabel {
+    color: rgb(167,174,186,100);
+}
+
+QLabel#totalLabel {
+    margin: 5px 0px 5px 0px;
+}
+
+
+
+/* Buttons
+--------------------------------------------------
+*/
+QPushButton#buyButton {
+    font: bold 16px;
+    border: 2px solid #00bb00;
+    border-radius: 6px;
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #00bb00, stop: 1 #33bb33);
+}
+
+QPushButton#sellButton {
+    font: bold 16px;
+    border: 2px solid #ff0000;
+    border-radius: 6px;
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #ff0000, stop: 1 #ff3333);
+}
+
+
+
+QPushButton#cancelButton {
+    background-color: rgb(0,0,0);
+    color: red;
+    border-radius: 4px;
+    border: 1px solid rgb(255,0,0);
+    margin-top: 4px;
+    margin-bottom: 4px;
+    margin-right: 3px;
+}
+
+
+/* Table
+--------------------------------------------------
+*/
+QTableWidget {
+    background-color: rgb(0,0,0);
+    alternate-background-color: rgb(167,174,186,10);
+    margin: 0px;
+}
+
+QTableView {
+    border: none;
+}
+
+QTableView::item {
+    background-color: rgb(0,0,0);
+}
+
+QTableView::item:alternate {
+    background: rgb(167,174,186,10);
+}
+
+QTableView::item::selected {
+    background-color: rgb(0,0,0);
+    text-decoration: none;
+    outline: none;
+}
+
+QTableView::item::selected:alternate {
+    background-color: rgb(167,174,186,10);
+    text-decoration: none;
+    outline: none;
+}
+
+
+QHeaderView::section {
+    font: bold;
+    color: rgb(167,174,186,150);
+    background-color: rgb(0,0,0);
+    border: none;
+    height: 25px;
+    border-bottom: 1px solid white;
+}
+
+
+/*
+#historyTable {
+    border-left: 1px solid rgba(167, 174, 186, 50);
+}
+*/
+
+
+
+/* Tabs
+--------------------------------------------------
+*/
+
+QTabWidget {
+    font: bold 13px;
+    background-color: rgb(0,0,0);
+}
+
+
+QTabWidget::pane  {
+    border: 0px solid white;
+    border-top: 1px solid white;
+    padding: 0px;
+}
+
+QTabBar::tab:selected {
+    background-color: rgb(167,174,186,50);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+}
+
+QTabBar::tab:!selected {
+    background-color: rgb(0,0,0);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+    margin-top: 3px;
+}
+
+QTabBar::tab {
+    margin-left: -1px;
+}
+
+QTabBar::tab:first {
+    margin-left: 4px;
+}
+
+
+

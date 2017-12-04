@@ -1,0 +1,344 @@
+OrderBook Numeric Layout
+
+#      askTable = QtGui.QTableWidget(3, 3)
+#      askTable.verticalHeader().setVisible(False)
+#      askTable.horizontalHeader().setVisible(False)
+#      askTable.setShowGrid(False)
+
+      bidTable = pg.TableWidget(False, False)
+      bidTable.verticalHeader().setVisible(False)
+      bidTable.horizontalHeader().setVisible(False)
+      bidTable.setShowGrid(False)
+#
+#      bidTable = QtGui.QTableWidget(3, 3)
+#      bidTable.verticalHeader().setVisible(False)
+#      bidTable.horizontalHeader().setVisible(False)
+#      bidTable.setShowGrid(False)
+#
+#      tList = [[4000, 1, 10], [4001, 2, 12], [4002, 3, 13]]
+#      for i in range(askTable.rowCount()):
+#         for j in range(askTable.columnCount()):
+#            askTable.setItem(i, j , QtGui.QTableWidgetItem(str(tList[i][j])))
+#            bidTable.setItem(i, j , QtGui.QTableWidgetItem(str(tList[i][j])))
+
+#      tList = [[4000, 1, 10], [4001, 2, 12], [4002, 3, 13]]
+#      askTable = pg.TableWidget(3, 3, editable=False, sortable=False)
+#      askTable.verticalHeader().setVisible(False)
+#      askTable.horizontalHeader().setVisible(False)
+#      askTable.setShowGrid(False)
+#
+#      askTable.setData(tList)
+#      bidTable.setData(tList)
+
+
+
+
+    # using TableWidget
+#   def setOrderBookTradesLayout(self, ctOrderBookTradesLayout):
+#      tradesTable = pg.TableWidget(20, 3, editable=False, sortable=False)
+#      tradesTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+#      tradesTable.verticalHeader().setDefaultSectionSize(16)
+#      tradesTable.verticalHeader().setVisible(False)
+#      tradesTable.horizontalHeader().setVisible(False)
+#      tradesTable.setShowGrid(False)
+#      tradesTable.setStyleSheet('padding: 5px;')
+#
+#      tradesTable.setData([[4000, 1.1, 10], [-4001, 2.22, 12], [4002, 3.333, 13]])
+#      for i in range(tradesTable.rowCount()):
+#         priceItem = tradesTable.item(i, 0)
+#         if (int(priceItem.text()) < 0):
+#            priceItem.setText(str(-int(priceItem.text())))
+#            priceItem.setTextColor(QtCore.Qt.red)
+#         else:
+#            priceItem.setTextColor(QtCore.Qt.green)
+#         tradesTable.item(i, 1).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+#         tradesTable.item(i, 2).setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+#
+#      ctOrderBookTradesLayout.addWidget(tradesTable)
+
+
+
+      priceText = ''
+      tradesData = [[4000, 1.1, 10], [-4001, 2.22, 12], [4002, 3.333, 13]]
+      for i in range(len(tradesData)):
+         if (tradesData[i][0] < 0):
+            priceText += '<font color=\"red\">' + str(-tradesData[i][0]) + '</font><br /> '
+         else:
+            priceText += '<font color=\"#00ff00\">' + str(tradesData[i][0]) + '</font><br /> '
+
+      tradesPriceLabel.setText(priceText)
+      tradesAmountLabel = QtGui.QLabel()
+      tradesAmountLabel.setAlignment(QtCore.Qt.AlignRight)
+      tradesAmountLabel.setText('1.23\n2.2334\n3.23')
+      tradesSumLabel = QtGui.QLabel()
+      tradesSumLabel.setAlignment(QtCore.Qt.AlignRight)
+      tradesSumLabel.setText('1.23\n3.46\n5.45')
+
+
+
+
+
+      #qss = open('style.qss', 'r')
+      #style = qss.read()
+      #self.setStyleSheet(style)
+      #qss.close()
+
+      styleFile = 'style.qss'
+      with open(styleFile, "r") as fh:
+         self.setStyleSheet(fh.read())
+
+      #css = QtCore.QFile(':/style.css')
+      #css.open(QtCore.QIODevice.ReadOnly)
+      #if css.isOpen():
+      #   self.setStyleSheet(QtCore.QVariant(css.readAll()).toString())
+      #css.close()
+
+
+
+
+QComboBox::drop-down {
+    background-color: rgb(0, 0, 0);
+
+}
+
+QComboBox::down-arrow {
+    border: 1px solid;
+    border-color: rgb(167,174,186,150);
+    color: rgb(167,174,186,150);
+}
+
+QComboBox::down-arrow:on { /* shift the arrow when popup is open */
+    top: 1px;
+    left: 1px;
+}
+
+
+
+TableView in ComboBox
+-----------------------------------------
+
+   class MyTableModel(QtCore.QAbstractTableModel):
+      def __init__(self, data, parent=None, *args):
+         QtCore.QAbstractTableModel.__init__(self, parent, *args)
+         nr = 5
+         self.data = [data[i*nr:(i+1)*nr] for i in range(int(len(data)/nr)+1)]
+         self.numRows = nr
+
+
+      def rowCount(self, parent):
+         return self.numRows
+
+      def columnCount(self, parent):
+         return len(self.data)
+
+      def data(self, index, role):
+         if not index.isValid():
+            return QtGui.QVariant()
+         elif role != QtGui.Qt.DisplayRole:
+            return QtGui.QVariant()
+         return QtGui.QVariant(self.data[index.row()][index.column()])
+
+
+#self.ctrlPairView = QtGui.QTableView()
+#self.ctrlPairView.setShowGrid(False)
+#self.ctrlPairView.verticalHeader().setVisible(False)
+#self.ctrlPairView.horizontalHeader().setVisible(False)
+#self.ctrlPairView.resizeColumnsToContents()
+
+
+#self.ctrlPairView.setModel(self.MyTableModel(pairList))
+#self.ctrlPair.setView(self.ctrlPairView)
+
+
+
+ListView with Grid
+
+      self.ctrlPairView.setUniformItemSizes(True)
+      self.ctrlPairView.setGridSize(QtCore.QSize(20,20))
+      self.ctrlPairView.setFlow(QtGui.QListView.LeftToRight)
+      self.ctrlPairView.setWrapping(True)
+      self.ctrlPairView.setViewMode(QtGui.QListView.IconMode)
+
+-----------------------------------------
+
+
+Tab History
+
+
+      tableHistoryHeader = ['', 'Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
+      tabHistoryLayout = QtGui.QHBoxLayout(self.tabHistory)
+      tabHistoryControlsLayout = QtGui.QVBoxLayout()
+      self.tabHistoryTable = QtGui.QTableWidget()
+      tabHistoryLayout.addLayout(tabHistoryControlsLayout, stretch=1)
+      tabHistoryLayout.addWidget(self.tabHistoryTable, stretch=20)
+
+      self.tabHistoryTable.setColumnCount(len(tableHistoryHeader))
+      self.tabHistoryTable.setHorizontalHeaderLabels(tableHistoryHeader)
+      self.tabHistoryTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+      self.tabHistoryTable.horizontalHeader().setResizeMode(self.tabHistoryTable.columnCount()-1, QtGui.QHeaderView.ResizeToContents)
+      self.tabHistoryTable.verticalHeader().setVisible(False)
+      self.tabHistoryTable.setShowGrid(False)
+      self.tabHistoryTable.setAlternatingRowColors(True)
+      self.tabHistoryTable.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
+      self.tabHistoryTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+
+
+
+
+
+   class historyHeader(QtGui.QHeaderView):
+
+      def __init__(self, orientation, parent=None):
+         QtGui.QHeaderView.__init__(self, orientation, parent)
+         periodList = ['1d', '3d', '1w', '1m']
+         self.timePeriodCombo = QtGui.QComboBox()
+         self.timePeriodCombo.addItems(periodList)
+         self.timePeriodCombo.setMaxVisibleItems(len(periodList) + 1)
+         for i in range(self.timePeriodCombo.count()):
+            self.timePeriodCombo.setItemData(i, QtCore.Qt.AlignCenter, QtCore.Qt.TextAlignmentRole)
+
+         self.setResizeMode(QtGui.QHeaderView.Stretch)
+         self.setResizeMode(self.count()-1, QtGui.QHeaderView.ResizeToContents)
+
+      def paintSection(self, painter, rect, logicalIndex):
+         painter.save()
+         QtGui.QHeaderView.paintSection(self, painter, rect, logicalIndex)
+         painter.restore()
+
+         if logicalIndex == 0:
+            comboBoxOption = QtGui.QStyleOptionComboBox()
+            comboBoxOption.initFrom(self.timePeriodCombo)
+            comboBoxOption.state |= QtGui.QStyle.State_Enabled;
+            comboBoxOption.editable = False;
+            comboBoxOption.currentText = "CCC"
+            self.style().drawComplexControl(QtGui.QStyle.CC_ComboBox, comboBoxOption, painter);
+            self.style().drawControl(QtGui.QStyle.CE_ComboBoxLabel, comboBoxOption, painter)
+
+
+      def mousePressEvent(self, event):
+         self.updateSection(0)
+         QtGui.QHeaderView.mousePressEvent(self, event)
+
+
+
+      tableHistoryHeader = ['', 'Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
+      self.tabHistory.setColumnCount(len(tableHistoryHeader))
+      header = self.historyHeader(QtCore.Qt.Horizontal, self.tabHistory)
+      self.tabHistory.setHorizontalHeader(header)
+      self.tabHistory.setHorizontalHeaderLabels(tableHistoryHeader)
+      #self.tabHistory.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+      #self.tabHistory.horizontalHeader().setResizeMode(self.tabHistory.columnCount()-1, QtGui.QHeaderView.ResizeToContents)
+      self.tabHistory.verticalHeader().setVisible(False)
+      self.tabHistory.setShowGrid(False)
+      self.tabHistory.setAlternatingRowColors(True)
+      self.tabHistory.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
+      self.tabHistory.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+
+Clicked event
+------------------------------------------------------------
+
+      #self.ctrlIndicator.view().clicked.connect(self.indicatorOnClick)
+
+   @pyqtSlot(int)
+   def indicatorOnClick(self, index):
+      itemClicked = self.ctrlIndicator.view().model().itemFromIndex(index)
+      if (itemClicked.checkState() == QtCore.Qt.Checked):
+         if itemClicked.text() == 'MACD':
+            try:
+               self.macdFrame.show()
+            except AttributeError:
+               self.addMACD()
+
+      else:
+         if itemClicked.text() == 'MACD':
+            self.macdFrame.hide()
+
+
+
+
+TableWidget column resize and width
+-----------------------------------------------------------------
+
+
+      #self.tradesTable.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+
+      #self.tradesTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.Fixed)
+      #self.tradesTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+      #self.tradesTable.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.Fixed)
+
+
+
+
+      #width = self.tradesTable.width() - self.tradesTable.columnWidth(1)
+      #self.tradesTable.horizontalHeader().resizeSection(0, int(0.45*width))
+      #self.tradesTable.horizontalHeader().resizeSection(2, int(0.55*width))
+
+      #self.tradesTable.setColumnWidth(0, int(0.35*self.tradesTable.width()))
+      #self.tradesTable.setColumnWidth(1, int(0.25*self.tradesTable.width()))
+      #self.tradesTable.setColumnWidth(2, int(0.4*self.tradesTable.width()))
+
+
+
+
+
+
+
+
+
+
+
+/*
+/* Tabs
+--------------------------------------------------
+*/
+QTabBar::tab {
+    font: bold 13px;
+}
+
+#mainTabWidget {
+    background-color: rgb(0,0,0);
+}
+
+#placeOrderTabWidget {
+    background-color: rgb(0,0,0);
+}
+
+
+
+/* tradesTabWidget
+--------------------------------------------------
+*/
+#tradesTabWidget::pane  {
+    border: 0px solid white;
+    border-top: 1px solid white;
+    padding: 0px;
+}
+
+#tradesTabBar::tab:selected {
+    background-color: rgb(167,174,186,50);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+}
+
+#tradesTabBar::tab:!selected {
+    background-color: rgb(0,0,0);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+    margin-top: 3px;
+}
+
+#tradesTabBar::tab {
+    margin-left: -1px;
+}
+
+#tradesTabBar::tab:first {
+    margin-left: 4px;
+}
+*/
+
