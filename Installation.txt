@@ -2,7 +2,7 @@ Install Qt5.9
 =================================
 
 Download Qt5.9 setup from this address:
-   https://download.qt.io/official_releases/qt/5.9/5.9.1/qt-opensource-linux-x64-5.9.1.run
+   https://download.qt.io/official_releases/qt/5.9/5.9.2/qt-opensource-linux-x64-5.9.2.run
 
 Follow installation instructions from this page:
    https://wiki.qt.io/Install_Qt_5_on_Ubuntu
@@ -18,14 +18,16 @@ Install PyQt5
 Go to the PyQt website,
    https://pypi.python.org/pypi/PyQt5
 and download wheel file for linux:
-   PyQt5-5.9-5.9.1-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
+   PyQt5-5.9-5.9.2-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
    
 You first need to install SIP:
    pip3 install sip
 This will not work for python version < 3.6
 
 Use pip to install the pyqt module:
-   pip3 install PyQt5-5.9-5.9.1-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
+   pip3 install PyQt5-5.9-5.9.2-cp35.cp36.cp37-abi3-manylinux1_x86_64.whl
+or
+   pip3 install PyQt5==5.9.2
 If you are missing wheel use pip to install it first:
    pip3 install wheel
    
