@@ -2,7 +2,7 @@ Install Qt5.9
 =================================
 
 Download Qt5.9 setup from this address:
-   https://download.qt.io/official_releases/qt/5.9/5.9.0/qt-opensource-linux-x64-5.9.0.run
+   https://download.qt.io/official_releases/qt/5.9/5.9.1/qt-opensource-linux-x64-5.9.1.run
 
 Follow installation instructions from this page:
    https://wiki.qt.io/Install_Qt_5_on_Ubuntu
@@ -66,3 +66,10 @@ Install python wrapper for TA-lib
 
 If you get errors that some library cannot be found:
     export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+Other requirements
+==================
+pip3 install pydispatcher
+pip3 install urllib3
+pip3 install websocket
+pip3 install websocket-client
