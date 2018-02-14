@@ -1,4 +1,5 @@
 **/*.pyc
 *.key
+*.log
 .idea/
 __pycache__

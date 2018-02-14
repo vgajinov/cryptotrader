@@ -327,6 +327,7 @@ class bitfinexCandles:
 # ==========================================================================================
 
 class BitfinexWSClient:
+   name = 'Bitfinex'
    def __init__(self):
       self.thread = None
       self.ws = None
