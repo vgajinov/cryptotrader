@@ -1,18 +1,14 @@
-import os, sys
 import websocket
 import ssl
 import json
-import time
 import traceback
 import logging
-from datetime import datetime
 import threading
 from pydispatch import dispatcher
+from collections import OrderedDict, deque
 
-from collections import OrderedDict
-from collections import deque
-
-from binance_REST import BinanceRestAPI
+from exchanges.exchangeWSClient import ExchangeWSClient
+from exchanges.binance.binanceRESTClient import binanceRESTClient
 
 # set up logging to file
 logging.basicConfig(level=logging.DEBUG,
@@ -227,7 +223,7 @@ class binanceCandles:
 #   Client
 # ==========================================================================================
 
-class BinanceWSClient:
+class BinanceWSClient(ExchangeWSClient):
    name = 'Binance'
    # channel data
    book    = {}
@@ -318,7 +314,7 @@ class BinanceWSClient:
       self.threadData.pop(thread)              # remove the thread data
       socket = self.connections.pop(thread)    # remove connection
       socket.close()
-      # to avoid blocking the parent thread do not call join here
+      # to avoid blocking the parent thread does not call join here
 
 
 
@@ -388,12 +384,12 @@ class BinanceWSClient:
 
       # Get a depth snapshot using the rest api
       # TODO check for errors from rest api
-      initBookData = BinanceRestAPI().orderBook(pair)
+      #initBookData = BinanceRestAPI().orderBook(pair)
+      initBookData = binanceRESTClient(None, None).get_order_book(symbol=pair.upper())
       book = binanceOrderBook('book_' + pair, initBookData['bids'], initBookData['asks'])
       self.book[pair] = book
 
       # subscribe to book. Arguments are update handler and order book object
-      #if self.subscriptions( ('book', pair) ) =
       self._subscribe(stream, self.BookUpdate, book)
       return stream
 
@@ -509,7 +505,7 @@ class BinanceWSClient:
 
       # Get candle snapshot using the rest api
       # TODO rest API will return None in case of error. How should we handle this
-      initCandleData = BinanceRestAPI().candles(pair, timeframe)
+      initCandleData = binanceRESTClient(None, None).get_klines(symbol=pair.upper(), interval=timeframe)
       candles = binanceCandles('candles_' + pair, initCandleData)
       self.candles[pair] = candles
 
@@ -588,33 +584,25 @@ class BinanceWSClient:
       pair = params.get('pair', "BTCUSD")
       pair = pair.lower()
       if pair == 'all':
-         self.subscribeToAllTickers()
-         return
+         stream = '!ticker@arr'
+         if not self.subscriptions.get(stream, None):
+            # subscribe to trade updates. Arguments are update handler and trades object
+            logger.info('Subscribing to all pairs tickers')
+            self._subscribe(stream, self.AllTickersUpdate, 'ticker_all')
+      else:
+         stream = pair + '@ticker'
+         if not self.subscriptions.get(stream, None):
+            # subscribe to trade updates. Arguments are update handler and trades object
+            logger.info('Subscribing to ticker for {} ...'.format(pair.upper()))
+            self._subscribe(stream, self.TickerUpdate, 'ticker_' + pair)
 
-      stream = pair + '@ticker'
-      if self.subscriptions.get(stream, None):
-         return
-
-      logger.info('Subscribing to ticker for {} ...'.format(pair.upper()))
-
-      # subscribe to trade updates. Arguments are update handler and trades object
-      self._subscribe(stream, self.TickerUpdate, 'ticker_' + pair)
       return stream
+
 
    def TickerUpdate(self, name, msg):
       ticker = [msg[key] for key in ['b', 'B', 'a', 'A', 'p', 'P', 'c', 'v', 'h', 'l']]
       dispatcher.send(signal=name, sender='binance', ticker=ticker)
 
-   def subscribeToAllTickers(self):
-      stream = '!ticker@arr'
-      if self.subscriptions.get(stream, None):
-         return
-
-      logger.info('Subscribing to all pairs tickers')
-
-      # subscribe to trade updates. Arguments are update handler and trades object
-      self._subscribe(stream, self.AllTickersUpdate, 'ticker_all')
-      return stream
 
    def AllTickersUpdate(self, name, msg):
       ticker = []

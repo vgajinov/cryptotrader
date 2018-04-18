@@ -1,16 +1,13 @@
-from ..exchangeBase import exchangeBase
-
 import json
 import urllib3
 import urllib.parse
-
-# private query nonce
 import time
-
-# private query signing
 import hashlib
 import hmac
 import base64
+
+from exchanges.exchangeRESTClient import exchangeRESTClient
+
 
 urllib3.disable_warnings()
 
@@ -68,11 +65,10 @@ class _API(object):
       return self._query(urlpath, req, conn, headers)
 
 
-class Kraken(exchangeBase):
+class krakenRESTClient(exchangeRESTClient):
 
    def __init__(self, exchangeName, keyfile=None):
       self.k = _API(keyfile)
-
       super().__init__(exchangeName)
 
 

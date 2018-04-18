@@ -1,29 +1,27 @@
-from exchangeWSClient import ExchangeWSClient
-from binance.binance_Websocket import BinanceWSClient
-from bitfinex.bitfinex_v2_WebSockets import BitfinexWSClient
+from exchanges.WS.api import WSClientAPI
+from exchanges.WS.binance import BinanceWSClient
+from exchanges.WS.bitfinex import BitfinexWSClient
+
 
 
 class ExchangeWSFactory(object):
-   indicators = None
+   exchanges = None
 
    @staticmethod
-   def createClient(name):
-      if not ExchangeWSFactory.indicators:
-         ExchangeWSFactory.getIndicatorNames()
-      if name in ExchangeWSFactory.indicators.keys():
-         return ExchangeWSFactory.indicators[name]()
-      else:
-         print('Indicator not defined')
+   def get_exchanges():
+      if not ExchangeWSFactory.exchanges:
+         ExchangeWSFactory.exchanges = {}
+         for ex in WSClientAPI.__subclasses__():
+            ExchangeWSFactory.exchanges[ex.name()] = ex
+      return sorted(list(ExchangeWSFactory.exchanges.keys()))
 
    @staticmethod
-   def getIndicatorNames():
-      if not ExchangeWSFactory.indicators:
-         ExchangeWSFactory.indicators = {}
-         for ex in ExchangeWSClient.__subclasses__():
-            ExchangeWSFactory.indicators[ex.__name__] = ex
-      return sorted(list(ExchangeWSFactory.indicators.keys()))
+   def create_client(name)-> WSClientAPI:
+      if not ExchangeWSFactory.exchanges:
+         ExchangeWSFactory.get_exchanges()
+      try:
+         return ExchangeWSFactory.exchanges[name]()
+      except KeyError:
+         print('Exchange name not recognized')
+         return None
 
-
-
-ExchangeWSFactory.getIndicatorNames()
-ExchangeWSFactory.createClient('Binance')

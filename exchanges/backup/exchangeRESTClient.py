@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
-class exchangeBase(ABC):
+'''
+This is the base class for REST API clients
+'''
+class exchangeRESTClient(ABC):
    def __init__(self, exchangeName):
       self.exchangeName = exchangeName
       super().__init__()
@@ -8,28 +11,31 @@ class exchangeBase(ABC):
    def __str__(self):
       return self.exchangeName
 
+   #
+   # Public API methods
+   #
+
    @abstractmethod
-   def queryBalance(self):
+   def ticker(self, symbol):
+      pass
+
+
+
+
+   #
+   # Private (authenticated) API methods
+   #
+
+   @abstractmethod
+   def getBalance(self):
       pass
 
    @abstractmethod
-   def queryTicker(self, curr):
+   def placeLimitOrder(self, symbol, volume, price):
       pass
 
    @abstractmethod
-   def buyMkt(self, curr, vol):
-      pass
-   
-   @abstractmethod
-   def sellMkt(self, curr, vol):
-      pass
-
-   @abstractmethod
-   def buyLmt(self, curr, vol, price):
-      pass
-   
-   @abstractmethod
-   def sellLmt(self, curr, vol, price):
+   def placeMarketOrder(self, symbol, volume):
       pass
 
    @abstractmethod
@@ -39,4 +45,3 @@ class exchangeBase(ABC):
    @abstractmethod
    def cancelOrder(self, orderID):
       pass
-

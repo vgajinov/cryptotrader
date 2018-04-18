@@ -14,3 +14,21 @@ EXCHANGE BACKENDS: FACTORY PATTERN:
    2- exchangeFactory.py needs to be updated to detect and return the added exchange
       when requested. Also, to import the new added class.
 
+
+ABOUT PACKAGES AND IMPORTS:
+
+Since we want to run scripts both from the project root folder and from subfolders,
+we need to handle imports correctly. From researching the internet for solutions
+these three methods look the best to me. All of them use only absolute imports which is
+the recomended way of importing in Python3.
+
+1. Give your project a setup.py and use pip install -e . in a virtualenv for this project. This is probably
+   the standard method.
+
+2. Use absolute imports rooted at the test/ directory (i.e. middle column in the table above). This
+   guarantees that running start.py directly will always work. In order to run a2.py directly, run it as an
+   imported module instead of as a script:
+        1) change directories to test/ in the console
+        2) python -m packA.a2
+
+3. Use absolute imports rooted at the test/ directory, and add test/ to the PYTHONPATH environment variable.

@@ -2,10 +2,11 @@ import sys
 from PyQt5 import QtWidgets
 from gui.ATMainWindow import ATMainWindow
 from pydispatch import dispatcher
-import exchanges.bitfinex.bitfinex_v2_WebSockets as bitfinexWS
+from exchanges.exchangeWSFactory import ExchangeWSFactory
 
 
-
+def info(sender, data):
+   print(data)
 
 if __name__ == '__main__':
    app = QtWidgets.QApplication(sys.argv)
@@ -14,12 +15,12 @@ if __name__ == '__main__':
    GUI.show()
 
    # subsribe to the bitfinex OrderBook
-   client = bitfinexWS.BitfinexWSClient()
-   client.connect()
-   dispatcher.connect(GUI.updateOrderBook, sender='bitfinex', signal='book_BTCUSD')
-   dispatcher.connect(GUI.updateCandles, sender='bitfinex', signal='candles_BTCUSD')
-   dispatcher.connect(GUI.updateTrades, sender='bitfinex', signal='trades_BTCUSD')
-   #dispatcher.connect(GUI.updateTicker, sender='bitfinex', signal='ticker_BTCUSD')
+   client = ExchangeWSFactory.create_client('Bitfinex')
+   client.connect(info_handler=info)
+   client.subscribe_ticker('BTCUSD', update_handler=GUI.updateTicker)
+   client.subscribe_order_book('BTCUSD', update_handler=GUI.updateOrderBook)
+   client.subscribe_trades('BTCUSD', update_handler=GUI.updateTrades)
+   client.subscribe_candles('BTCUSD', update_handler=GUI.updateCandles)
 
    app.exec_()
    client.disconnect()

@@ -1,15 +1,12 @@
-import os, sys
 import websocket
 import json
 import time
 import traceback
 import logging
-from datetime import datetime
 from threading import Thread
 from pydispatch import dispatcher
+from collections import OrderedDict, deque
 
-from collections import OrderedDict
-from collections import deque
 
 
 
@@ -17,7 +14,7 @@ from collections import deque
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     datefmt='%d-%m %H:%M',
-                    filename='./bitfinex_WS_v2.log',
+                    filename='./bitfinex_WS.log',
                     filemode='w')
 logger = logging.getLogger('bitfinex_websocket')
 

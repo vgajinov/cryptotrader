@@ -1,7 +1,9 @@
+import os.path
 import unittest
 import warnings
+
 from exchanges import exchangeFactory
-import os.path
+
 
 def ignore_warnings(test_func):
    def do_test(self, *args, **kwargs):

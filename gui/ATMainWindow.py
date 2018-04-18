@@ -169,17 +169,17 @@ class ATMainWindow(QtWidgets.QMainWindow):
          self.ChartWidget.updateChart()
 
    # update OrderBook
-   def updateOrderBook(self, bids, asks):
-      QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(bids,asks))
+   def updateOrderBook(self, data):
+      QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(data['bids'], data['asks']))
 
    # update Trades
-   def updateTrades(self, trades):
-      QtWidgets.QApplication.postEvent(self, TradesUpdateEvent(trades))
+   def updateTrades(self, data):
+      QtWidgets.QApplication.postEvent(self, TradesUpdateEvent(data))
 
    # update Ticker
-   def updateTicker(self, ticker):
-      QtWidgets.QApplication.postEvent(self, TickerUpdateEvent(ticker))
+   def updateTicker(self, data):
+      QtWidgets.QApplication.postEvent(self, TickerUpdateEvent(data))
 
    # update Candles
-   def updateCandles(self, candles):
-      QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(candles))
+   def updateCandles(self, data):
+      QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(data))

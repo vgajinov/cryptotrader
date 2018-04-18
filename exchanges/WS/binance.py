@@ -1,0 +1,437 @@
+import websocket
+import ssl
+import json
+import traceback
+import threading
+from pydispatch import dispatcher
+from collections import OrderedDict, deque
+
+from exchanges.WS.api import *
+from exchanges.REST.binance import BinanceRESTClient
+
+
+
+# ==========================================================================================
+#   Ticker
+# ==========================================================================================
+
+class BinanceTicker(ChannelData):
+   def __init__(self, name):
+      super(BinanceTicker, self).__init__()
+      self.name = name
+
+   def update(self, data):
+      self.data = [float(data[key]) for key in ['b', 'B', 'a', 'A', 'p', 'P', 'c', 'v', 'h', 'l']]
+      self._publish()
+
+   def _publish(self):
+      dispatcher.send(signal=self.name, sender='binance', data=self.data)
+
+
+# ==========================================================================================
+#   All Tickers
+# ==========================================================================================
+
+class BinanceAllTickers(ChannelData):
+   def __init__(self, name):
+      super(BinanceAllTickers, self).__init__()
+      self.name = name
+
+   def update(self, data):
+      self.data = []
+      for tck in data:
+         self.data.append([tck['s']] + [float(tck[key]) for key in ['b', 'B', 'a', 'A', 'p', 'P', 'c', 'v', 'h', 'l']])
+      self._publish()
+
+   def _publish(self):
+      dispatcher.send(signal=self.name, sender='binance', data=self.data)
+
+# ==========================================================================================
+#   OrderBook
+# ==========================================================================================
+
+class BinanceOrderBook(ChannelData):
+   """
+      [ PRICE, COUNT, AMOUNT ]
+      when count > 0 then you have to add or update the price level
+           if amount > 0 then add/update bids
+           if amount < 0 then add/update asks
+      when count = 0 then you have to delete the price level.
+           if amount = 1 then remove from bids
+           if amount = -1 then remove from asks
+   """
+
+   def __init__(self, name, bids, asks):
+      super(BinanceOrderBook, self).__init__()
+      self.name = name
+      self.asks = {}
+      self.bids = {}
+      for bid in bids:
+         price = float(bid[0])
+         amount = float(bid[1])
+         self.bids[price] = amount
+      for ask in asks:
+         price = float(ask[0])
+         amount = float(ask[1])
+         self.asks[price] = -amount
+      self._publish()
+
+   def update(self, bids, asks):
+      for bid in bids:
+         price = float(bid[0])
+         quantity = float(bid[1])
+         if quantity == 0.0:
+            if self.bids.get(price, None):
+               self.bids.pop(price)
+            elif self.asks.get(price, None):
+               self.asks.pop(price)
+         else:
+            self.bids[price] = quantity
+      for ask in asks:
+         price = float(ask[0])
+         quantity = float(ask[1])
+         if quantity == 0.0:
+            if self.bids.get(price, None):
+               self.bids.pop(price)
+            elif self.asks.get(price, None):
+               self.asks.pop(price)
+         else:
+            self.asks[price] = -quantity
+      self._publish()
+
+   def _sortBook(self):
+      bids = OrderedDict(sorted(self.bids.items(), key=lambda t: t[0]))
+      asks = OrderedDict(sorted(self.asks.items(), key=lambda t: t[0]))
+      return bids, asks
+
+   def _publish(self):
+      # send updated book to listeners
+      bids, asks = self._sortBook()
+      dispatcher.send(signal=self.name, sender='binance', data={'bids':bids, 'asks':asks})
+
+
+
+# ==========================================================================================
+#   Trades
+# ==========================================================================================
+
+class BinanceTrades(ChannelData):
+   def __init__(self, name):
+      super(BinanceTrades, self).__init__()
+      self.name = name
+      self.trades = deque(maxlen=TRADE_QUEUE_SIZE)
+      self._publish()
+
+   def update(self, trade):
+      if trade['m']:
+         amount = -float(trade['q'])  # sell
+      else:
+         amount = float(trade['q'])   # buy
+      self.trades.append([ int(trade['T']), amount, float(trade['p']) ])
+      self._publish()
+
+   def _publish(self):
+      # send updated data to listeners
+      dispatcher.send(signal=self.name, sender='binance', data=list(self.trades))
+
+
+
+# ==========================================================================================
+#   Candles
+# ==========================================================================================
+
+class BinanceCandles(ChannelData):
+   # Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
+   # Direction of updates in the list is from the most recent to the least recent
+   def __init__(self, name, candles):
+      super(BinanceCandles, self).__init__()
+      self.name = name
+      self.candles = deque([candle[0:6] for candle in candles])
+      self._publish()
+
+   def update(self, candle):
+      last = self.candles.pop()
+      if candle[0] > last[0]:
+         # add new candle
+         self.candles.append(last)
+         self.candles.append(candle)
+         self._publish()
+      elif candle[0] == last[0]:
+         # update last candle
+         self.candles.append(candle)
+         self._publish()
+      else:
+         self.candles.append(last)
+
+   def _publish(self):
+      # send updated book to listeners
+      dispatcher.send(signal=self.name, sender='binance', data=list(self.candles))
+
+
+
+# ==========================================================================================
+#   Client
+# ==========================================================================================
+
+WEBSOCKET_URI = 'wss://stream.binance.com:9443/ws/'
+REST_URI      = 'https://api.binance.com'
+
+
+class BinanceWSClient(WSClientAPI):
+   def __init__(self):
+      super(BinanceWSClient, self).__init__()
+      self._data = {}           # stream -> data
+      self._subscriptions = {}  # stream -> thread
+      self._connections = {}    # thread -> websocket
+
+   @staticmethod
+   def name():
+      return 'Binance'
+
+   def _connect(self):
+      stream = threading.current_thread().getName()
+      self.logger.info('Connecting to websocket for stream %s' % stream)
+      #websocket.enableTrace(True)
+      self.ws = websocket.WebSocketApp(WEBSOCKET_URI + stream,
+                                       on_message=self._on_message,
+                                       on_error=self._on_error,
+                                       on_close=self._on_close)
+      self.ws.on_open = self._on_open
+      self.ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})  # TODO see if you can solve this using ssl
+      self.logger.info('Thread exit for {}'.format(stream))
+
+   def _reconnect(self):
+      self._connect()
+
+   def _subscribe(self, stream):
+      # start websocket listener thread
+      self.logger.info('Starting a new thread for {}'.format(stream))
+      thread = threading.Thread(target=self._connect, name=stream)  # , args=(stream)
+      self._subscriptions[stream] = thread
+      thread.start()
+
+   def _log_active_threads(self):
+      threads = [thr.getName() for thr in threading.enumerate()]
+      self.logger.info(('ACTIVE THREADS: {}'.format(','.join(threads))))
+
+   # Websocket handlers
+   # ---------------------------------------------------------------------------------
+
+   def _on_open(self, ws):
+      stream = threading.current_thread().getName()
+      self._connections[threading.current_thread()] = ws
+      self.logger.info('Websocket connection open for {}'.format(stream))
+
+   def _on_close(self, ws):
+      stream = threading.current_thread().getName()
+      self.logger.info('Websocket connection closed for {}'.format(stream))
+
+   def _on_error(self, ws, error):
+      self.logger.info('Websocket error:')
+      try:
+         err = json.loads(error)
+         self.logger.info('Error {} : {}'.format(err['code'], err['msg']))
+         dispatcher.send(signal='info', sender='binance', data={'error': err['msg]']})
+      except:
+         self.logger.info(error)
+         dispatcher.send(signal='info', sender='binance', data={'error': error})
+
+
+   def _on_message(self, ws, message):
+      # Websocket client returns message as string. Convert it to json
+      msg = json.loads(message)
+      try:
+         self._channel_update(msg)
+      except Exception as inst:
+         self.logger.info(type(inst))              # the exception instance
+         self.logger.info(inst)                    # __str__ allows args to be printed directly
+         self.logger.info(traceback.format_exc())
+
+
+   def _channel_update(self, msg):
+      stream = threading.current_thread().getName()
+      # TICKER
+      if 'ticker' in stream:
+         self._data[stream].update(msg)
+      # ORDER BOOK
+      elif 'depth' in stream:
+         self._data[stream].update(bids=msg['b'], asks=msg['a'])
+      # TRADES
+      elif 'trade' in stream:
+         self._data[stream].update(msg)
+      # CANDLES
+      elif 'kline' in stream:
+         self._data[stream].update([msg['k']['t'], msg['k']['o'], msg['k']['h'],
+                                    msg['k']['l'], msg['k']['c'], msg['k']['v']])
+      else:
+         self.logger.info('Update not handled for stream {}'.format(stream))
+         self.logger.info('Message:\n{}'.format(msg))
+
+
+   # Public interface methods
+   # ---------------------------------------------------------------------------------
+
+   def connect(self, info_handler=None):
+      # register a handler for recieving info and error messages from websocket thread
+      self._info_handler = info_handler
+      dispatcher.connect(info_handler, signal='info', sender='binance')
+
+   def disconnect(self):
+      subscriptions = self._subscriptions.copy()
+      for stream, thread in subscriptions.items():
+         self.unsubscribe(stream)
+         thread.join()
+
+      if self._info_handler is not None:
+         dispatcher.disconnect(self._info_handler, signal='info', sender='binance')
+      for d in dispatcher.getAllReceivers(sender='binance'):
+         d.disconnect()
+
+
+   def subscribe(self, channel, **kwargs):
+      if channel == 'ticker':
+         return self.subscribe_ticker(**kwargs)
+      elif channel == 'book':
+         return self.subscribe_book(**kwargs)
+      elif channel == 'trades':
+         return self.subscribe_trades(**kwargs)
+      elif channel == 'candles':
+         return self.subscribe_candles(**kwargs)
+      else:
+         return None
+
+   def unsubscribe(self, stream, update_handler=None):
+      if update_handler is not None:
+         try:
+            self.logger.info('Removing listener for %s ...' % stream)
+            dispatcher.disconnect(update_handler, signal=stream, sender='binance')
+         except dispatcher.errors.DispatcherKeyError as e:
+            self.logger.info(e)
+
+      # unsubscribe if no one is listening
+      if dispatcher.getReceivers(sender='binance', signal=stream) == []:
+         self.logger.info('Unsubscribing from %s ...' % stream)
+         try:
+            self._data.pop(stream)                    # remove data object
+            thread = self._subscriptions.pop(stream)  # remove subscription
+            socket = self._connections.pop(thread)    # remove connection
+            socket.close()                            # this will terminate the thread
+            self.logger.info('Unsubscribed from %s' % stream)
+            # parent thread does not call join here to avoid blocking
+         except KeyError:
+            self.logger.info('No subscription for stream %s' % stream)
+         except dispatcher.errors.DispatcherKeyError as e:
+            self.logger.info(e)
+
+
+   # Channels
+   # ---------------------------------------------------------------------------------
+
+   def _publish_channel_data(self, stream):
+      try:
+         chanId = self._data[stream]
+         self._data[chanId].publish()
+      except KeyError:
+         pass
+
+
+   def subscribe_ticker(self, symbol, update_handler=None):
+      stream = symbol.lower() + '@ticker'
+
+      if update_handler is not None:
+         dispatcher.connect(update_handler, signal=stream, sender='binance')
+
+      if self._subscriptions.get(stream, None) is None:
+         self.logger.info('Subscribing to ticker for {} ...'.format(symbol.upper()))
+         self._data[stream] = BinanceTicker(stream)
+         self._subscribe(stream)
+      else:
+         self.logger.info('Already subscribed to %s candles' % symbol.lower())
+         self._publish_channel_data(stream)
+
+      return stream
+
+
+   def subscribe_all_tickers(self, update_handler=None):
+      stream = '!ticker@arr'
+
+      if update_handler is not None:
+         dispatcher.connect(update_handler, signal=stream, sender='binance')
+
+      if self._subscriptions.get(stream, None) is None:
+         self.logger.info('Subscribing to all pairs tickers')
+         self._data[stream] = BinanceAllTickers(stream)
+         self._subscribe(stream)
+      else:
+         self.logger.info('Already subscribed to all tickers')
+         self._publish_channel_data(stream)
+
+      return stream
+
+
+   def subscribe_order_book(self, symbol, update_handler=None, **kwargs):
+      symbol = symbol.lower()
+      stream = symbol + '@depth'
+
+      if update_handler is not None:
+         dispatcher.connect(update_handler, signal=stream, sender='binance')
+
+      if self._subscriptions.get(stream, None) is None:
+         self.logger.info('Subscribing to order book for {} ...'.format(symbol))
+         # Get a depth snapshot using the rest api
+         initBookData = BinanceRESTClient().order_book(symbol)
+         if initBookData is None:
+            initBookData = {'bids':[], 'asks':[]}
+         self._data[stream] = BinanceOrderBook(stream, initBookData['bids'], initBookData['asks'])
+         self._subscribe(stream)
+      else:
+         self.logger.info('Already subscribed to %s book' % symbol)
+         self._publish_channel_data(stream)
+
+      return stream
+
+
+   def subscribe_trades(self, symbol, update_handler=None):
+      symbol = symbol.lower()
+      stream = symbol + '@trade'
+
+      if update_handler is not None:
+         dispatcher.connect(update_handler, signal=stream, sender='binance')
+
+      if self._subscriptions.get(stream, None) is None:
+         self.logger.info('Subscribing to trades for {} ...'.format(symbol))
+         self._data[stream] = BinanceTrades(stream)
+         self._subscribe(stream)
+      else:
+         self.logger.info('Already subscribed to %s trades' % symbol)
+         self._publish_channel_data(stream)
+
+      return stream
+
+
+   def subscribe_candles(self, symbol, interval='1m', update_handler=None):
+      valid_intervals = ['1m', '3m', '5m', '15m', '30m', '1h', '2h',
+                         '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']
+      if interval not in valid_intervals:
+         raise ValueError("interval must be any of %s" % valid_intervals)
+
+      stream = symbol.lower() + '@kline_' + interval
+
+      if update_handler is not None:
+         dispatcher.connect(update_handler, signal=stream, sender='binance')
+
+      if self._subscriptions.get(stream, None) is None:
+         self.logger.info('Subscribing to candles for {} - {} ...'.format(symbol.upper(), interval))
+         # Get candle snapshot using the rest api
+         initCandleData = BinanceRESTClient().candles(symbol.lower(), interval=interval)
+         if initCandleData is None:
+            initCandleData = []
+         self._data[stream] = BinanceCandles(stream, initCandleData)
+         self._subscribe(stream)
+      else:
+         self.logger.info('Already subscribed to %s candles' % symbol)
+         self._publish_channel_data(stream)
+
+      return stream
+
+
