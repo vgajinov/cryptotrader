@@ -16,11 +16,16 @@ class WSClientAPI(ABC):
       # create the logger
       self.logger = logging.getLogger(__name__)
       self.logger.setLevel(logging.DEBUG)
-      logger_handler = logging.FileHandler(self.__class__.__name__ + '.log')
-      logger_handler.setLevel(logging.DEBUG)
-      logger_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s', datefmt='%d-%m %H:%M:%S')
-      logger_handler.setFormatter(logger_formatter)
-      self.logger.addHandler(logger_handler)
+      self.logger_handler = logging.FileHandler(self.__class__.__name__ + '.log')
+      self.logger_handler.setLevel(logging.DEBUG)
+      self.logger_formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s', datefmt='%d-%m %H:%M:%S')
+      self.logger_handler.setFormatter(self.logger_formatter)
+      self.logger.addHandler(self.logger_handler)
+
+   def _stop_logger(self):
+      self.logger.removeHandler(self.logger_handler)
+      self.logger = None
+
 
    #@staticmethod
    @abstractmethod

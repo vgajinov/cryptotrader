@@ -1,5 +1,4 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtCore import pyqtSlot
 from .Overlays import OverlayFactory
 from .Indicators import IndicatorFactory
 
@@ -22,7 +21,31 @@ class ControlComboBox(QtWidgets.QComboBox):
       # (note that it uses global positioning, rather than relative to combobox)
       popup.move(popup.x(), self.mapToGlobal(self.frameGeometry().topLeft()).y() + self.height() - 5 )
       itemHeight = self.view().visualRect(self.model().index(1,0)).height()
-      popup.setFixedHeight(self.count() * (itemHeight - 1))
+      popup.setMinimumHeight((self.count()-1) * (itemHeight))
+
+
+
+class CheckableControlComboBox(QtWidgets.QComboBox):
+   def __init__(self):
+      super(CheckableControlComboBox, self).__init__()
+
+   def showPopup(self):
+      super(CheckableControlComboBox, self).showPopup()
+      popup = self.findChild(QtWidgets.QFrame)
+      # set popup position bellow combobox
+      popup.move(popup.x(), self.mapToGlobal(self.frameGeometry().topLeft()).y() + self.height() - 5 )
+
+   def resizeEvent(self, QResizeEvent):
+      fontSize = self.font().pixelSize()
+      rowHeight = fontSize + 10
+      rowWidth = 1.2 * self.view().sizeHintForColumn(0)
+      self.view().setResizeMode(QtWidgets.QListView.Adjust)
+      self.view().setMinimumWidth(rowWidth)
+
+      self.model().blockSignals(True)
+      for i in range(self.model().rowCount())[1:]:
+         self.setItemData(i, QtCore.QSize(rowWidth, rowHeight), QtCore.Qt.SizeHintRole)
+      self.model().blockSignals(False)
 
 
 class ControlBarWidget(QtWidgets.QWidget):
@@ -31,7 +54,6 @@ class ControlBarWidget(QtWidgets.QWidget):
    def __init__(self, parent):
       super(ControlBarWidget, self).__init__()
 
-      self.myParent = parent
       mainLayout = QtWidgets.QHBoxLayout(self)
       mainLayout.setContentsMargins(0,0,0,0)
       mainLayout.setSpacing(0)
@@ -39,12 +61,12 @@ class ControlBarWidget(QtWidgets.QWidget):
       ctrlRightLayout = QtWidgets.QHBoxLayout()
 
       self.ctrlExchange = ControlComboBox()
-      self.ctrlExchange.setObjectName('exchangeCombo')
       self.ctrlExchange.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+      self.ctrlExchange.setObjectName('exchangeCombo')
 
       self.ctrlPair = ControlComboBox()
-      self.ctrlPair.setObjectName('pairCombo')
       self.ctrlPair.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+      self.ctrlPair.setObjectName('pairCombo')
 
       self.ctrlTime = ControlComboBox()
       self.ctrlTime.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
@@ -62,11 +84,11 @@ class ControlBarWidget(QtWidgets.QWidget):
       ctrlLeftLayout.setContentsMargins(5,5,5,5)
       ctrlLeftLayout.setAlignment(QtCore.Qt.AlignLeft)
 
-      self.ctrlOverlay = ControlComboBox()
+      self.ctrlOverlay = CheckableControlComboBox()
       self.ctrlOverlay.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlOverlay.setObjectName('overlayCombo')
 
-      self.ctrlIndicator = ControlComboBox()
+      self.ctrlIndicator = CheckableControlComboBox()
       self.ctrlIndicator.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlIndicator.setObjectName('indicatorCombo')
 
@@ -84,24 +106,24 @@ class ControlBarWidget(QtWidgets.QWidget):
 
    def setControlsData(self):
       # Set exchange list
-      exchangeList = ['Bitfinex', 'Kraken', 'Binance']
+      exchangeList = ['EXCHANGE']
       self.ctrlExchange.addItems(exchangeList)
 
       # Set pair list
-      pairList = ['BTCUSD', 'ETHBTC', 'DASHBTC', 'BCHBTC', 'ETCBTC', 'RPMBTC', 'ETHUSD', 'IOTABTC']
+      pairList = ['PAIR']
       self.ctrlPair.addItems(pairList)
+      self.ctrlPair.setEnabled(False)
 
       # Set time spans
-      timeList = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '3d', '1w']
+      timeList = ['TIME']
       self.ctrlTime.addItems(timeList)
-      for i in range(self.ctrlTime.count()):
-         self.ctrlTime.setItemData(i, QtCore.Qt.AlignCenter, QtCore.Qt.TextAlignmentRole)
+      self.ctrlTime.setEnabled(False)
 
       # Set overlays
       overlayList = OverlayFactory.getOverlayNames()
       self.ctrlOverlay.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
                                                        # which happens only with Fusion style
-      self.ctrlOverlay.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+
       overlayModel = self.ctrlOverlay.model()
       # set the sticky name 'Overlay' as the first item and hide it
       item = QtGui.QStandardItem('Overlays')
@@ -119,7 +141,6 @@ class ControlBarWidget(QtWidgets.QWidget):
       indicatorList = IndicatorFactory.getIndicatorNames()
       self.ctrlIndicator.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
                                                          # which happens only with Fusion style
-      self.ctrlIndicator.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       indicatorModel = self.ctrlIndicator.model()
       # set the sticky name 'Indicator' as the first item and hide it
       item = QtGui.QStandardItem('Indicators')
@@ -133,55 +154,63 @@ class ControlBarWidget(QtWidgets.QWidget):
          item.setCheckState(QtCore.Qt.Unchecked)
          indicatorModel.setItem(i+1, item)
 
+      self.ctrlExchange.currentTextChanged.connect(self.exchangeListChanged)
+      self.ctrlPair.currentTextChanged.connect(self.pairListChanged)
+      self.ctrlTime.currentTextChanged.connect(self.timeListChanged)
       self.ctrlOverlay.model().itemChanged.connect(self.overlayChanged)
       self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
 
 
-   #@pyqtSlot(QtGui.QStandardItem)
+   def exchangeListChanged(self, currItem):
+      self.parent().exchangeChanged(currItem)
+      self.ctrlPair.setEnabled(True)
+
+
+   def pairListChanged(self, currItem):
+      self.ctrlTime.setEnabled(True)
+      self.parent().pairChanged(currItem)
+
+   def timeListChanged(self, currItem):
+      self.parent().intervalChanged(currItem)
+
    def overlayChanged(self, itemChanged):
       if self.itemChangedByUser:
          if (itemChanged.checkState() == QtCore.Qt.Checked):
-            self.myParent.ChartWidget.addOverlay(itemChanged.text())
+            self.parent().ChartWidget.addOverlay(itemChanged.text())
          else:
-            self.myParent.ChartWidget.removeOverlay(itemChanged.text())
+            self.parent().ChartWidget.removeOverlay(itemChanged.text())
 
 
-   #@pyqtSlot(QtGui.QStandardItem)
    def indicatorChanged(self, itemChanged):
       if self.itemChangedByUser:
          if (itemChanged.checkState() == QtCore.Qt.Checked):
-            self.myParent.ChartWidget.showIndicator(itemChanged.text())
+            self.parent().ChartWidget.showIndicator(itemChanged.text())
          else:
-            self.myParent.ChartWidget.hideIndicator(itemChanged.text())
-
-
-   def resizeEvent(self, QResizeEvent):
-      self.itemChangedByUser = False
-
-      # common for all comboboxes
-      fontSize = self.ctrlOverlay.font().pixelSize()
-
-      # set the Overlay combobox popup size
-      rowHeight = fontSize + 10
-      rowWidth = 1.2*self.ctrlOverlay.view().sizeHintForColumn(0)
-      self.ctrlOverlay.view().setMinimumWidth(rowWidth)
-      self.ctrlOverlay.view().setMinimumHeight(rowHeight * (self.ctrlOverlay.model().rowCount()-1))
-      for i in range(self.ctrlOverlay.model().rowCount())[1:]:
-         #self.ctrlOverlay.model().setData(self.ctrlOverlay.model().index(i, 0), QtCore.QSize(200, 30), QtCore.Qt.SizeHintRole)
-         self.ctrlOverlay.setItemData(i, QtCore.QSize(rowWidth, rowHeight), QtCore.Qt.SizeHintRole)
-
-
-      # set the Indicator combobox popup size
-      rowHeight = fontSize + 10
-      rowWidth = 1.2*self.ctrlIndicator.view().sizeHintForColumn(0)
-      self.ctrlIndicator.view().setMinimumWidth(rowWidth)
-      self.ctrlIndicator.view().setMinimumHeight(rowHeight * (self.ctrlIndicator.model().rowCount() - 1))
-      self.ctrlIndicator.setItemData(0, QtCore.QSize(rowWidth, 0), QtCore.Qt.SizeHintRole)
-      for i in range(self.ctrlIndicator.model().rowCount())[1:]:
-         self.ctrlIndicator.setItemData(i, QtCore.QSize(rowWidth, rowHeight), QtCore.Qt.SizeHintRole)
-
-      self.itemChangedByUser = True
-
-      # propagate event
-      super(ControlBarWidget, self).resizeEvent(QResizeEvent)
+            self.parent().ChartWidget.hideIndicator(itemChanged.text())
       
+
+
+   # ------------------------------------------------------------------------------------
+   # Public methods
+   # ------------------------------------------------------------------------------------
+
+   def setExchangeList(self, exchangeList):
+      self.ctrlExchange.blockSignals(True)
+      self.ctrlExchange.view().setRowHidden(0, True)
+      self.ctrlExchange.addItems(exchangeList)
+      self.ctrlExchange.blockSignals(False)
+
+   def setPairList(self, pairList):
+      self.ctrlPair.blockSignals(True)
+      self.ctrlPair.clear()
+      self.ctrlPair.addItems(['PAIR'] + pairList)
+      self.ctrlPair.view().setRowHidden(0, True)
+      self.ctrlTime.setEnabled(False)
+      self.ctrlPair.blockSignals(False)
+
+   def setIntervalList(self, intervalList):
+      self.ctrlTime.blockSignals(True)
+      self.ctrlTime.clear()
+      self.ctrlTime.addItems(['TIME'] + intervalList)
+      self.ctrlTime.view().setRowHidden(0, True)
+      self.ctrlTime.blockSignals(False)

@@ -32,7 +32,7 @@ class CustomTableWidget(QtWidgets.QTableWidget):
 
 
    def fitDataAndColumns(self):
-      if self.tableData == None:
+      if self.tableData == None or self.tableData == []:
          return
 
       # find the string with maximum length for each column and total length of all max strings
@@ -178,10 +178,19 @@ class OrderBookWidget(QtWidgets.QWidget):
       bidAmounts = [item[1] for item in bidItems]
 
       # find the medium price and lower and upper bounds
-      midPrice = bidPrices[-1] + (askPrices[0] - bidPrices[-1]) / 2
-      bound = min(limit * midPrice, max(midPrice - bidPrices[-minPoints], askPrices[minPoints] - midPrice))
-      lowerBound = midPrice - bound
-      upperBound = midPrice + bound
+      try:
+         midPrice = bidPrices[-1] + (askPrices[0] - bidPrices[-1]) / 2
+         # bound = min(limit * midPrice, max(midPrice - bidPrices[-minPoints], askPrices[minPoints] - midPrice))
+         bound = limit * midPrice
+         lowerBound = midPrice - bound
+         upperBound = midPrice + bound
+      except IndexError as e:
+         print(e)
+         print('minPoints = ', minPoints)
+         print('len(bids) = ', len(bids))
+         print('len(asks) = ', len(asks))
+         return
+
 
       # purge bids and asks list of excessive items
       for i in range(len(bidPrices)):
@@ -331,6 +340,8 @@ class OrderBookWidget(QtWidgets.QWidget):
 
    # set OrderBook trades data
    def setOrderBookTradesData(self, tradesData):
+      if tradesData == []:
+         return
       self.tradesData = list(reversed(tradesData))
       priceStrings = ['{:.4f}'.format(x[2]) for x in self.tradesData]
       amountStrings = ['{:.4f}'.format(abs(x[1])) for x in self.tradesData]

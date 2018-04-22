@@ -210,6 +210,10 @@ class BinanceRESTClient(RESTClientAPI):
    def symbols(self):
       return self._public_query('/api/v1/exchangeInfo')
 
+   @classmethod
+   def candle_intervals(self):
+      return ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']
+
    @return_api_response(fmt.ticker, log)
    def ticker(self, pair, **kwargs):
       return self._public_query('/api/v1/ticker/24hr?symbol=%s' % pair.upper(), params=kwargs)
@@ -228,8 +232,7 @@ class BinanceRESTClient(RESTClientAPI):
 
    @return_api_response(fmt.candles, log)
    def candles(self, pair, interval='1m', **kwargs):
-      validIntervals = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']
-      if interval not in validIntervals:
+      if interval not in self.candle_intervals():
          interval ='1m'
       return self._public_query('/api/v1/klines?symbol=%s&interval=%s' % (pair.upper(), interval), params=kwargs)
 

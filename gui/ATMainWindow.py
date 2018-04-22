@@ -1,39 +1,8 @@
 import os
-import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
-from .ControlBarWidget import ControlBarWidget
-from .ChartWidget import ChartWidget
-from .PlaceOrderWidget import PlaceOrderWidget
-from .OrderBookWidget import OrderBookWidget
-from .TradesWidget import TradesWidget
 from .Separators import *
+from .TradeTab import TradeTab
 
-
-# Exchange events
-class OrderBookUpdateEvent(QtCore.QEvent):
-   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
-   def __init__(self, bids, asks):
-      super(OrderBookUpdateEvent, self).__init__(self.EVENT_TYPE)
-      self.bids = bids
-      self.asks = asks
-
-class TradesUpdateEvent(QtCore.QEvent):
-   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
-   def __init__(self, trades):
-      super(TradesUpdateEvent, self).__init__(self.EVENT_TYPE)
-      self.trades = trades
-
-class TickerUpdateEvent(QtCore.QEvent):
-   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
-   def __init__(self, ticker):
-      super(TickerUpdateEvent, self).__init__(self.EVENT_TYPE)
-      self.ticker = ticker
-
-class CandlesUpdateEvent(QtCore.QEvent):
-   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
-   def __init__(self, candles):
-      super(CandlesUpdateEvent, self).__init__(self.EVENT_TYPE)
-      self.candles = candles
 
 
 
@@ -60,15 +29,14 @@ class ATMainWindow(QtWidgets.QMainWindow):
       # add Tab widget
       self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
       self.tabWidget.setObjectName('mainTabWidget')
-      self.tabCharts = QtWidgets.QWidget()
+      self.tabTrade = TradeTab()
       self.tabPredictors = QtWidgets.QWidget()
-      self.tabWidget.addTab(self.tabCharts, "Charts")
+      self.tabWidget.addTab(self.tabTrade, "Trade")
       self.tabWidget.addTab(self.tabPredictors, "Predictors")
       self.horizontalLayout.addWidget(self.tabWidget)
       self.horizontalLayout.setContentsMargins(0,5,0,0)
 
       # create tabs
-      self.createChartTab()
       self.createPredictorTab()
 
       #import stylesheet file
@@ -96,49 +64,6 @@ class ATMainWindow(QtWidgets.QMainWindow):
 
 
    # ------------------------------------------------------------------------------------
-   # Chart Tab
-   # ------------------------------------------------------------------------------------
-
-   def createChartTab(self):
-      # main layout
-      self.ctMainLayout = QtWidgets.QHBoxLayout(self.tabCharts)
-      self.ctLeftLayout = QtWidgets.QVBoxLayout()
-      self.ctRightLayout = QtWidgets.QVBoxLayout()
-      self.ctMainLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
-      self.ctMainLayout.addLayout(self.ctLeftLayout, stretch=2)
-      self.ctMainLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
-      self.ctMainLayout.addLayout(self.ctRightLayout, stretch=1)
-      self.ctMainLayout.addWidget(LineSeparator(orientation='vertical', color=COLOR_SEPARATOR, stroke=5))
-      self.ctMainLayout.setSpacing(0)
-      #self.ctMainLayout.setMargin(1)
-      self.ctMainLayout.setContentsMargins(0,2,0,0)
-
-      # left layout
-      self.ControlBarWidget = ControlBarWidget(self)
-      self.ChartWidget = ChartWidget()
-      self.TradesWidget = TradesWidget()
-      self.ctLeftLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-      self.ctLeftLayout.addWidget(self.ControlBarWidget, stretch=1)
-      self.ctLeftLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
-                                                      spacecolor='rgb(0,0,0)', stroke=1, width=3))
-      self.ctLeftLayout.addWidget(self.ChartWidget, stretch=20)
-      self.ctLeftLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-      self.ctLeftLayout.addWidget(self.TradesWidget, stretch=8)
-      self.ctLeftLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-
-
-      # right layout
-      self.OrderBookWidget = OrderBookWidget()
-      self.PlaceOrderWidget = PlaceOrderWidget()
-      self.ctRightLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-      self.ctRightLayout.addWidget(self.OrderBookWidget, stretch=7)
-      self.ctRightLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-      self.ctRightLayout.addWidget(self.PlaceOrderWidget, stretch=2)
-      self.ctRightLayout.addWidget(LineSeparator(orientation='horizontal', color=COLOR_SEPARATOR, stroke=5))
-
-
-
-   # ------------------------------------------------------------------------------------
    # Predictor Tab
    # ------------------------------------------------------------------------------------
 
@@ -146,40 +71,3 @@ class ATMainWindow(QtWidgets.QMainWindow):
    def createPredictorTab(self):
       pass
 
-
-
-
-   # ------------------------------------------------------------------------------------
-   # Update methods
-   # ------------------------------------------------------------------------------------
-
-   def customEvent(self, event):
-      #print('received event' + str(event.type()))
-      if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
-         self.OrderBookWidget.setOrderBookGraphData(event.bids, event.asks)
-         self.OrderBookWidget.setOrderBookNumericData(event.bids, event.asks)
-      if event.type() == TradesUpdateEvent.EVENT_TYPE:
-         self.OrderBookWidget.setLastPrice(event.trades[0][2])
-         self.OrderBookWidget.setOrderBookTradesData(event.trades)
-      if event.type() == TickerUpdateEvent.EVENT_TYPE:
-         lastPrice = event.ticker[6]
-         self.OrderBookWidget.setLastPrice(lastPrice)
-      if event.type() == CandlesUpdateEvent.EVENT_TYPE:
-         self.ChartWidget.setData(event.candles)
-         self.ChartWidget.updateChart()
-
-   # update OrderBook
-   def updateOrderBook(self, data):
-      QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(data['bids'], data['asks']))
-
-   # update Trades
-   def updateTrades(self, data):
-      QtWidgets.QApplication.postEvent(self, TradesUpdateEvent(data))
-
-   # update Ticker
-   def updateTicker(self, data):
-      QtWidgets.QApplication.postEvent(self, TickerUpdateEvent(data))
-
-   # update Candles
-   def updateCandles(self, data):
-      QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(data))

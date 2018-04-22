@@ -146,6 +146,10 @@ class RESTClientAPI(metaclass=ABCMeta):
       pass
 
    @abstractmethod
+   def candle_intervals(self):
+      pass
+
+   @abstractmethod
    def ticker(self, pair, **kwargs):
       pass
 

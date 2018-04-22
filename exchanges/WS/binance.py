@@ -116,10 +116,17 @@ class BinanceOrderBook(ChannelData):
 # ==========================================================================================
 
 class BinanceTrades(ChannelData):
-   def __init__(self, name):
+   def __init__(self, name, trades):
       super(BinanceTrades, self).__init__()
       self.name = name
       self.trades = deque(maxlen=TRADE_QUEUE_SIZE)
+      trades = trades[-TRADE_QUEUE_SIZE:]
+      for trade in trades:
+         if trade[-1] == 'sell':
+            amount = -float(trade[2])
+         else:
+            amount = float(trade[2])
+         self.trades.append([int(trade[0]), amount, float(trade[1])])
       self._publish()
 
    def update(self, trade):
@@ -146,11 +153,12 @@ class BinanceCandles(ChannelData):
    def __init__(self, name, candles):
       super(BinanceCandles, self).__init__()
       self.name = name
-      self.candles = deque([candle[0:6] for candle in candles])
+      self.candles = deque([ [int(candle[0])] + [float(c) for c in candle[1:6]] for candle in candles ])
       self._publish()
 
    def update(self, candle):
       last = self.candles.pop()
+      candle = [int(candle[0])] + [float(c) for c in candle[1:]]
       if candle[0] > last[0]:
          # add new candle
          self.candles.append(last)
@@ -207,6 +215,7 @@ class BinanceWSClient(WSClientAPI):
       # start websocket listener thread
       self.logger.info('Starting a new thread for {}'.format(stream))
       thread = threading.Thread(target=self._connect, name=stream)  # , args=(stream)
+      thread.deamon = True
       self._subscriptions[stream] = thread
       thread.start()
 
@@ -277,15 +286,25 @@ class BinanceWSClient(WSClientAPI):
       dispatcher.connect(info_handler, signal='info', sender='binance')
 
    def disconnect(self):
-      subscriptions = self._subscriptions.copy()
-      for stream, thread in subscriptions.items():
-         self.unsubscribe(stream)
-         thread.join()
+      self.logger.info('Disconnecting ...')
+      for stream, thread in self._subscriptions.items():
+         try:
+            self._connections[thread].close()
+            self.logger.info('Unsubscribed from %s' % stream)
+            thread.join()
+         except KeyError:
+            self.logger.info('No subscription for stream %s' % stream)
+
+      self._data.clear()
+      self._connections.clear()
+      self._subscriptions.clear()
 
       if self._info_handler is not None:
          dispatcher.disconnect(self._info_handler, signal='info', sender='binance')
       for d in dispatcher.getAllReceivers(sender='binance'):
          d.disconnect()
+
+      self._stop_logger()
 
 
    def subscribe(self, channel, **kwargs):
@@ -400,7 +419,12 @@ class BinanceWSClient(WSClientAPI):
 
       if self._subscriptions.get(stream, None) is None:
          self.logger.info('Subscribing to trades for {} ...'.format(symbol))
-         self._data[stream] = BinanceTrades(stream)
+
+         initTradeData = BinanceRESTClient().trades(symbol.lower())
+         if initTradeData is None:
+            initTradeData = []
+
+         self._data[stream] = BinanceTrades(stream, initTradeData)
          self._subscribe(stream)
       else:
          self.logger.info('Already subscribed to %s trades' % symbol)

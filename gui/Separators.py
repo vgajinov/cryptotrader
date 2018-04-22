@@ -4,7 +4,7 @@ COLOR_SEPARATOR = 'rgb(167, 174, 186, 50)'
 
 
 class LineSeparator(QtWidgets.QLabel):
-   def __init__(self, orientation='', color='white', stroke=1):
+   def __init__(self, orientation='', color=COLOR_SEPARATOR, stroke=1):
       super(LineSeparator, self).__init__()
 
       if orientation not in ['vertical', 'v', 'horizontal', 'h']:
@@ -22,7 +22,7 @@ class LineSeparator(QtWidgets.QLabel):
 
 
 class DoubleLineSeparator(QtWidgets.QWidget):
-   def __init__(self, orientation='', linecolor='white', spacecolor='black', stroke=1, width=3):
+   def __init__(self, orientation='', linecolor=COLOR_SEPARATOR, spacecolor='black', stroke=1, width=3):
       super(DoubleLineSeparator, self).__init__()
 
       if orientation not in ['vertical', 'v', 'horizontal', 'h']:

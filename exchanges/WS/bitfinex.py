@@ -327,11 +327,8 @@ class BitfinexWSClient(WSClientAPI):
    # ---------------------------------------------------------------------------------
 
    def connect(self, info_handler=None):
-      def run():
-         self._connect()
-
       # start websocket listener thread
-      self._thread = Thread(target=run)
+      self._thread = Thread(target=self._connect)
       self._thread.start()
 
       # register a handler for recieving info and error messages from websocket thread
@@ -350,14 +347,18 @@ class BitfinexWSClient(WSClientAPI):
       # close connection and wait for the thread to terminate
       if self._ws is not None:
          self._ws.close()
-      self._thread.join()
-      self._thread = None
-      self._ws = None
-      self._connected = False
+         self._ws = None
+         self._connected = False
+
+      if self._thread is not None:
+         self._thread.join()
+         self._thread = None
 
       # disconnect all listeners
       for d in dispatcher.getAllReceivers(sender='bitfinex'):
          d.disconnect()
+
+      self._stop_logger()
 
    def subscribe(self, channel, **kwargs):
       if channel == 'ticker':

@@ -199,6 +199,10 @@ class BitfinexRESTClient(RESTClientAPI):
    def symbols(self):
       return self._public_query('/v1/symbols')
 
+   @classmethod
+   def candle_intervals(self):
+      return ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
+
    @return_api_response(fmt.ticker, log)
    def ticker(self, pair, **kwargs):
       return self._public_query('/v2/ticker/t%s' % pair.upper(), params=kwargs)
@@ -220,8 +224,7 @@ class BitfinexRESTClient(RESTClientAPI):
 
    @return_api_response(fmt.candles, log)
    def candles(self, pair, interval='1m', **kwargs):
-      validIntervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
-      if interval not in validIntervals:
+      if interval not in self.candle_intervals():
          interval ='1m'
       return self._public_query('/v2/candles/trade:%s:t%s/hist' % (interval, pair.upper()), params=kwargs)
 
