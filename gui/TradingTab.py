@@ -1,9 +1,10 @@
-from PyQt5 import QtCore, QtWidgets, QtGui
 from .ControlBarWidget import ControlBarWidget
-from .ChartWidget import ChartWidget
+from .CandleChartWidget import CandleChartWidget
 from .PlaceOrderWidget import PlaceOrderWidget
-from .OrderBookWidget import OrderBookWidget
 from .TradesWidget import TradesWidget
+from .OrderBookGraphWidget import OrderBookGraphWidget
+from .OrderBookNumericWidget import OrderBookNumericWidget
+from .UserTradingWidget import UserTradingWidget
 from .Separators import *
 from .CustomEvents import *
 
@@ -13,7 +14,7 @@ from exchanges.exchangeRESTFactory import ExchangeRESTFactory
 
 
 
-class TradeTab(QtWidgets.QWidget):
+class TradingTab(QtWidgets.QWidget):
    wsClient   = None
    restClient = None
    exchange   = None
@@ -28,34 +29,35 @@ class TradeTab(QtWidgets.QWidget):
 
 
    def __init__(self):
-      super(TradeTab, self).__init__()
+      super(TradingTab, self).__init__()
       self.createLayout()
 
 
    def createLayout(self):
       # left layout
-      self.ControlBarWidget = ControlBarWidget(self)
-      self.ChartWidget = ChartWidget()
-      self.TradesWidget = TradesWidget()
+      self.controlBarWidget = ControlBarWidget(self)
+      self.chartWidget = CandleChartWidget()
+      self.userTradingWidget = UserTradingWidget()
       self.leftLayout = QtWidgets.QVBoxLayout()
       self.leftLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-      self.leftLayout.addWidget(self.ControlBarWidget, stretch=1)
+      self.leftLayout.addWidget(self.controlBarWidget, stretch=1)
       self.leftLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
                                                     spacecolor='rgb(0,0,0)', stroke=1, width=3))
-      self.leftLayout.addWidget(self.ChartWidget, stretch=20)
+      self.leftLayout.addWidget(self.chartWidget, stretch=20)
       self.leftLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-      self.leftLayout.addWidget(self.TradesWidget, stretch=8)
+      self.leftLayout.addWidget(self.userTradingWidget, stretch=8)
       self.leftLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
 
       # right layout
-      self.OrderBookWidget = OrderBookWidget()
-      self.PlaceOrderWidget = PlaceOrderWidget()
+      self.orderBookAndTradesLayout = QtWidgets.QHBoxLayout()
+      self.placeOrderWidget = PlaceOrderWidget()
       self.rightLayout = QtWidgets.QVBoxLayout()
       self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-      self.rightLayout.addWidget(self.OrderBookWidget, stretch=7)
+      self.rightLayout.addLayout(self.orderBookAndTradesLayout, stretch=7)
       self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-      self.rightLayout.addWidget(self.PlaceOrderWidget, stretch=2)
+      self.rightLayout.addWidget(self.placeOrderWidget, stretch=2)
       self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
+      self.initOrderBookAndTradesLayout()
 
       # main layout
       self.mainLayout = QtWidgets.QHBoxLayout(self)
@@ -67,7 +69,37 @@ class TradeTab(QtWidgets.QWidget):
       self.mainLayout.setSpacing(0)
       self.mainLayout.setContentsMargins(0, 2, 0, 0)
 
-      self.ControlBarWidget.setExchangeList(ExchangeWSFactory.get_exchanges())
+      self.controlBarWidget.setExchangeList(ExchangeWSFactory.get_exchanges())
+
+
+   def initOrderBookAndTradesLayout(self):
+      self.orderBookAndTradesLayout.setContentsMargins(0, 0, 0, 0)
+      self.orderBookAndTradesLayout.setSpacing(0)
+
+      self.orderBookGraphLayout = QtWidgets.QVBoxLayout()
+      self.orderBookNumericLayout = QtWidgets.QVBoxLayout()
+      self.orderBookTradesLayout = QtWidgets.QHBoxLayout()
+
+      self.orderBookAndTradesLayout.addLayout(self.orderBookGraphLayout, stretch=4)
+      self.orderBookAndTradesLayout.addWidget(LineSeparator(orientation='vertical', stroke=5))
+      self.orderBookAndTradesLayout.addLayout(self.orderBookNumericLayout, stretch=5)
+      self.orderBookAndTradesLayout.addWidget(LineSeparator(orientation='vertical', stroke=5))
+      self.orderBookAndTradesLayout.addLayout(self.orderBookTradesLayout, stretch=5)
+
+      # add OrderBookGraph
+      self.orderBookGraph = OrderBookGraphWidget()
+      self.orderBookGraphLayout.addWidget(self.orderBookGraph)
+      self.orderBookGraphLayout.setContentsMargins(5, 5, 3, 0)
+
+      # add numeric display of order book data
+      self.numericOrderBookWidget = OrderBookNumericWidget()
+      self.orderBookNumericLayout.addWidget(self.numericOrderBookWidget)
+      self.orderBookNumericLayout.setContentsMargins(5, 5, 5, 2)
+
+      # add trades display widget
+      self.tradesTable = TradesWidget()
+      self.orderBookTradesLayout.addWidget(self.tradesTable)
+      self.orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
 
 
    # ------------------------------------------------------------------------------------
@@ -97,8 +129,8 @@ class TradeTab(QtWidgets.QWidget):
       self.interval = None
       self.clearChannels()
 
-      self.ControlBarWidget.setPairList(self.restClient.symbols())
-      self.ControlBarWidget.setIntervalList(self.restClient.candle_intervals())
+      self.controlBarWidget.setPairList(self.restClient.symbols())
+      self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
 
 
    def pairChanged(self, pair):
@@ -134,20 +166,20 @@ class TradeTab(QtWidgets.QWidget):
    # Update methods
    # ------------------------------------------------------------------------------------
 
+
    def customEvent(self, event):
       #print('received event' + str(event.type()))
       if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
-         self.OrderBookWidget.setOrderBookGraphData(event.bids, event.asks)
-         self.OrderBookWidget.setOrderBookNumericData(event.bids, event.asks)
+         self.orderBookGraph.setData(event.bids, event.asks)
+         self.numericOrderBookWidget.setData(event.bids, event.asks)
       if event.type() == TradesUpdateEvent.EVENT_TYPE:
-         # self.OrderBookWidget.setLastPrice(event.trades[0][2])
-         self.OrderBookWidget.setOrderBookTradesData(event.trades)
+         self.tradesTable.setData(event.trades)
       if event.type() == TickerUpdateEvent.EVENT_TYPE:
          lastPrice = event.ticker[6]
-         self.OrderBookWidget.setLastPrice(lastPrice)
+         self.numericOrderBookWidget.setLastPrice(lastPrice)
       if event.type() == CandlesUpdateEvent.EVENT_TYPE:
-         self.ChartWidget.setData(event.candles)
-         self.ChartWidget.updateChart()
+         self.chartWidget.setData(event.candles)
+         self.chartWidget.updateChart()
 
    # update OrderBook
    def updateOrderBook(self, data):

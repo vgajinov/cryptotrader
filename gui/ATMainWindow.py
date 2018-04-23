@@ -1,7 +1,7 @@
 import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .Separators import *
-from .TradeTab import TradeTab
+from .TradingTab import TradingTab
 
 
 
@@ -29,7 +29,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
       # add Tab widget
       self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
       self.tabWidget.setObjectName('mainTabWidget')
-      self.tabTrade = TradeTab()
+      self.tabTrade = TradingTab()
       self.tabPredictors = QtWidgets.QWidget()
       self.tabWidget.addTab(self.tabTrade, "Trade")
       self.tabWidget.addTab(self.tabPredictors, "Predictors")

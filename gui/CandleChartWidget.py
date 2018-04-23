@@ -6,7 +6,7 @@ from .Indicators import *
 from .Separators import *
 
 
-class ChartWidget(QtWidgets.QWidget):
+class CandleChartWidget(QtWidgets.QWidget):
    data = None
    numCandlesVisible = 50
    minCandlesVisible = 20
@@ -15,7 +15,7 @@ class ChartWidget(QtWidgets.QWidget):
    indicators = {}
 
    def __init__(self):
-      super(ChartWidget, self).__init__()
+      super(CandleChartWidget, self).__init__()
 
       self.setContentsMargins(0,0,0,0)
       palette = QtGui.QPalette()

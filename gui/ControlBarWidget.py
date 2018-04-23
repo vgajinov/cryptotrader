@@ -176,17 +176,17 @@ class ControlBarWidget(QtWidgets.QWidget):
    def overlayChanged(self, itemChanged):
       if self.itemChangedByUser:
          if (itemChanged.checkState() == QtCore.Qt.Checked):
-            self.parent().ChartWidget.addOverlay(itemChanged.text())
+            self.parent().chartWidget.addOverlay(itemChanged.text())
          else:
-            self.parent().ChartWidget.removeOverlay(itemChanged.text())
+            self.parent().chartWidget.removeOverlay(itemChanged.text())
 
 
    def indicatorChanged(self, itemChanged):
       if self.itemChangedByUser:
          if (itemChanged.checkState() == QtCore.Qt.Checked):
-            self.parent().ChartWidget.showIndicator(itemChanged.text())
+            self.parent().chartWidget.showIndicator(itemChanged.text())
          else:
-            self.parent().ChartWidget.hideIndicator(itemChanged.text())
+            self.parent().chartWidget.hideIndicator(itemChanged.text())
       
 
 
