@@ -8,10 +8,10 @@ class ControlComboBox(QtWidgets.QComboBox):
       super(ControlComboBox, self).__init__()
 
       # this is unsuccessful try to make the popup background translucent
-      #self.view().setWindowFlags(QtCore.Qt.Widget | QtCore.Qt.FramelessWindowHint);
-      #self.view().setParent(None);
-      #self.view().setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
-      #self.view().setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+      # self.view().setWindowFlags(QtCore.Qt.Widget | QtCore.Qt.FramelessWindowHint);
+      # self.view().setParent(None);
+      # self.view().setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
+      # self.view().setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
 
    def showPopup(self):
@@ -69,13 +69,9 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlPair.setObjectName('pairCombo')
 
       self.ctrlTime = ControlComboBox()
+      self.ctrlTime.setView(QtWidgets.QListView())
       self.ctrlTime.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlTime.setObjectName('timeCombo')
-
-      # This centers the text but adds a scrollbar and the drop-down has to be enabled (only Qt4)
-      #self.ctrlTime.setEditable(True)
-      #self.ctrlTime.lineEdit().setReadOnly(True)
-      #self.ctrlTime.lineEdit().setAlignment(QtCore.Qt.AlignCenter)
 
       ctrlLeftLayout.addWidget(self.ctrlExchange)
       ctrlLeftLayout.addWidget(self.ctrlPair)
@@ -165,7 +161,6 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.parent().exchangeChanged(currItem)
       self.ctrlPair.setEnabled(True)
 
-
    def pairListChanged(self, currItem):
       self.ctrlTime.setEnabled(True)
       self.parent().pairChanged(currItem)
@@ -179,7 +174,6 @@ class ControlBarWidget(QtWidgets.QWidget):
             self.parent().chartWidget.addOverlay(itemChanged.text())
          else:
             self.parent().chartWidget.removeOverlay(itemChanged.text())
-
 
    def indicatorChanged(self, itemChanged):
       if self.itemChangedByUser:
@@ -201,16 +195,23 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlExchange.blockSignals(False)
 
    def setPairList(self, pairList):
-      self.ctrlPair.blockSignals(True)
-      self.ctrlPair.clear()
-      self.ctrlPair.addItems(['PAIR'] + pairList)
-      self.ctrlPair.view().setRowHidden(0, True)
-      self.ctrlTime.setEnabled(False)
-      self.ctrlPair.blockSignals(False)
+      try:
+         self.ctrlPair.blockSignals(True)
+         self.ctrlPair.clear()
+         self.ctrlPair.addItems(['PAIR'] + pairList)
+         self.ctrlPair.view().setRowHidden(0, True)
+         self.ctrlTime.setEnabled(False)
+         self.ctrlPair.blockSignals(False)
+      except:
+         print(pairList)
 
    def setIntervalList(self, intervalList):
       self.ctrlTime.blockSignals(True)
       self.ctrlTime.clear()
       self.ctrlTime.addItems(['TIME'] + intervalList)
       self.ctrlTime.view().setRowHidden(0, True)
+      # setAlignment(QtCore.Qt.AlignCenter)
+      for i in range(0,self.ctrlTime.model().rowCount()):
+         self.ctrlTime.model().item(i).setData(QtCore.Qt.AlignHCenter, QtCore.Qt.TextAlignmentRole)
       self.ctrlTime.blockSignals(False)
+

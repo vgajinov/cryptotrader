@@ -81,14 +81,26 @@ class CandleChartWidget(QtWidgets.QWidget):
 
 
    def updateChart(self):
+      if self.data is None:
+         return
       self.candleGraph.updateCandleChart(self.data, self.numCandlesVisible)
-      for name, overlay in self.overlays.items():
+      for overlay in self.overlays.values():
          overlay.update(self.data, self.numCandlesVisible, self.candleGraph)
-      for name, indicator in self.indicators.items():
+      for indicator in self.indicators.values():
          if indicator[0].isVisible:
             indicator[1].updateIndicator(self.data, self.numCandlesVisible)
 
 
+   def reset(self):
+      for overlay in self.overlays.values():
+         overlay.clear()
+      for indicator in self.indicators.values():
+         indicator[1].clear()
+      self.candleGraph.clear()
+
+   # ------------------------------------------------------------------------------------
+   # Event handlers
+   # ------------------------------------------------------------------------------------
 
    # handle mouse wheel event for zooming
    def wheelEvent(self, QWheelEvent):

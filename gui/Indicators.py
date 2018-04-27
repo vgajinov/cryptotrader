@@ -221,6 +221,10 @@ class Indicator(QtChart.QChart):
    def updateIndicator(self, data, N):
       pass
 
+   def clear(self):
+      for ser in self.series():
+         ser.clear()
+
 
 # ------------------------------------------------------------------------------------
 # Volume

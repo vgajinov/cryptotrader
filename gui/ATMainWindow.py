@@ -12,7 +12,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
 
       # window properties
       self.setWindowTitle('AutoTrader')
-      self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__),'logo.png')))
+      self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__), 'style', 'logo.png')))
       self.setMinimumSize(1280, 720)
       width = max(1280, width)
       height = max(720,height)
@@ -36,11 +36,9 @@ class ATMainWindow(QtWidgets.QMainWindow):
       self.horizontalLayout.addWidget(self.tabWidget)
       self.horizontalLayout.setContentsMargins(0,5,0,0)
 
-      # create tabs
-      self.createPredictorTab()
 
       #import stylesheet file
-      qss = open(os.path.join(os.path.dirname(__file__),'style.qss'), 'r')
+      qss = open(os.path.join(os.path.dirname(__file__), 'style', 'style.qss'), 'r')
       self.setStyleSheet(qss.read())
       qss.close()
 
@@ -63,11 +61,12 @@ class ATMainWindow(QtWidgets.QMainWindow):
       self.menuFile.addAction(quitAction)
 
 
-   # ------------------------------------------------------------------------------------
-   # Predictor Tab
-   # ------------------------------------------------------------------------------------
+   # events
+   # ---------------------------------------------------------
+   def closeEvent(self, event):
+      # TODO: save config
+      # close connections
+      self.tabTrade.closeConnections()
+      event.accept()
 
-   # createPredictorTab
-   def createPredictorTab(self):
-      pass
 

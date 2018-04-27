@@ -36,14 +36,14 @@ class BinanceFormatter(Formatter):
 
    @staticmethod
    def symbols_details(data, *args, **kwargs):
-      return  { d['symbol'] : { 'precision':d['baseAssetPrecision'],
-                                'minAmount': d['filters'][1]['minQty'],
-                                'baseAsset':d['baseAsset'],
-                                'quoteAsset':d['quoteAsset'],
-                                'quotePrecision':d['quotePrecision'],
-                                'orderTypes':d['orderTypes'],
-                                'minPrice':d['filters'][0]['minPrice']}
-                 for d in data['symbols'] }
+      return {d['symbol'].upper(): {'precision': d['baseAssetPrecision'],
+                                    'minAmount': d['filters'][1]['minQty'],
+                                    'baseAsset': d['baseAsset'],
+                                    'quoteAsset': d['quoteAsset'],
+                                    'quotePrecision': d['quotePrecision'],
+                                    'orderTypes': d['orderTypes'],
+                                    'minPrice': d['filters'][0]['minPrice']}
+              for d in data['symbols']}
 
 
    @staticmethod
@@ -205,9 +205,12 @@ class BinanceRESTClient(RESTClientAPI):
    def ping(self):
       return self._public_query('/api/v1/ping').ok
 
-   # TODO:
    @return_api_response(fmt.symbols, log)
    def symbols(self):
+      return self._public_query('/api/v1/exchangeInfo')
+
+   @return_api_response(fmt.symbols_details, log)
+   def symbols_details(self):
       return self._public_query('/api/v1/exchangeInfo')
 
    @classmethod
@@ -308,10 +311,6 @@ class BinanceRESTClient(RESTClientAPI):
    @return_api_response(fmt.server_time, log)
    def server_time(self):
       return self._public_query('/api/v1/time')
-
-   @return_api_response(fmt.symbols_details, log)
-   def symbols_details(self):
-      return self._public_query('/api/v1/exchangeInfo')
 
    @return_api_response(fmt.multi_order_status, log)
    def open_orders_for(self, symbol, **kwargs):

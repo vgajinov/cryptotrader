@@ -50,6 +50,12 @@ class Overlay():
    def update(self, data, N):
       pass
 
+   @abstractmethod
+   def clear(self):
+      pass
+
+
+
 
 # ------------------------------------------------------------------------------------
 # SMA - Simple Moving Average
@@ -77,8 +83,7 @@ class SMA(Overlay):
 
    def update(self, data, N, chart : CandleChart):
       close = data[4]
-      self.series15.clear()
-      self.series50.clear()
+      self.clear()
       self.series15.attachAxis(chart.ax)
       self.series15.attachAxis(chart.ay)
       self.series50.attachAxis(chart.ax)
@@ -95,6 +100,10 @@ class SMA(Overlay):
       sma50[:firstNotNan] = sma50[firstNotNan]
       for i, val in enumerate(sma50[-N:]):
          self.series50.append(i + 0.5, val)
+
+   def clear(self):
+      self.series15.clear()
+      self.series50.clear()
 
 
 
@@ -128,9 +137,7 @@ class EMA(Overlay):
 
    def update(self, data, N, chart : CandleChart):
       close = data[4]
-      self.series9.clear()
-      self.series26.clear()
-      self.series100.clear()
+      self.clear()
       self.series9.attachAxis(chart.ax)
       self.series9.attachAxis(chart.ay)
       self.series26.attachAxis(chart.ax)
@@ -156,6 +163,11 @@ class EMA(Overlay):
       for i, val in enumerate(ema100[-N:]):
          self.series100.append(i + 0.5, val)
 
+   def clear(self):
+      self.series9.clear()
+      self.series26.clear()
+      self.series100.clear()
+
 
 # ------------------------------------------------------------------------------------
 # Parabolic SAR
@@ -177,7 +189,7 @@ class ParabolicSAR(Overlay):
       low       = data[3,-N:].tolist()
       close     = data[4,-N:].tolist()
 
-      self.series.clear()
+      self.clear()
       self.series.attachAxis(chart.ax)
       self.series.attachAxis(chart.ay)
       psarValues = parabolicSAR(high, low, close)
@@ -185,6 +197,8 @@ class ParabolicSAR(Overlay):
       for i, val in enumerate(psarValues):
          self.series.append(i + 0.5, val)
 
+   def clear(self):
+      self.series.clear()
 
 # ------------------------------------------------------------------------------------
 # Bollinger Bands (BBANDS)

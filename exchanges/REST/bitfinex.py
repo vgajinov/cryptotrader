@@ -38,9 +38,9 @@ class BitfinexFormatter(Formatter):
 
    @staticmethod
    def symbols_details(data, *args, **kwargs):
-      return {d['pair']: {'precision': d['price_precision'],
-                          'minAmount': d['minimum_order_size'],
-                          'maxAmount': d['maximum_order_size']}
+      return {d['pair'].upper(): {'precision': d['price_precision'],
+                                  'minAmount': d['minimum_order_size'],
+                                  'maxAmount': d['maximum_order_size']}
               for d in data}
 
    @staticmethod

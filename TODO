@@ -1,0 +1,22 @@
+GUI
+---------------------------------------------------------------------------------------
+
+1. BUG:
+       CandleChart works fine for small intervals, but has an issue with big intervals.
+       Only few candles are shown.
+
+2. ENH:
+       Improve the display of trading symbols.
+       - implement something similar to Binance (sorting by symbol, volume and change)
+       - either as a combobox popup or completely new solution
+
+3. FIX:
+       Find a better way to display bids, asks and trades.
+       Current implmementation for font resizing is not very robust.
+
+5. ENH:
+       Connect PlaceOrder widget functionality with REST clients
+
+6. ENH:
+       Active trades widget needs to be updated from exchanges.
+       Prefer WS client for tracking orders and trades if possible.

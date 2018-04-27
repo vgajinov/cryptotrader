@@ -11,6 +11,8 @@ from .CustomEvents import *
 from exchanges.exchangeWSFactory import ExchangeWSFactory
 from exchanges.exchangeRESTFactory import ExchangeRESTFactory
 
+from PyQt5 import QtGui
+
 
 
 
@@ -20,6 +22,7 @@ class TradingTab(QtWidgets.QWidget):
    exchange   = None
    pair       = None
    interval   = None
+   symbols_details = None
 
    # channels
    tickerChannel  = None
@@ -89,7 +92,7 @@ class TradingTab(QtWidgets.QWidget):
       # add OrderBookGraph
       self.orderBookGraph = OrderBookGraphWidget()
       self.orderBookGraphLayout.addWidget(self.orderBookGraph)
-      self.orderBookGraphLayout.setContentsMargins(5, 5, 3, 0)
+      self.orderBookGraphLayout.setContentsMargins(0, 5, 3, 0)
 
       # add numeric display of order book data
       self.numericOrderBookWidget = OrderBookNumericWidget()
@@ -100,6 +103,12 @@ class TradingTab(QtWidgets.QWidget):
       self.tradesTable = TradesWidget()
       self.orderBookTradesLayout.addWidget(self.tradesTable)
       self.orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
+
+   def reset(self):
+      self.tradesTable.clear()
+      self.orderBookGraph.reset()
+      self.numericOrderBookWidget.clear()
+      self.chartWidget.reset()
 
 
    # ------------------------------------------------------------------------------------
@@ -117,9 +126,14 @@ class TradingTab(QtWidgets.QWidget):
          return
       self.exchange = exchangeName
 
+      self.reset()
+
+      self.setCursor(QtCore.Qt.WaitCursor)
+
       if self.wsClient is not None:
          self.wsClient.disconnect()
          self.wsClient = None
+         self.restClient = None
 
       self.wsClient = ExchangeWSFactory.create_client(exchangeName)
       self.restClient = ExchangeRESTFactory.create_client(exchangeName)
@@ -129,15 +143,21 @@ class TradingTab(QtWidgets.QWidget):
       self.interval = None
       self.clearChannels()
 
+      self.symbols_details = self.restClient.symbols_details()
       self.controlBarWidget.setPairList(self.restClient.symbols())
       self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
+
+      self.setCursor(QtCore.Qt.ArrowCursor)
 
 
    def pairChanged(self, pair):
       if pair == self.pair:
          return
 
+      self.setCursor(QtCore.Qt.WaitCursor)
+
       if self.pair is not None:
+         self.reset()
          self.wsClient.unsubscribe(self.tickerChannel, self.updateTicker)
          self.wsClient.unsubscribe(self.bookChannel, self.updateOrderBook)
          self.wsClient.unsubscribe(self.tradesChannel, self.updateTrades)
@@ -151,6 +171,12 @@ class TradingTab(QtWidgets.QWidget):
       self.tradesChannel = self.wsClient.subscribe_trades(pair, self.updateTrades)
       if self.interval is not None:
          self.candlesChannel = self.wsClient.subscribe_candles(pair, self.interval, self.updateCandles)
+
+      symbol_details = self.symbols_details[pair.upper()]
+      self.tradesTable.setSymbolDetails(symbol_details)
+      self.numericOrderBookWidget.setSymbolDetails(symbol_details)
+
+      self.setCursor(QtCore.Qt.ArrowCursor)
 
 
    def intervalChanged(self, interval):
@@ -200,3 +226,14 @@ class TradingTab(QtWidgets.QWidget):
    # handle info messages
    def infoUpdate(self, data):
       pass
+
+
+   # ------------------------------------------------------------------------------------
+   # Other methods
+   # ------------------------------------------------------------------------------------
+
+   # this should be called by the main windows on quit
+   def closeConnections(self):
+      if self.wsClient is not None:
+         self.wsClient.disconnect()
+

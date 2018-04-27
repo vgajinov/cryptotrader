@@ -1,4 +1,4 @@
-from datetime import datetime
+import math
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .CustomTableWidget import CustomTableWidget
 
@@ -11,6 +11,10 @@ from .CustomTableWidget import CustomTableWidget
 # ======================================================================
 
 class OrderBookNumericWidget(QtWidgets.QWidget):
+   symbol_details = None
+   pricePrec      = None
+   amountPrec     = None
+
    def __init__(self):
       super(OrderBookNumericWidget, self).__init__()
 
@@ -35,15 +39,32 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
       self.mainLayout.setContentsMargins(0,0,0,0)
 
 
+   def setSymbolDetails(self, details):
+      self.symbol_details = details
+
+      leftDigits, rightDigits = str(details['minAmount']).split('.')
+      self.amountPrec = len(rightDigits.rstrip('0'))
+
+      self.pricePrec = None
+      pricePrec = details.get('minPrice', None)
+      if pricePrec is not None:
+         self.pricePrec = int(abs(math.log10(float(pricePrec))))
+
+
    # set OrderBook numeric data
    def setData(self, bids, asks):
       askItems = list(reversed(list(asks.items())))
       askSums = [abs(x[1]) for x in askItems]
       for i in range(len(askSums) - 2, -1, -1):
          askSums[i] = askSums[i] + askSums[i+1]
-      askSumStrings    = ['{:.4f}'.format(x) for x in askSums]
-      askPriceStrings  = ['{:.4f}'.format(x[0]) for x in askItems]
-      askAmountStrings = ['{:.4f}'.format(abs(x[1])) for x in askItems]
+
+      if self.pricePrec is None:
+         exp = math.ceil(math.log10(float(askItems[0][0])))
+         self.pricePrec = min(abs(exp - int(self.symbol_details['precision'])), 8)
+
+      askSumStrings    = ['{:.{prec}f}'.format(x, prec=self.amountPrec) for x in askSums]
+      askPriceStrings  = ['{:.{prec}f}'.format(x[0], prec=self.pricePrec) for x in askItems]
+      askAmountStrings = ['{:.{prec}f}'.format(abs(x[1]), prec=self.amountPrec) for x in askItems]
 
       self.asksTable.tableData = [askPriceStrings, askAmountStrings, askSumStrings]
       self.asksTable.fitDataAndColumns()
@@ -52,9 +73,9 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
       bidSums = [abs(x[1]) for x in bidItems]
       for i in range(len(bidSums) - 1):
          bidSums[i+1] = bidSums[i] + bidSums[i+1]
-      bidSumStrings    = ['{:.4f}'.format(x) for x in bidSums]
-      bidPriceStrings  = ['{:.4f}'.format(x[0]) for x in bidItems]
-      bidAmountStrings = ['{:.4f}'.format(abs(x[1])) for x in bidItems]
+      bidSumStrings    = ['{:.{prec}f}'.format(x, prec=self.amountPrec) for x in bidSums]
+      bidPriceStrings  = ['{:.{prec}f}'.format(x[0], prec=self.pricePrec) for x in bidItems]
+      bidAmountStrings = ['{:.{prec}f}'.format(abs(x[1]), prec=self.amountPrec) for x in bidItems]
 
       self.bidsTable.tableData = [bidPriceStrings, bidAmountStrings, bidSumStrings]
       self.bidsTable.fitDataAndColumns()
@@ -105,7 +126,8 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
 
    # set price on the OrderBook numeric layout
    def setLastPrice(self, price):
-      self.priceLabel.setText('{:.2f}'.format(price))
+      if self.pricePrec is not None:
+         self.priceLabel.setText('{:.{prec}f}'.format(price, prec=self.pricePrec))
 
    # format LastPrice label
    def formatLastPrice(self):
@@ -115,6 +137,11 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
       font.setPixelSize(int(0.6 * newHeight))
       self.priceLabel.setFont(font)
       self.priceLabel.update()
+
+   def clear(self):
+      self.priceLabel.clear()
+      self.asksTable.clear()
+      self.bidsTable.clear()
 
    # ------------------------------------------------------------------------------------
    # Event Handlers

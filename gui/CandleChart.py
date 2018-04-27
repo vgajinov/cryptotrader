@@ -53,14 +53,12 @@ class CandleChart(QtChart.QChart):
       self.addAxis(self.hoverLineAxisX, QtCore.Qt.AlignBottom)
       self.hoverLine.attachAxis(self.hoverLineAxisX)
 
-      # add overlays
-      #self.addOverlays()
-      # self.psar = OverlayFactory.createOverlay('ParabolicSAR')
-      # self.psar.addOverlay(self)
-
 
    # update candle chart
    def updateCandleChart(self, data, N):
+      if data is None or data == []:
+         return
+
       timestamp = data[0,-N:].tolist()
       open      = data[1,-N:].tolist()
       high      = data[2,-N:].tolist()
@@ -152,6 +150,16 @@ class CandleChart(QtChart.QChart):
          candleSet.setPen(QtGui.QPen(QtCore.Qt.green, 1))
          candleSet.setBrush(QtGui.QBrush(QtCore.Qt.black))
 
+
+   def clear(self):
+      # remove candlestick data
+      if self.candlestickSeries.count() > 0:
+         self.candlestickSeries.remove(self.candlestickSeries.sets())
+
+
+   # ------------------------------------------------------------------------------------
+   # Event handlers
+   # ------------------------------------------------------------------------------------
 
    # handle hover event by showing hover price line
    def hoverMoveEvent(self, event : QtWidgets.QGraphicsSceneHoverEvent):

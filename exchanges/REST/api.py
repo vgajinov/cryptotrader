@@ -146,6 +146,10 @@ class RESTClientAPI(metaclass=ABCMeta):
       pass
 
    @abstractmethod
+   def symbols_details(self):
+      pass
+
+   @abstractmethod
    def candle_intervals(self):
       pass
 
