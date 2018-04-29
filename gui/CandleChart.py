@@ -29,7 +29,6 @@ class CandleChart(QtChart.QChart):
       chartFont = QtGui.QFont(self.font())
       chartFont.setPixelSize(9)
       self.setFont(chartFont)
-      self.setAcceptHoverEvents(True)
 
       self.candlestickSeries = QtChart.QCandlestickSeries()
       self.candlestickSeries.setIncreasingColor(QtCore.Qt.black)
@@ -37,6 +36,7 @@ class CandleChart(QtChart.QChart):
       self.addSeries(self.candlestickSeries)
 
       # add hover line and price tag
+      self.setAcceptHoverEvents(True)
       self.hoverLinePriceTag = QtWidgets.QGraphicsSimpleTextItem(self)
       self.hoverLinePriceTag.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
       self.hoverLinePriceTag.setOpacity(1.0)
@@ -64,6 +64,8 @@ class CandleChart(QtChart.QChart):
       high      = data[2,-N:].tolist()
       low       = data[3,-N:].tolist()
       close     = data[4,-N:].tolist()
+
+      timeInterval = (timestamp[1] - timestamp[0]) / 1000
 
       # remove candlestick data
       if self.candlestickSeries.count() > 0:
