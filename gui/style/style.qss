@@ -1,3 +1,9 @@
+/*
+================================================================================
+   GENERAL STYLE OPTIONS
+================================================================================
+*/
+
 
 * {
     color: white;
@@ -14,10 +20,93 @@ QMenuBar {
 }
 
 
-
-/* ComboBox
---------------------------------------------------
+/*
+----------------------------------------------------------
+    Tabs
+----------------------------------------------------------
 */
+
+QTabWidget {
+    font: bold 13px;
+    background-color: rgb(0,0,0);
+}
+
+
+QTabWidget::pane  {
+    border: 0px solid white;
+    border-top: 1px solid white;
+    padding: 0px;
+}
+
+QTabBar::tab:selected {
+    background-color: rgb(167,174,186,50);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+}
+
+QTabBar::tab:!selected {
+    background-color: rgb(0,0,0);
+    border: 1px solid white;
+    border-bottom: 0px solid white;
+    padding: 3px;
+    min-width: 14ex;
+    margin-top: 3px;
+}
+
+QTabBar::tab {
+    margin-left: -1px;
+}
+
+QTabBar::tab:first {
+    margin-left: 4px;
+}
+
+
+/*
+----------------------------------------------------------
+    Table
+----------------------------------------------------------
+*/
+
+QTableWidget {
+    background-color: rgb(0,0,0);
+    alternate-background-color: rgb(167,174,186,10);
+    margin: 0px;
+}
+
+QTableView {
+    border: none;
+}
+
+QTableView::item {
+    background-color: rgb(0,0,0);
+}
+
+QTableView::item:alternate {
+    background: rgb(167,174,186,10);
+}
+
+QTableView::item::selected {
+    background-color: rgb(0,0,0);
+    text-decoration: none;
+    outline: none;
+}
+
+QTableView::item::selected:alternate {
+    background-color: rgb(167,174,186,10);
+    text-decoration: none;
+    outline: none;
+}
+
+
+/*
+----------------------------------------------------------
+    ComboBox
+----------------------------------------------------------
+*/
+
 QComboBox {
     background-color: rgb(0, 0, 0);
     padding: 2px 10px 2px 10px;
@@ -38,6 +127,13 @@ QComboBox QAbstractItemView {
 
 
 
+/*
+================================================================================
+   SPECIFIC STYLE OPTIONS
+================================================================================
+*/
+
+
 #exchangeCombo {
     color: rgb(192,96,255);
     border: 1px solid rgb(127,0,176);
@@ -50,6 +146,7 @@ QComboBox QAbstractItemView {
 }
 
 
+
 #pairCombo {
     color: rgb(64,192,255);
     border: 1px solid rgb(0,80,176);
@@ -60,6 +157,34 @@ QComboBox QAbstractItemView {
     border: 1px solid rgb(0,80,176);
     background-color: rgb(0,0,0);
 }
+
+#pairCombo QAbstractItemView::item {
+    padding-left: 5px;
+    padding-right: 20px;
+}
+
+#pairCombo QHeaderView::section {
+    font: bold;
+    color: rgb(167,174,186,150);
+    background-color: rgb(0,0,0);
+    border: none;
+    border-bottom: 1px solid white;
+}
+
+
+
+#pairComboFilter {
+    color: rgb(255,225,225);
+    border: 1px solid rgb(180,0,0);
+    background-color: rgb(100,0,0);
+}
+
+#pairComboFilter QAbstractItemView {
+    color: rgb(255,225,225);
+    border: 1px solid rgb(100,0,0);
+    background-color: rgb(20,0,0);
+}
+
 
 
 #timeCombo {
@@ -190,41 +315,11 @@ QPushButton#cancelButton {
 }
 
 
-/* Table
---------------------------------------------------
-*/
-QTableWidget {
-    background-color: rgb(0,0,0);
-    alternate-background-color: rgb(167,174,186,10);
-    margin: 0px;
-}
-
-QTableView {
-    border: none;
-}
-
-QTableView::item {
-    background-color: rgb(0,0,0);
-}
-
-QTableView::item:alternate {
-    background: rgb(167,174,186,10);
-}
-
-QTableView::item::selected {
-    background-color: rgb(0,0,0);
-    text-decoration: none;
-    outline: none;
-}
-
-QTableView::item::selected:alternate {
-    background-color: rgb(167,174,186,10);
-    text-decoration: none;
-    outline: none;
-}
 
 
-QHeaderView::section {
+#openOrdersTable QHeaderView::section,
+#historyTable QHeaderView::section
+{
     font: bold;
     color: rgb(167,174,186,150);
     background-color: rgb(0,0,0);
@@ -234,54 +329,9 @@ QHeaderView::section {
 }
 
 
-/*
-#historyTable {
-    border-left: 1px solid rgba(167, 174, 186, 50);
-}
-*/
 
 
 
-/* Tabs
---------------------------------------------------
-*/
-
-QTabWidget {
-    font: bold 13px;
-    background-color: rgb(0,0,0);
-}
-
-
-QTabWidget::pane  {
-    border: 0px solid white;
-    border-top: 1px solid white;
-    padding: 0px;
-}
-
-QTabBar::tab:selected {
-    background-color: rgb(167,174,186,50);
-    border: 1px solid white;
-    border-bottom: 0px solid white;
-    padding: 3px;
-    min-width: 14ex;
-}
-
-QTabBar::tab:!selected {
-    background-color: rgb(0,0,0);
-    border: 1px solid white;
-    border-bottom: 0px solid white;
-    padding: 3px;
-    min-width: 14ex;
-    margin-top: 3px;
-}
-
-QTabBar::tab {
-    margin-left: -1px;
-}
-
-QTabBar::tab:first {
-    margin-left: 4px;
-}
 
 
 

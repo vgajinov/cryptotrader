@@ -1,18 +1,16 @@
+import operator
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .Overlays import OverlayFactory
 from .Indicators import IndicatorFactory
 
 
+# ------------------------------------------------------------------------------------
+# Custom ComboBox classes
+# ------------------------------------------------------------------------------------
+
 class ControlComboBox(QtWidgets.QComboBox):
    def __init__(self):
       super(ControlComboBox, self).__init__()
-
-      # this is unsuccessful try to make the popup background translucent
-      # self.view().setWindowFlags(QtCore.Qt.Widget | QtCore.Qt.FramelessWindowHint);
-      # self.view().setParent(None);
-      # self.view().setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
-      # self.view().setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-
 
    def showPopup(self):
       super(ControlComboBox, self).showPopup()
@@ -22,7 +20,6 @@ class ControlComboBox(QtWidgets.QComboBox):
       popup.move(popup.x(), self.mapToGlobal(self.frameGeometry().topLeft()).y() + self.height() - 5 )
       itemHeight = self.view().visualRect(self.model().index(1,0)).height()
       popup.setMinimumHeight((self.count()-1) * (itemHeight))
-
 
 
 class CheckableControlComboBox(QtWidgets.QComboBox):
@@ -47,18 +44,73 @@ class CheckableControlComboBox(QtWidgets.QComboBox):
          self.setItemData(i, QtCore.QSize(rowWidth, rowHeight), QtCore.Qt.SizeHintRole)
       self.model().blockSignals(False)
 
+# ------------------------------------------------------------------------------------
+# Classes for the pair combobox
+# ------------------------------------------------------------------------------------
+
+class PairComboBoxModel(QtCore.QAbstractTableModel):
+   def __init__(self, data=None):
+      super(PairComboBoxModel, self).__init__()
+      self.header = ['', 'Price', 'Change', 'Volume']
+      self.tableData = data
+
+   def rowCount(self, parent=None, *args, **kwargs):
+      return len(self.tableData)
+
+   def columnCount(self, parent=None, *args, **kwargs):
+      return len(self.tableData[0])
+
+   def data(self, index, role):
+      if role == QtCore.Qt.DisplayRole:
+         return self.tableData[index.row()][index.column()]
+      if role == QtCore.Qt.TextAlignmentRole:
+         if index.column() == 0:
+            return QtCore.Qt.AlignLeft + QtCore.Qt.AlignVCenter
+         else:
+            return QtCore.Qt.AlignRight + QtCore.Qt.AlignVCenter
+
+   def headerData(self, col, orientation, role):
+      if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+         return self.header[col]
+      return None
+
+   def sort(self, col, order):
+      """sort table by given column number col"""
+      if col != 0:
+         self.layoutAboutToBeChanged.emit()
+         self.tableData = sorted(self.tableData, key=operator.itemgetter(col))
+         if order == QtCore.Qt.DescendingOrder:
+            self.tableData.reverse()
+         self.layoutChanged.emit()
+
+
+class PairComboBoxHeader(QtWidgets.QHeaderView):
+   def __init__(self, combo=None):
+      super(PairComboBoxHeader, self).__init__(QtCore.Qt.Horizontal)
+      self.sectionResized.connect(self.handleSectionResized)
+      self.setSectionsMovable(False)
+      self.setMinimumHeight(30)
+      self.setSectionsClickable(True)
+      self.combo = combo
+
+   def showEvent(self, event):
+      self.combo.setGeometry(self.sectionViewportPosition(0) + 5, 3, 60, self.height() - 10)
+      self.combo.show()
+      QtWidgets.QHeaderView.showEvent(self, event)
+
+   def handleSectionResized(self, col):
+      if col == 0:
+         self.combo.setGeometry(self.sectionViewportPosition(0) + 3, 5, 60, self.height() - 10)
+
+# ------------------------------------------------------------------------------------
+# ControlBarWidget
+# ------------------------------------------------------------------------------------
 
 class ControlBarWidget(QtWidgets.QWidget):
    itemChangedByUser = True
 
    def __init__(self, parent):
       super(ControlBarWidget, self).__init__()
-
-      mainLayout = QtWidgets.QHBoxLayout(self)
-      mainLayout.setContentsMargins(0,0,0,0)
-      mainLayout.setSpacing(0)
-      ctrlLeftLayout = QtWidgets.QHBoxLayout()
-      ctrlRightLayout = QtWidgets.QHBoxLayout()
 
       self.ctrlExchange = ControlComboBox()
       self.ctrlExchange.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
@@ -69,16 +121,8 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlPair.setObjectName('pairCombo')
 
       self.ctrlTime = ControlComboBox()
-      self.ctrlTime.setView(QtWidgets.QListView())
       self.ctrlTime.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlTime.setObjectName('timeCombo')
-
-      ctrlLeftLayout.addWidget(self.ctrlExchange)
-      ctrlLeftLayout.addWidget(self.ctrlPair)
-      ctrlLeftLayout.addWidget(self.ctrlTime)
-      ctrlLeftLayout.setSpacing(10)
-      ctrlLeftLayout.setContentsMargins(5,5,5,5)
-      ctrlLeftLayout.setAlignment(QtCore.Qt.AlignLeft)
 
       self.ctrlOverlay = CheckableControlComboBox()
       self.ctrlOverlay.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
@@ -87,6 +131,19 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlIndicator = CheckableControlComboBox()
       self.ctrlIndicator.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlIndicator.setObjectName('indicatorCombo')
+
+      mainLayout = QtWidgets.QHBoxLayout(self)
+      mainLayout.setContentsMargins(0,0,0,0)
+      mainLayout.setSpacing(0)
+      ctrlLeftLayout = QtWidgets.QHBoxLayout()
+      ctrlRightLayout = QtWidgets.QHBoxLayout()
+
+      ctrlLeftLayout.addWidget(self.ctrlExchange)
+      ctrlLeftLayout.addWidget(self.ctrlPair)
+      ctrlLeftLayout.addWidget(self.ctrlTime)
+      ctrlLeftLayout.setSpacing(10)
+      ctrlLeftLayout.setContentsMargins(5,5,5,5)
+      ctrlLeftLayout.setAlignment(QtCore.Qt.AlignLeft)
 
       ctrlRightLayout.addWidget(self.ctrlOverlay)
       ctrlRightLayout.addWidget(self.ctrlIndicator)
@@ -97,29 +154,67 @@ class ControlBarWidget(QtWidgets.QWidget):
       mainLayout.addLayout(ctrlLeftLayout)
       mainLayout.addLayout(ctrlRightLayout)
 
-      self.setControlsData()
+      self.setControls()
 
 
-   def setControlsData(self):
-      # Set exchange list
-      exchangeList = ['EXCHANGE']
-      self.ctrlExchange.addItems(exchangeList)
+   def setControls(self):
+      # Intitialize exchange combo
+      self.ctrlExchange.addItem('EXCHANGE')
 
-      # Set pair list
-      pairList = ['PAIR']
-      self.ctrlPair.addItems(pairList)
-      self.ctrlPair.setEnabled(False)
-
-      # Set time spans
-      timeList = ['TIME']
-      self.ctrlTime.addItems(timeList)
+      # Intitialize interval combo
+      self.ctrlTime.setView(QtWidgets.QListView())
+      self.ctrlTime.addItem('TIME')
       self.ctrlTime.setEnabled(False)
 
+      self.setPairCombo()
+      self.setOverlayCombo()
+      self.setIndicatorCombo()
+
+      # connect event handlers
+      self.ctrlExchange.currentTextChanged.connect(self.exchangeChanged)
+      self.ctrlPair.currentTextChanged.connect(self.pairChanged)
+      self.ctrlTime.currentTextChanged.connect(self.intervalChanged)
+      self.ctrlOverlay.model().itemChanged.connect(self.overlayChanged)
+      self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
+
+
+   def setPairCombo(self):
+      self.ctrlPair.addItem('PAIR')
+      # self.ctrlPair.setEnabled(False)
+
+      self.pairComboFilter = ControlComboBox() #QtWidgets.QComboBox()
+      self.pairComboFilter.setObjectName('pairComboFilter')
+      self.pairComboFilter.addItems(['All', 'BTC', 'USD'])
+
+      pairModel = PairComboBoxModel([['BTC','1.234','3.1','4.12'], ['LTC','4.56','3.1','4.153'], ['ETH','2.1','3.15','4.789']])
+
+      pairView = QtWidgets.QTableView()
+      pairView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+      pairView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+      pairView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+      pairView.setSortingEnabled(True)
+      pairView.setShowGrid(False)
+
+      pairView.setHorizontalHeader(PairComboBoxHeader(self.pairComboFilter))
+      pairView.horizontalHeader().setStretchLastSection(True)
+      pairView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+      pairView.horizontalHeader().setMinimumHeight(35)
+      pairView.verticalHeader().setDefaultSectionSize(24);
+      pairView.verticalHeader().hide()
+      pairView.setMinimumWidth(400)
+
+      self.ctrlPair.setView(pairView)
+      self.ctrlPair.setModel(pairModel)
+
+      i = self.ctrlPair.model().index(0,0)
+      self.ctrlPair.view().horizontalHeader().setIndexWidget(i, self.pairComboFilter)
+
+
+   def setOverlayCombo(self):
       # Set overlays
       overlayList = OverlayFactory.getOverlayNames()
       self.ctrlOverlay.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
                                                        # which happens only with Fusion style
-
       overlayModel = self.ctrlOverlay.model()
       # set the sticky name 'Overlay' as the first item and hide it
       item = QtGui.QStandardItem('Overlays')
@@ -133,6 +228,8 @@ class ControlBarWidget(QtWidgets.QWidget):
          item.setCheckState(QtCore.Qt.Unchecked)
          overlayModel.setItem(i+1, item)
 
+
+   def setIndicatorCombo(self):
       # Set indicators
       indicatorList = IndicatorFactory.getIndicatorNames()
       self.ctrlIndicator.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
@@ -150,22 +247,20 @@ class ControlBarWidget(QtWidgets.QWidget):
          item.setCheckState(QtCore.Qt.Unchecked)
          indicatorModel.setItem(i+1, item)
 
-      self.ctrlExchange.currentTextChanged.connect(self.exchangeListChanged)
-      self.ctrlPair.currentTextChanged.connect(self.pairListChanged)
-      self.ctrlTime.currentTextChanged.connect(self.timeListChanged)
-      self.ctrlOverlay.model().itemChanged.connect(self.overlayChanged)
-      self.ctrlIndicator.model().itemChanged.connect(self.indicatorChanged)
+   # ------------------------------------------------------------------------------------
+   # Event Handlers
+   # ------------------------------------------------------------------------------------
 
-
-   def exchangeListChanged(self, currItem):
+   def exchangeChanged(self, currItem):
       self.parent().exchangeChanged(currItem)
       self.ctrlPair.setEnabled(True)
 
-   def pairListChanged(self, currItem):
-      self.ctrlTime.setEnabled(True)
-      self.parent().pairChanged(currItem)
+   def pairChanged(self, currItem):
+      # self.ctrlTime.setEnabled(True)
+      # self.parent().pairChanged(currItem)
+      print(currItem)
 
-   def timeListChanged(self, currItem):
+   def intervalChanged(self, currItem):
       self.parent().intervalChanged(currItem)
 
    def overlayChanged(self, itemChanged):
