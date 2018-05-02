@@ -49,8 +49,7 @@ class BitfinexFormatter(Formatter):
 
    @staticmethod
    def tickers(data, *args, **kwargs):
-      # {symbol : ticker_data}
-      return { d[0][1:].lower():[d[1], d[3], d[9], d[10], d[7], d[8], d[5], d[6]] for d in data }
+      return { d[0][1:].upper():[d[1], d[3], d[9], d[10], d[7], d[8], d[5], 100*d[6]] for d in data }
 
    @staticmethod
    def order_book(data, *args, **kwargs):
@@ -195,6 +194,9 @@ class BitfinexRESTClient(RESTClientAPI):
    def ping(self):
       return self.status()[0] == 1
 
+   def quote_currencies(self):
+      return ['USD', 'BTC', 'EUR', 'JPY', 'GBP', 'ETH']
+
    @return_api_response(fmt.symbols, log)
    def symbols(self):
       return self._public_query('/v1/symbols')
@@ -209,10 +211,7 @@ class BitfinexRESTClient(RESTClientAPI):
 
    def all_tickers(self, **kwargs):
       symbols = self.symbols()
-      res = {}
-      for i in range(0, len(symbols), 10):
-         res.update(self.tickers(symbols[i:i+10]))
-      return res
+      return self.tickers(symbols)
 
    @return_api_response(fmt.order_book, log)
    def order_book(self, pair, **kwargs):

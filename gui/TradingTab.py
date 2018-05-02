@@ -23,6 +23,7 @@ class TradingTab(QtWidgets.QWidget):
    pair       = None
    interval   = None
    symbols_details = None
+   all_tickers     = None
 
    # channels
    tickerChannel  = None
@@ -144,7 +145,9 @@ class TradingTab(QtWidgets.QWidget):
       self.clearChannels()
 
       self.symbols_details = self.restClient.symbols_details()
-      self.controlBarWidget.setPairList(self.restClient.symbols())
+      self.all_tickers = self.restClient.all_tickers()
+      # self.controlBarWidget.setPairList(self.restClient.symbols())
+      self.controlBarWidget.setPairList(self.all_tickers, self.restClient.quote_currencies())
       self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
 
       self.setCursor(QtCore.Qt.ArrowCursor)

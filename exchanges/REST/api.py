@@ -142,39 +142,80 @@ class RESTClientAPI(metaclass=ABCMeta):
       pass
 
    @abstractmethod
+   def quote_currencies(self):
+      '''
+      :return: List of quote currencies : ['USD', 'BTC', ...]
+      '''
+      pass
+
+   @abstractmethod
    def symbols(self):
+      '''
+      :return: List of all symbols used supported by an exchange : ['BTCUSD', "LTCBTC', ...]
+      '''
       pass
 
    @abstractmethod
    def symbols_details(self):
+      '''
+      :return: Non-standard dictionaries. The minimum subset of keys should be:
+                  { 'precision', 'minAmount', 'minPrice' }
+      '''
       pass
 
    @abstractmethod
    def candle_intervals(self):
+      '''
+      :return: List of valid intervals : ['1m','3m','5m', ... ]
+      '''
       pass
 
    @abstractmethod
    def ticker(self, pair, **kwargs):
+      '''
+      :return: [bidPrice, askPrice, high, low, lastPrice, volume, priceChange, priceChangePercent]
+      '''
       pass
 
    @abstractmethod
    def all_tickers(self,**kwargs):
+      '''
+      :return: { symbol : [bidPrice, askPrice, high, low, lastPrice, volume, priceChange, priceChangePercent] }
+      '''
       pass
 
    @abstractmethod
    def order_book(self, pair, **kwargs):
+      '''
+      :param kwargs: Exchange specific additional parameters
+      :return: A dictionary with bids and asks in the form of lists
+                  { 'bids' : [ [price, amount], ...] ]
+                    'asks' : [ [price, amount], ...] ] }
+      '''
       pass
 
    @abstractmethod
    def trades(self, pair, **kwargs):
+      '''
+      :param kwargs:
+      :return: A list of trade data:
+                  [ [timestamp, price, amount, type='buy' or 'sell'], ... ]
+      '''
       pass
 
    @abstractmethod
    def candles(self, pair, interval='1m', **kwargs):
+      '''
+      :return: List of candles data:
+                  [ [timestamp, open, high, low, close, volume], ... ]
+      '''
       pass
 
    @abstractmethod
    def historical_candles(self, pair, interval, startTime, endTime, **kwargs):
+      '''
+      :return: List of candles for the time period between startTime and endTime
+      '''
       pass
 
 

@@ -205,6 +205,9 @@ class BinanceRESTClient(RESTClientAPI):
    def ping(self):
       return self._public_query('/api/v1/ping').ok
 
+   def quote_currencies(self):
+      return ['BTC', 'ETH', 'BNB', 'USDT']
+
    @return_api_response(fmt.symbols, log)
    def symbols(self):
       return self._public_query('/api/v1/exchangeInfo')

@@ -1,3 +1,4 @@
+import math
 import operator
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .Overlays import OverlayFactory
@@ -9,8 +10,9 @@ from .Indicators import IndicatorFactory
 # ------------------------------------------------------------------------------------
 
 class ControlComboBox(QtWidgets.QComboBox):
-   def __init__(self):
+   def __init__(self, fitAllItems=True):
       super(ControlComboBox, self).__init__()
+      self.fitAllItems = fitAllItems
 
    def showPopup(self):
       super(ControlComboBox, self).showPopup()
@@ -19,7 +21,8 @@ class ControlComboBox(QtWidgets.QComboBox):
       # (note that it uses global positioning, rather than relative to combobox)
       popup.move(popup.x(), self.mapToGlobal(self.frameGeometry().topLeft()).y() + self.height() - 5 )
       itemHeight = self.view().visualRect(self.model().index(1,0)).height()
-      popup.setMinimumHeight((self.count()-1) * (itemHeight))
+      if self.fitAllItems:
+         popup.setMinimumHeight((self.count()-1) * (itemHeight))
 
 
 class CheckableControlComboBox(QtWidgets.QComboBox):
@@ -49,10 +52,26 @@ class CheckableControlComboBox(QtWidgets.QComboBox):
 # ------------------------------------------------------------------------------------
 
 class PairComboBoxModel(QtCore.QAbstractTableModel):
+   header    = ['', 'Price', 'Change', 'Volume']
+   hiddenRow = [['PAIR', '', '', '']]
+
    def __init__(self, data=None):
       super(PairComboBoxModel, self).__init__()
-      self.header = ['', 'Price', 'Change', 'Volume']
-      self.tableData = data
+      if data is not None:
+         self.tableData = self.hiddenRow + data
+      else:
+         self.tableData = self.hiddenRow
+
+   def setTableData(self, data):
+      self.clear()
+      self.beginInsertRows(QtCore.QModelIndex(), 1, len(data))
+      self.tableData = self.hiddenRow + data
+      self.endInsertRows()
+
+   def clear(self):
+      self.beginRemoveRows(QtCore.QModelIndex(), 1, self.rowCount()-1)
+      self.tableData = self.hiddenRow
+      self.endRemoveRows()
 
    def rowCount(self, parent=None, *args, **kwargs):
       return len(self.tableData)
@@ -61,27 +80,87 @@ class PairComboBoxModel(QtCore.QAbstractTableModel):
       return len(self.tableData[0])
 
    def data(self, index, role):
+      if not index.isValid():
+         return QtCore.QVariant()
+
       if role == QtCore.Qt.DisplayRole:
-         return self.tableData[index.row()][index.column()]
+         data = self.tableData[index.row()][index.column()]
+         if index.row() == 0:   # hidden row
+            return data
+         if index.column() == 1:
+            exp = math.ceil(math.log10(data))
+            dataPrec = min(abs(exp - 6), 8)
+            return '{:.{prec}f}'.format(data, prec=dataPrec)
+         elif index.column() == 2:
+               return '{:.2f}%'.format(data)
+         else:
+            return data
+
+      if role == QtCore.Qt.ForegroundRole:
+         if index.column() == 2:
+            data = self.tableData[index.row()][index.column()]
+            if data < 0.0:
+               return QtGui.QBrush(QtGui.QColor('red'))
+            else:
+               return QtGui.QBrush(QtGui.QColor('lime'))
+
       if role == QtCore.Qt.TextAlignmentRole:
          if index.column() == 0:
             return QtCore.Qt.AlignLeft + QtCore.Qt.AlignVCenter
          else:
             return QtCore.Qt.AlignRight + QtCore.Qt.AlignVCenter
 
+      return QtCore.QVariant()
+
    def headerData(self, col, orientation, role):
       if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
          return self.header[col]
-      return None
+      return QtCore.QVariant()
 
    def sort(self, col, order):
-      """sort table by given column number col"""
+      # sort table by given column
       if col != 0:
          self.layoutAboutToBeChanged.emit()
-         self.tableData = sorted(self.tableData, key=operator.itemgetter(col))
-         if order == QtCore.Qt.DescendingOrder:
-            self.tableData.reverse()
+         reverse = order==QtCore.Qt.DescendingOrder
+         self.tableData = self.hiddenRow + sorted(self.tableData[1:], key=operator.itemgetter(col), reverse=reverse)
          self.layoutChanged.emit()
+
+   # def parent(self, *args):
+   #    return self.p
+   #
+   # def index(self, row, col, parent=QtCore.QModelIndex()):
+   #    self.p = parent
+   #    return self.createIndex(row, col, 0)
+
+
+
+class PairFilterProxyModel(QtCore.QSortFilterProxyModel):
+   pairFilter = 'BTC'
+
+   def __init__(self):
+      super(PairFilterProxyModel, self).__init__()
+
+   def headerData(self, section, orientation, role=None):
+      return self.sourceModel().headerData(section, orientation, role)
+
+   def filterAcceptsRow(self, row, sourceParent):
+      if row == 0:  # hidden row
+         return True
+      rowPair = self.sourceModel().data(self.sourceModel().index(row, 0, sourceParent), QtCore.Qt.DisplayRole)
+      if self.pairFilter in rowPair and not rowPair.startswith(self.pairFilter):
+         return True
+      return False
+
+   def rowCount(self, parent=None, *args, **kwargs):
+      return 15
+
+   def setPairFilter(self, newFilter):
+      self.sourceModel().layoutAboutToBeChanged.emit()
+      self.pairFilter = newFilter
+      self.sourceModel().layoutChanged.emit()
+
+   def sort(self, col, order):
+      self.sourceModel().sort(col, order)
 
 
 class PairComboBoxHeader(QtWidgets.QHeaderView):
@@ -89,7 +168,6 @@ class PairComboBoxHeader(QtWidgets.QHeaderView):
       super(PairComboBoxHeader, self).__init__(QtCore.Qt.Horizontal)
       self.sectionResized.connect(self.handleSectionResized)
       self.setSectionsMovable(False)
-      self.setMinimumHeight(30)
       self.setSectionsClickable(True)
       self.combo = combo
 
@@ -116,7 +194,7 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlExchange.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlExchange.setObjectName('exchangeCombo')
 
-      self.ctrlPair = ControlComboBox()
+      self.ctrlPair = ControlComboBox(False)
       self.ctrlPair.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlPair.setObjectName('pairCombo')
 
@@ -179,33 +257,41 @@ class ControlBarWidget(QtWidgets.QWidget):
 
 
    def setPairCombo(self):
-      self.ctrlPair.addItem('PAIR')
       # self.ctrlPair.setEnabled(False)
 
-      self.pairComboFilter = ControlComboBox() #QtWidgets.QComboBox()
+      self.pairComboFilter = ControlComboBox()
       self.pairComboFilter.setObjectName('pairComboFilter')
-      self.pairComboFilter.addItems(['All', 'BTC', 'USD'])
+      # self.pairComboFilter.addItems(['BTC', 'USD', 'ETH', 'BNB'])
 
-      pairModel = PairComboBoxModel([['BTC','1.234','3.1','4.12'], ['LTC','4.56','3.1','4.153'], ['ETH','2.1','3.15','4.789']])
+      pairModel = PairComboBoxModel([])
+      pairFilterModel = PairFilterProxyModel()
+      pairFilterModel.setSourceModel(pairModel)
+      self.pairComboFilter.currentTextChanged.connect(pairFilterModel.setPairFilter)
 
       pairView = QtWidgets.QTableView()
       pairView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
       pairView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-      pairView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
       pairView.setSortingEnabled(True)
       pairView.setShowGrid(False)
+      pairView.setMinimumWidth(500)
+      # pairView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+      # pairView.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
+
 
       pairView.setHorizontalHeader(PairComboBoxHeader(self.pairComboFilter))
       pairView.horizontalHeader().setStretchLastSection(True)
       pairView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
       pairView.horizontalHeader().setMinimumHeight(35)
       pairView.verticalHeader().setDefaultSectionSize(24);
+      pairView.verticalHeader().setMaximumHeight(360)
       pairView.verticalHeader().hide()
-      pairView.setMinimumWidth(400)
 
       self.ctrlPair.setView(pairView)
-      self.ctrlPair.setModel(pairModel)
+      self.ctrlPair.view().setRowHidden(0, True)
+      # self.ctrlPair.setModel(pairModel)
+      self.ctrlPair.setModel(pairFilterModel)
 
+      # set pairComboFilter
       i = self.ctrlPair.model().index(0,0)
       self.ctrlPair.view().horizontalHeader().setIndexWidget(i, self.pairComboFilter)
 
@@ -289,23 +375,37 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlExchange.addItems(exchangeList)
       self.ctrlExchange.blockSignals(False)
 
-   def setPairList(self, pairList):
+   def setPairList(self, tickers, quote_currencies):
+      print('setting pairList')
       try:
+         # set quote currencies to the filter combo
+         self.pairComboFilter.blockSignals(True)
+         self.pairComboFilter.clear()
+         self.pairComboFilter.addItems(quote_currencies)
+         self.pairComboFilter.blockSignals(False)
+
+         # update pari combo model
          self.ctrlPair.blockSignals(True)
-         self.ctrlPair.clear()
-         self.ctrlPair.addItems(['PAIR'] + pairList)
+         self.ctrlPair.model().sourceModel().clear()
+         pairList = []
+         for symbol,data in tickers.items():
+            price  = float(data[4])
+            change = float(data[7])
+            volume = int(price * float(data[5]))
+            pairList.append( [ symbol, price, change, volume ] )
+         self.ctrlPair.model().sourceModel().setTableData(pairList)
          self.ctrlPair.view().setRowHidden(0, True)
          self.ctrlTime.setEnabled(False)
          self.ctrlPair.blockSignals(False)
-      except:
-         print(pairList)
+      except Exception as e:
+         print(e)
+      print('done')
 
    def setIntervalList(self, intervalList):
       self.ctrlTime.blockSignals(True)
       self.ctrlTime.clear()
       self.ctrlTime.addItems(['TIME'] + intervalList)
       self.ctrlTime.view().setRowHidden(0, True)
-      # setAlignment(QtCore.Qt.AlignCenter)
       for i in range(0,self.ctrlTime.model().rowCount()):
          self.ctrlTime.model().item(i).setData(QtCore.Qt.AlignHCenter, QtCore.Qt.TextAlignmentRole)
       self.ctrlTime.blockSignals(False)
