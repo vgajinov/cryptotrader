@@ -48,16 +48,32 @@ class ATMainWindow(QtWidgets.QMainWindow):
    # createMenu
    # ---------------------------------------------------------
    def createMenu(self):
+      loadKeysAction = QtWidgets.QAction('Load exchange keys', self)
+      loadKeysAction.triggered.connect(self.loadKeysPopup)
+
+      loadConfiguration = QtWidgets.QAction('Load configuration', self)
+      loadConfiguration.triggered.connect(self.loadConfiguration)
+      saveConfiguration = QtWidgets.QAction('Save configuration', self)
+      saveConfiguration.triggered.connect(self.saveConfiguration)
+
+
       quitAction = QtWidgets.QAction('Quit', self)
       quitAction.setShortcut('Ctrl+q')
       quitAction.setStatusTip('Quit AutoTrader')
-      #quitAction.triggered.connect(self.close)
+      quitAction.triggered.connect(self.close)
+
+
 
       self.menubar = QtWidgets.QMenuBar(self)
       self.menuFile = QtWidgets.QMenu(self.menubar)
       self.menuFile.setTitle("File")
       self.setMenuBar(self.menubar)
+
       self.menubar.addAction(self.menuFile.menuAction())
+      self.menuFile.addAction(loadKeysAction)
+      self.menuFile.addAction(loadConfiguration)
+      self.menuFile.addAction(saveConfiguration)
+      self.menuFile.addSeparator()
       self.menuFile.addAction(quitAction)
 
 
@@ -68,5 +84,18 @@ class ATMainWindow(QtWidgets.QMainWindow):
       # close connections
       self.tabTrade.closeConnections()
       event.accept()
+
+   def loadKeysPopup(self):
+      dlg = QtWidgets.QFileDialog()
+      dlg.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
+      if dlg.exec_() == QtWidgets.QDialog.Accepted:
+         self.keysDirectory = dlg.selectedFiles()[0]
+      print('Load keys')
+
+   def loadConfiguration(self):
+      pass
+
+   def saveConfiguration(self):
+      pass
 
 

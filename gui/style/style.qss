@@ -15,8 +15,24 @@ QMainWindow {
 }
 
 QMenuBar {
-    background-color: rgb(167,174,186,50);
+    background: rgb(167,174,186,50);
     padding: 2px;
+}
+
+QMenu {
+    font: 14px;
+    background-color: black;
+    color: white;
+    border: 1px solid white;
+}
+
+QMenu::item {
+    margin: 5px
+}
+
+QMenu::separator {
+    height: 1px;
+    background: white;
 }
 
 

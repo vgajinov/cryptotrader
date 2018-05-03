@@ -5,14 +5,16 @@ from .Overlays import OverlayFactory
 from .Indicators import IndicatorFactory
 
 
+
+
 # ------------------------------------------------------------------------------------
 # Custom ComboBox classes
 # ------------------------------------------------------------------------------------
 
 class ControlComboBox(QtWidgets.QComboBox):
-   def __init__(self, fitAllItems=True):
+   def __init__(self, fixedItemCnt=-1):
       super(ControlComboBox, self).__init__()
-      self.fitAllItems = fitAllItems
+      self.fixedItemCnt = fixedItemCnt
 
    def showPopup(self):
       super(ControlComboBox, self).showPopup()
@@ -21,8 +23,21 @@ class ControlComboBox(QtWidgets.QComboBox):
       # (note that it uses global positioning, rather than relative to combobox)
       popup.move(popup.x(), self.mapToGlobal(self.frameGeometry().topLeft()).y() + self.height() - 5 )
       itemHeight = self.view().visualRect(self.model().index(1,0)).height()
-      if self.fitAllItems:
-         popup.setMinimumHeight((self.count()-1) * (itemHeight))
+      if self.fixedItemCnt == -1:
+         # fit all items
+         popup.setMinimumHeight((self.count()-1) * itemHeight)
+      else:
+         popup.setFixedHeight(self.fixedItemCnt * itemHeight)
+
+   def wheelEvent(self, event):
+      self.verticalScrollBar().setMaximum(self.model().rowCount())
+      numSteps = - event.angleDelta().y() / (120)
+      newScrollBarValue = min(self.verticalScrollBar().value() + numSteps, self.verticalScrollBar().maximum())
+      self.verticalScrollBar().setValue(newScrollBarValue)
+      event.accept()
+
+      vs = self.verticalScrollBar()
+      print(self.model().rowCount(), vs.maximum(), vs.value())
 
 
 class CheckableControlComboBox(QtWidgets.QComboBox):
@@ -69,9 +84,11 @@ class PairComboBoxModel(QtCore.QAbstractTableModel):
       self.endInsertRows()
 
    def clear(self):
+      # oldCnt = self.rowCount()
       self.beginRemoveRows(QtCore.QModelIndex(), 1, self.rowCount()-1)
       self.tableData = self.hiddenRow
       self.endRemoveRows()
+      # self.rowsRemoved.emit(self.index(1,0),1,oldCnt-1)
 
    def rowCount(self, parent=None, *args, **kwargs):
       return len(self.tableData)
@@ -125,17 +142,10 @@ class PairComboBoxModel(QtCore.QAbstractTableModel):
          self.tableData = self.hiddenRow + sorted(self.tableData[1:], key=operator.itemgetter(col), reverse=reverse)
          self.layoutChanged.emit()
 
-   # def parent(self, *args):
-   #    return self.p
-   #
-   # def index(self, row, col, parent=QtCore.QModelIndex()):
-   #    self.p = parent
-   #    return self.createIndex(row, col, 0)
-
-
 
 class PairFilterProxyModel(QtCore.QSortFilterProxyModel):
    pairFilter = 'BTC'
+   filterChanged = QtCore.pyqtSignal(int)
 
    def __init__(self):
       super(PairFilterProxyModel, self).__init__()
@@ -151,13 +161,12 @@ class PairFilterProxyModel(QtCore.QSortFilterProxyModel):
          return True
       return False
 
-   def rowCount(self, parent=None, *args, **kwargs):
-      return 15
-
    def setPairFilter(self, newFilter):
+      self.invalidateFilter()
       self.sourceModel().layoutAboutToBeChanged.emit()
       self.pairFilter = newFilter
       self.sourceModel().layoutChanged.emit()
+      self.filterChanged.emit(self.rowCount())
 
    def sort(self, col, order):
       self.sourceModel().sort(col, order)
@@ -180,6 +189,41 @@ class PairComboBoxHeader(QtWidgets.QHeaderView):
       if col == 0:
          self.combo.setGeometry(self.sectionViewportPosition(0) + 3, 5, 60, self.height() - 10)
 
+
+class PairTableView(QtWidgets.QTableView):
+   def __init__(self):
+      super(PairTableView, self).__init__()
+
+   def rowCountChanged(self, old, new):
+      print('rowCnt', old, new)
+      self.verticalScrollBar().setMaximum(self.model().rowCount())
+
+   def handleRowsRemoved(self, parent, first, last):
+      print('rows removed: ', first, last)
+
+   def handleFilterChanged(self, rowCnt):
+      print('Filter changed', rowCnt)
+      # self.viewport().setSizeHint(QtCore.QSize(24*rowCnt, self.viewportSizeHint().width()))
+      self.verticalScrollBar().setMaximum(rowCnt)
+      self.verticalScrollBar().setValue(0)
+      self.scrollTo(QtCore.QModelIndex(), QtWidgets.QAbstractItemView.PositionAtTop)
+      vs = self.verticalScrollBar()
+      print(vs.minimum(), vs.maximum(), vs.value())
+
+
+   def wheelEvent(self, event):
+      self.verticalScrollBar().setMaximum(self.model().rowCount())
+      numSteps = - event.angleDelta().y() / (120)
+      newScrollBarValue = self.verticalScrollBar().value() + numSteps
+      self.verticalScrollBar().setValue(min(newScrollBarValue, self.verticalScrollBar().maximum()))
+      event.accept()
+
+      vs = self.verticalScrollBar()
+      print(self.viewportSizeHint().height(), vs.sizeHint().height(), vs.sizeHint().width(), self.model().rowCount(), vs.maximum(), vs.value())
+
+
+
+
 # ------------------------------------------------------------------------------------
 # ControlBarWidget
 # ------------------------------------------------------------------------------------
@@ -194,7 +238,7 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlExchange.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlExchange.setObjectName('exchangeCombo')
 
-      self.ctrlPair = ControlComboBox(False)
+      self.ctrlPair = ControlComboBox(15)
       self.ctrlPair.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
       self.ctrlPair.setObjectName('pairCombo')
 
@@ -263,12 +307,15 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.pairComboFilter.setObjectName('pairComboFilter')
       # self.pairComboFilter.addItems(['BTC', 'USD', 'ETH', 'BNB'])
 
+      # create the main and the proxy models
       pairModel = PairComboBoxModel([])
       pairFilterModel = PairFilterProxyModel()
       pairFilterModel.setSourceModel(pairModel)
+      pairFilterModel.setDynamicSortFilter(True)
       self.pairComboFilter.currentTextChanged.connect(pairFilterModel.setPairFilter)
 
-      pairView = QtWidgets.QTableView()
+      # create table view
+      pairView = PairTableView() #QtWidgets.QTableView()
       pairView.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
       pairView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
       pairView.setSortingEnabled(True)
@@ -277,7 +324,7 @@ class ControlBarWidget(QtWidgets.QWidget):
       # pairView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
       # pairView.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerItem)
 
-
+      # create the header for the table view
       pairView.setHorizontalHeader(PairComboBoxHeader(self.pairComboFilter))
       pairView.horizontalHeader().setStretchLastSection(True)
       pairView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
@@ -286,14 +333,18 @@ class ControlBarWidget(QtWidgets.QWidget):
       pairView.verticalHeader().setMaximumHeight(360)
       pairView.verticalHeader().hide()
 
+      pairFilterModel.rowsRemoved.connect(pairView.handleRowsRemoved)
+      pairFilterModel.filterChanged.connect(pairView.handleFilterChanged)
+
+      # set model and view to pairCombo
       self.ctrlPair.setView(pairView)
       self.ctrlPair.view().setRowHidden(0, True)
-      # self.ctrlPair.setModel(pairModel)
       self.ctrlPair.setModel(pairFilterModel)
 
       # set pairComboFilter
       i = self.ctrlPair.model().index(0,0)
       self.ctrlPair.view().horizontalHeader().setIndexWidget(i, self.pairComboFilter)
+
 
 
    def setOverlayCombo(self):
@@ -344,7 +395,7 @@ class ControlBarWidget(QtWidgets.QWidget):
    def pairChanged(self, currItem):
       # self.ctrlTime.setEnabled(True)
       # self.parent().pairChanged(currItem)
-      print(currItem)
+      pass
 
    def intervalChanged(self, currItem):
       self.parent().intervalChanged(currItem)
@@ -376,7 +427,6 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlExchange.blockSignals(False)
 
    def setPairList(self, tickers, quote_currencies):
-      print('setting pairList')
       try:
          # set quote currencies to the filter combo
          self.pairComboFilter.blockSignals(True)
@@ -384,7 +434,7 @@ class ControlBarWidget(QtWidgets.QWidget):
          self.pairComboFilter.addItems(quote_currencies)
          self.pairComboFilter.blockSignals(False)
 
-         # update pari combo model
+         # update pair combo model
          self.ctrlPair.blockSignals(True)
          self.ctrlPair.model().sourceModel().clear()
          pairList = []
@@ -393,13 +443,13 @@ class ControlBarWidget(QtWidgets.QWidget):
             change = float(data[7])
             volume = int(price * float(data[5]))
             pairList.append( [ symbol, price, change, volume ] )
+         self.ctrlPair.model().setPairFilter(quote_currencies[0])
          self.ctrlPair.model().sourceModel().setTableData(pairList)
          self.ctrlPair.view().setRowHidden(0, True)
          self.ctrlTime.setEnabled(False)
          self.ctrlPair.blockSignals(False)
       except Exception as e:
          print(e)
-      print('done')
 
    def setIntervalList(self, intervalList):
       self.ctrlTime.blockSignals(True)
