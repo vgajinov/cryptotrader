@@ -90,7 +90,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
       dlg.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
       if dlg.exec_() == QtWidgets.QDialog.Accepted:
          self.keysDirectory = dlg.selectedFiles()[0]
-      print('Load keys')
+         self.tabTrade.setKeysDirectory(self.keysDirectory)
 
    def loadConfiguration(self):
       pass

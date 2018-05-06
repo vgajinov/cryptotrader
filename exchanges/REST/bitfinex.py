@@ -201,6 +201,10 @@ class BitfinexRESTClient(RESTClientAPI):
    def symbols(self):
       return self._public_query('/v1/symbols')
 
+   @return_api_response(fmt.symbols_details, log)
+   def symbols_details(self):
+      return self._public_query('/v1/symbols_details')
+
    @classmethod
    def candle_intervals(self):
       return ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
@@ -299,10 +303,6 @@ class BitfinexRESTClient(RESTClientAPI):
    @return_api_response(fmt.echo, log)
    def status(self):
       return self._public_query('/v2/platform/status')
-
-   @return_api_response(fmt.symbols_details, log)
-   def symbols_details(self):
-      return self._public_query('/v1/symbols_details')
 
    @return_api_response(fmt.tickers, log)
    def tickers(self, pairs, **kwargs):

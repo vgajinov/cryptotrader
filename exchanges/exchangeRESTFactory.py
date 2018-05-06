@@ -19,7 +19,7 @@ class ExchangeRESTFactory(object):
       if not ExchangeRESTFactory.exchanges:
          ExchangeRESTFactory.get_exchanges()
       if name in ExchangeRESTFactory.exchanges.keys():
-         return ExchangeRESTFactory.exchanges[name]()
+         return ExchangeRESTFactory.exchanges[name](key_file=key_file)
       else:
          print('Exchange name not recognized : ', name)
          return None

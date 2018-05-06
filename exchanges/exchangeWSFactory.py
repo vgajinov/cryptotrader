@@ -16,11 +16,11 @@ class ExchangeWSFactory(object):
       return sorted(list(ExchangeWSFactory.exchanges.keys()))
 
    @staticmethod
-   def create_client(name)-> WSClientAPI:
+   def create_client(name, key_file=None)-> WSClientAPI:
       if not ExchangeWSFactory.exchanges:
          ExchangeWSFactory.get_exchanges()
       try:
-         return ExchangeWSFactory.exchanges[name]()
+         return ExchangeWSFactory.exchanges[name](key_file=key_file)
       except KeyError:
          print('Exchange name not recognized')
          return None

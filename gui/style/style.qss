@@ -26,14 +26,12 @@ QMenu {
     border: 1px solid white;
 }
 
-QMenu::item {
-    margin: 5px
-}
 
 QMenu::separator {
     height: 1px;
     background: white;
 }
+
 
 
 /*

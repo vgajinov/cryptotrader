@@ -394,7 +394,7 @@ class ControlBarWidget(QtWidgets.QWidget):
 
    def pairChanged(self, currItem):
       # self.ctrlTime.setEnabled(True)
-      # self.parent().pairChanged(currItem)
+      self.parent().pairChanged(currItem)
       pass
 
    def intervalChanged(self, currItem):

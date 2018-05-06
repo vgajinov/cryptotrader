@@ -1,3 +1,4 @@
+import os.path
 from .ControlBarWidget import ControlBarWidget
 from .CandleChartWidget import CandleChartWidget
 from .PlaceOrderWidget import PlaceOrderWidget
@@ -17,13 +18,17 @@ from PyQt5 import QtGui
 
 
 class TradingTab(QtWidgets.QWidget):
+   keysDir    = None
    wsClient   = None
    restClient = None
+
    exchange   = None
    pair       = None
    interval   = None
-   symbols_details = None
-   all_tickers     = None
+   symbols    = None
+   symbols_details  = None
+   all_tickers      = None
+   quote_currencies = None
 
    # channels
    tickerChannel  = None
@@ -136,17 +141,23 @@ class TradingTab(QtWidgets.QWidget):
          self.wsClient = None
          self.restClient = None
 
+      keyfile = None
+      if self.keysDir is not None:
+         keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
+         keyfile = keyFileName if os.path.isfile(keyFileName) else None
+
       self.wsClient = ExchangeWSFactory.create_client(exchangeName)
-      self.restClient = ExchangeRESTFactory.create_client(exchangeName)
+      self.restClient = ExchangeRESTFactory.create_client(exchangeName, key_file=keyfile)
       self.wsClient.connect(self.infoUpdate)
 
       self.pair = None
       self.interval = None
       self.clearChannels()
 
+      self.quote_currencies = self.restClient.quote_currencies()
+      self.symbols = self.restClient.symbols()
       self.symbols_details = self.restClient.symbols_details()
       self.all_tickers = self.restClient.all_tickers()
-      # self.controlBarWidget.setPairList(self.restClient.symbols())
       self.controlBarWidget.setPairList(self.all_tickers, self.restClient.quote_currencies())
       self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
 
@@ -175,9 +186,17 @@ class TradingTab(QtWidgets.QWidget):
       if self.interval is not None:
          self.candlesChannel = self.wsClient.subscribe_candles(pair, self.interval, self.updateCandles)
 
+      for cur in self.quote_currencies:
+         if pair.endswith(cur):
+            base_currency = pair[:-len(cur)]
+            quote_currency = cur
+            print(base_currency,quote_currency)
+            break
+
       symbol_details = self.symbols_details[pair.upper()]
       self.tradesTable.setSymbolDetails(symbol_details)
       self.numericOrderBookWidget.setSymbolDetails(symbol_details)
+      self.placeOrderWidget.setData(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
 
       self.setCursor(QtCore.Qt.ArrowCursor)
 
@@ -192,12 +211,27 @@ class TradingTab(QtWidgets.QWidget):
 
 
    # ------------------------------------------------------------------------------------
+   # MainWindow interactions
+   # ------------------------------------------------------------------------------------
+
+   def setKeysDirectory(self, dir):
+      self.keysDir = dir
+      if self.restClient is not None:
+         keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
+         keyfile = keyFileName if os.path.isfile(keyFileName) else None
+         self.restClient = ExchangeRESTFactory.create_client(self.exchange, key_file=keyfile)
+
+   # This should be called on quitting the application
+   def closeConnections(self):
+      if self.wsClient is not None:
+         self.wsClient.disconnect()
+
+
+   # ------------------------------------------------------------------------------------
    # Update methods
    # ------------------------------------------------------------------------------------
 
-
    def customEvent(self, event):
-      #print('received event' + str(event.type()))
       if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
          self.orderBookGraph.setData(event.bids, event.asks)
          self.numericOrderBookWidget.setData(event.bids, event.asks)
@@ -206,6 +240,7 @@ class TradingTab(QtWidgets.QWidget):
       if event.type() == TickerUpdateEvent.EVENT_TYPE:
          lastPrice = event.ticker[6]
          self.numericOrderBookWidget.setLastPrice(lastPrice)
+         self.placeOrderWidget.setTicker(event.ticker)
       if event.type() == CandlesUpdateEvent.EVENT_TYPE:
          self.chartWidget.setData(event.candles)
          self.chartWidget.updateChart()
@@ -231,12 +266,5 @@ class TradingTab(QtWidgets.QWidget):
       pass
 
 
-   # ------------------------------------------------------------------------------------
-   # Other methods
-   # ------------------------------------------------------------------------------------
 
-   # this should be called by the main windows on quit
-   def closeConnections(self):
-      if self.wsClient is not None:
-         self.wsClient.disconnect()
 

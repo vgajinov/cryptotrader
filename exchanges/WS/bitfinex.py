@@ -157,7 +157,7 @@ class BitfinexCandles:
 # ==========================================================================================
 
 class BitfinexWSClient(WSClientAPI):
-   def __init__(self):
+   def __init__(self, key_file=None):
       super(BitfinexWSClient, self).__init__()
       self._thread = None
       self._ws = None
