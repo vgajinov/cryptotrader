@@ -87,13 +87,15 @@ class OrderFormWidget(QtWidgets.QWidget):
          )
 
    def setPrecision(self, minAmount, priceP):
-      leftDigits, rightDigits = str(minAmount).split('.')
-      amountPrec = len(rightDigits.rstrip('0'))
+      amountPrec = 0
+      if '.' in str(minAmount):
+         leftDigits, rightDigits = str(minAmount).split('.')
+         amountPrec = len(rightDigits.rstrip('0'))
 
-      self.amountPrecision = amountPrec
-      self.pricePrecision  = priceP
+      minPrice = float(minAmount) * pow(10, priceP)
 
       self.amountInput.setValidator(AmountValidator(float(minAmount), 100000.0*float(minAmount), amountPrec))
+      self.amountInput.setValidator(AmountValidator(minPrice, 100000.0 * minPrice, priceP))
 
 
 
@@ -189,6 +191,8 @@ class PlaceOrderWidget(QtWidgets.QWidget):
       pPrec = self.symbol_details.get('minPrice', None)
       if pPrec is not None:
          pricePrec = int(abs(math.log10(float(pPrec))))
+      else:
+         pricePrec = 8
 
       self.limitOrderBuyWidget.setPrecision(minAmount, pricePrec)
       self.limitOrderSellWidget.setPrecision(minAmount, pricePrec)
