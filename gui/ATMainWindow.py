@@ -4,7 +4,7 @@ from .Separators import *
 from .TradingTab import TradingTab
 
 
-
+from .InfoMessageBox import InfoMessageBox
 
 class ATMainWindow(QtWidgets.QMainWindow):
    def __init__(self, width, height):
@@ -41,7 +41,6 @@ class ATMainWindow(QtWidgets.QMainWindow):
       qss = open(os.path.join(os.path.dirname(__file__), 'style', 'style.qss'), 'r')
       self.setStyleSheet(qss.read())
       qss.close()
-
 
 
 

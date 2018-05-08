@@ -1,17 +1,18 @@
 import math
+from enum import Enum
 from PyQt5 import QtCore, QtWidgets, QtGui
+from .InfoMessageBox import InfoMessageBox
 
 
 
-class AmountValidator(QtGui.QDoubleValidator):
+class InputValidator(QtGui.QDoubleValidator):
    def __init__(self, minAmount, maxAmount, precision):
-      super(AmountValidator,self).__init__(minAmount, maxAmount, precision)
+      super(InputValidator, self).__init__(minAmount, maxAmount, precision)
       self.baseValidator = QtGui.QDoubleValidator(minAmount, maxAmount, precision)
       self.setNotation(QtGui.QDoubleValidator.StandardNotation)
 
    def validate(self, p_str, p_int):
       baseValidate = self.baseValidator.validate(p_str, p_int)
-      print(p_str, p_int, baseValidate)
       if baseValidate[0] == QtGui.QDoubleValidator.Invalid:
          return baseValidate
 
@@ -22,16 +23,51 @@ class AmountValidator(QtGui.QDoubleValidator):
 
 
 # ------------------------------------------------------------------------------------
+# AmountLineEdit
+# ------------------------------------------------------------------------------------
+
+class AmountLineEdit(QtWidgets.QLineEdit):
+   maxValue  = ''
+   precision = 8
+
+   def __init__(self):
+      super(AmountLineEdit, self).__init__()
+
+   def setMaxAmountLabel(self, label):
+      self.maxLabel = label
+
+   def setPrecision(self, prec):
+      self.precision = prec
+
+   def focusInEvent(self, event):
+      if self.maxValue != '':
+         self.maxLabel.setText( 'max:   {:.{prec}f}'.format(float(self.maxValue), prec=self.precision) )
+         self.maxLabel.setStyleSheet('color: blue;')
+      event.accept()
+
+   def focusOutEvent(self, event):
+      self.maxLabel.setStyleSheet('color: black;')
+      event.accept()
+
+
+# ------------------------------------------------------------------------------------
 # OrderFormWidget
 # ------------------------------------------------------------------------------------
+
+class OrderSide(Enum):
+   BUY  = 0
+   SELL = 1
 
 class OrderFormWidget(QtWidgets.QWidget):
    amountPrecision = 8
    pricePrecision  = 8
+   orderSide       = OrderSide.BUY
 
-   def __init__(self, orderSide):
+   def __init__(self, orderSide, name):
       super(OrderFormWidget, self).__init__()
 
+      self.setObjectName(name)
+      self.orderSide = orderSide
 
       self.infoLabel = QtWidgets.QLabel()
       self.infoLabel.setStyleSheet('font: bold 16px;')
@@ -45,7 +81,12 @@ class OrderFormWidget(QtWidgets.QWidget):
       self.priceInput = QtWidgets.QLineEdit()
 
       amountLabel = QtWidgets.QLabel('Amount:')
-      self.amountInput = QtWidgets.QLineEdit()
+      self.amountInput = AmountLineEdit()
+
+      self.maxAmountLabel =  QtWidgets.QLabel('max amount')
+      self.maxAmountLabel.setStyleSheet('color: black;')
+      self.maxAmountLabel.setFixedHeight(10)
+      self.amountInput.setMaxAmountLabel(self.maxAmountLabel)
 
       totalLabel = QtWidgets.QLabel('Total:')
       self.totalValueLabel = QtWidgets.QLabel()
@@ -53,8 +94,8 @@ class OrderFormWidget(QtWidgets.QWidget):
 
       self.executeButton = QtWidgets.QPushButton()
       self.executeButton.setMinimumHeight(40)
-      self.executeButton.setText(orderSide)
-      self.executeButton.setObjectName(orderSide.lower() + 'Button')
+      self.executeButton.setText(orderSide.name)
+      self.executeButton.setObjectName(orderSide.name.lower() + 'Button')
 
       formLayout = QtWidgets.QGridLayout()
       self.setLayout(formLayout)
@@ -66,36 +107,64 @@ class OrderFormWidget(QtWidgets.QWidget):
       formLayout.addWidget(self.priceInput, 2, 1)
       formLayout.addWidget(amountLabel, 3, 0)
       formLayout.addWidget(self.amountInput, 3, 1)
-      formLayout.addWidget(totalLabel, 4, 0)
-      formLayout.addWidget(self.totalValueLabel, 4, 1)
-      formLayout.addWidget(self.executeButton, 5, 0, 1, 2)
+      formLayout.addWidget(self.maxAmountLabel, 4, 1)
+      formLayout.addWidget(totalLabel, 5, 0)
+      formLayout.addWidget(self.totalValueLabel, 5, 1)
+      formLayout.addWidget(self.executeButton, 6, 0, 1, 2)
+
       formLayout.setMargin(15)
-      formLayout.setSpacing(10)
-      formLayout.setColumnStretch(0 ,1)
+      formLayout.setVerticalSpacing(10)
+      formLayout.setColumnStretch(0 ,2)
       formLayout.setColumnStretch(1 ,3)
       formLayout.setRowStretch(0, 2)
-      formLayout.setRowStretch(5, 2)
+      formLayout.setRowStretch(6, 2)
 
       self.priceInput.textChanged.connect(self.dataChange)
       self.amountInput.textChanged.connect(self.dataChange)
 
+
    def dataChange(self):
-      if self.priceInput.text() != '' and self.amountInput.text() != '':
-         self.totalValueLabel.setText(
-            '{:.{prec}f}'.format( float(self.priceInput.text()) * float(self.amountInput.text()),
-                                  prec=self.pricePrecision )
-         )
+      if self.priceInput.text() != '':
+         price = float(self.priceInput.text())
+         if price != 0 and self.balanceAmountLabel.text() != '':
+            maxAmount = float(self.balanceAmountLabel.text()) / float(self.priceInput.text())
+            self.amountInput.maxValue = '{:.{prec}f}'.format(maxAmount, prec=self.pricePrecision)
+
+         if self.amountInput.text() != '':
+            self.totalValueLabel.setText(
+               '{:.{prec}f}'.format( float(self.priceInput.text()) * float(self.amountInput.text()),
+                                     prec=self.pricePrecision )
+            )
+
+      try:
+         if float(self.totalValueLabel.text()) > float(self.balanceAmountLabel.text()):
+            self.totalValueLabel.setStyleSheet('color: red;')
+         else:
+            self.totalValueLabel.setStyleSheet('color: lime;')
+      except:
+         pass
+
 
    def setPrecision(self, minAmount, priceP):
+      minPrice = float(minAmount) * pow(10, priceP)
       amountPrec = 0
       if '.' in str(minAmount):
          leftDigits, rightDigits = str(minAmount).split('.')
          amountPrec = len(rightDigits.rstrip('0'))
 
-      minPrice = float(minAmount) * pow(10, priceP)
+      self.priceInput.setValidator(InputValidator(minPrice, 100000.0 * minPrice, priceP))
+      self.amountInput.setValidator(InputValidator(float(minAmount), 100000.0 * float(minAmount), amountPrec))
+      self.amountInput.setPrecision(amountPrec)
 
-      self.amountInput.setValidator(AmountValidator(float(minAmount), 100000.0*float(minAmount), amountPrec))
-      self.amountInput.setValidator(AmountValidator(minPrice, 100000.0 * minPrice, priceP))
+
+   def clear(self):
+      self.priceInput.blockSignals(True)
+      self.amountInput.blockSignals(True)
+      self.priceInput.clear()
+      self.amountInput.clear()
+      self.totalValueLabel.clear()
+      self.priceInput.blockSignals(False)
+      self.amountInput.blockSignals(False)
 
 
 
@@ -137,8 +206,11 @@ class PlaceOrderWidget(QtWidgets.QWidget):
    # Limit Order Layout
    # ---------------------------------------------------
    def addLimitOrderLayout(self):
-      self.limitOrderBuyWidget = OrderFormWidget('BUY')
-      self.limitOrderSellWidget = OrderFormWidget('SELL')
+      self.limitOrderBuyWidget = OrderFormWidget(OrderSide.BUY, 'limitOrder')
+      self.limitOrderSellWidget = OrderFormWidget(OrderSide.SELL, 'limitOrder')
+
+      self.limitOrderBuyWidget.executeButton.clicked.connect(self.placeOrder)
+      self.limitOrderSellWidget.executeButton.clicked.connect(self.placeOrder)
 
       limitOrderLayout = QtWidgets.QHBoxLayout(self.tabLimitOrder)
       limitOrderLayout.addWidget(self.limitOrderBuyWidget,  stretch=1)
@@ -149,8 +221,11 @@ class PlaceOrderWidget(QtWidgets.QWidget):
    # Market Order Layout
    # ---------------------------------------------------
    def addMarketOrderLayout(self):
-      self.marketOrderBuyWidget = OrderFormWidget('BUY')
-      self.marketOrderSellWidget = OrderFormWidget('SELL')
+      self.marketOrderBuyWidget = OrderFormWidget(OrderSide.BUY, 'marketOrder')
+      self.marketOrderSellWidget = OrderFormWidget(OrderSide.SELL, 'marketOrder')
+
+      self.marketOrderBuyWidget.executeButton.clicked.connect(self.placeOrder)
+      self.marketOrderSellWidget.executeButton.clicked.connect(self.placeOrder)
 
       self.marketOrderBuyWidget.priceInput.setText('0.0')
       self.marketOrderBuyWidget.priceInput.setDisabled(True)
@@ -168,10 +243,35 @@ class PlaceOrderWidget(QtWidgets.QWidget):
 
 
    # ------------------------------------------------------------------------------------
-   # Event Handlers
+   # Event Handlers & Slots
    # ------------------------------------------------------------------------------------
 
+   def placeOrder(self):
+      sender = self.sender()
 
+      if sender.objectName() == 'buyButton':
+         side = 'BUY'
+      elif sender.objectName() == 'sellButton':
+         side = 'SELL'
+      else:
+         print('Unknown place order sender!')
+         return
+
+      pair = self.baseCurrency + self.quoteCurrency
+      size = sender.parent().amountInput.text()
+      price = sender.parent().priceInput.text()
+
+      if float(size) * float(price) > float(sender.parent().balanceAmountLabel.text()):
+         msg = InfoMessageBox('Insufficient balance!')
+         msg.exec()
+         return
+
+      if sender.parent().objectName() == 'limitOrder':
+         print(pair, side, size, price)
+         # self.restClient.place_limit_order(side, pair, size, price)
+      elif sender.parent().objectName() == 'marketOrder':
+         print(pair, side, size, price)
+         # self.restClient.place_market_order(side, pair, size)
 
 
    # ------------------------------------------------------------------------------------
@@ -202,15 +302,22 @@ class PlaceOrderWidget(QtWidgets.QWidget):
 
    def setBalances(self):
       balances = self.parent().restClient.balance()
-      self.marketOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-      self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
-      self.limitOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-      self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
+      self.limitOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
+      self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
+      self.marketOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
+      self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
 
-      self.marketOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-      self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
-      self.limitOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-      self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
+      self.limitOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
+      self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
+      self.marketOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
+      self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
+
+
+   def clear(self):
+      self.limitOrderBuyWidget.clear()
+      self.limitOrderSellWidget.clear()
+      self.marketOrderBuyWidget.clear()
+      self.marketOrderSellWidget.clear()
 
 
    # ------------------------------------------------------------------------------------

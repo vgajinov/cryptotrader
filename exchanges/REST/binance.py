@@ -152,6 +152,7 @@ class BinanceRESTClient(RESTClientAPI):
                 url='https://api.binance.com', timeout=5, log=log):
       super(BinanceRESTClient, self).__init__(url, api_version=api_version, key=key, secret=secret,
                                               key_file=key_file, timeout=timeout, log=log)
+      self.authenticated = key_file is not None or key is not None and secret is not None
 
 
    @staticmethod

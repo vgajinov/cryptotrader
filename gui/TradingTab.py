@@ -196,7 +196,8 @@ class TradingTab(QtWidgets.QWidget):
       symbol_details = self.symbols_details[pair.upper()]
       self.tradesTable.setSymbolDetails(symbol_details)
       self.numericOrderBookWidget.setSymbolDetails(symbol_details)
-      self.placeOrderWidget.setData(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
+      if self.restClient.authenticated:
+         self.placeOrderWidget.setData(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
 
       self.setCursor(QtCore.Qt.ArrowCursor)
 

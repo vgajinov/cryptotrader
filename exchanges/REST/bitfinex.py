@@ -141,6 +141,7 @@ class BitfinexRESTClient(RESTClientAPI):
                 url='https://api.bitfinex.com', timeout=5, log=log):
       super(BitfinexRESTClient, self).__init__(url, api_version=api_version, key=key, secret=secret,
                                                key_file=key_file, timeout=timeout, log=log)
+      self.authenticated = key_file is not None or key is not None and secret is not None
 
 
    @staticmethod
