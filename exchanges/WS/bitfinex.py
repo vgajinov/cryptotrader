@@ -1,5 +1,7 @@
 import websocket
 import json
+import hashlib
+import hmac
 import time
 import traceback
 from threading import Thread
@@ -162,6 +164,7 @@ class BitfinexWSClient(WSClientAPI):
       self._thread = None
       self._ws = None
       self._connected = False
+      self._authenticated = False
       self._subscriptions  = {}   # subsriptions : channelId -> channelName
       self._data = {}             # channelId -> channel data
 
@@ -257,12 +260,24 @@ class BitfinexWSClient(WSClientAPI):
                self._data.pop(msg['chanId'])                       # remove data object
                chanName = self._subscriptions.pop(msg['chanId'])   # remove subscription
                self.logger.info('Unsubscribed from channel %s' % chanName)
+            elif event == 'auth':
+               if msg['status'] == 'OK':
+                  self._authenticated = True
+                  self.userId = msg['userId']
+                  self.logger.info('Authenticated - userId %s' % self.userId)
+               else:
+                  dispatcher.send(signal='info', sender='bitfinex', data={'error': 'Authentication FAILED!'})
+                  self.logger.info('Authentication FAILED : %s' % msg['code'])
             else:
                self.logger.info('Unhandled WS event!')
 
          # CHANNEL UPDATE
          else:
-            self._update_channel(msg)
+            chanId = msg[0]
+            if chanId == 0:   # Account info always uses chanId 0
+               self._update_auth_channel(msg)
+            else:
+               self._update_channel(msg)
 
       except Exception as inst:
          self.logger.info(type(inst))              # the exception instance
@@ -306,7 +321,6 @@ class BitfinexWSClient(WSClientAPI):
       if self._data.get(chanId, None) is None:
          # snapshot message
          if chanName.startswith('ticker'):
-            #dispatcher.send(signal=chanName, sender='bitfinex', data=[float(x) for x in msg[1]])
             self._data[chanId] = BitfinexTicker(chanName, data)
          elif chanName.startswith('book'):
             self._data[chanId] = BitfinexOrderBook(chanName, data)
@@ -320,6 +334,12 @@ class BitfinexWSClient(WSClientAPI):
             self._data[chanId].update(msg[2])
          else:
             self._data[chanId].update(data)
+
+   def _update_auth_channel(self, msg):
+      if msg[1] == 'os':
+         self._handle_orders_update(msg[2])
+      elif msg[1] == 'on' or msg[1] == 'ou' or msg[1] == 'oc':
+         self._handle_orders_update([msg[2]])
 
 
    # Public interface methods
@@ -407,7 +427,10 @@ class BitfinexWSClient(WSClientAPI):
 
       if chanName not in self._subscriptions.values():
          self.logger.info('Subscribing to ticker %s ...' % symbol)
-         self._ws.send(json.dumps({"event": "subscribe", "channel": "ticker", "symbol": symbol}))
+         self._ws.send(json.dumps({ "event": "subscribe",
+                                    "channel": "ticker",
+                                    "symbol": symbol
+                                    }))
       else:
          self.logger.info('Already subscribed to %s ticker' % symbol)
          try:
@@ -439,8 +462,13 @@ class BitfinexWSClient(WSClientAPI):
 
       if chanName not in self._subscriptions.values():
          self.logger.info('Subscribing to order book for %s ...' % symbol)
-         self._ws.send(json.dumps({"event": "subscribe", "channel": "book", "symbol": symbol,
-                                  "prec": prec, "freq": freq, "len": len}))
+         self._ws.send(json.dumps({ "event": "subscribe",
+                                    "channel": "book",
+                                    "symbol": symbol,
+                                    "prec": prec,
+                                    "freq": freq,
+                                    "len": len
+                                   }))
       else:
          self.logger.info('Already subscribed to %s order book' % symbol)
          try:
@@ -462,7 +490,10 @@ class BitfinexWSClient(WSClientAPI):
 
       if chanName not in self._subscriptions.values():
          self.logger.info('Subscribing to trades for %s ...' % symbol)
-         self._ws.send(json.dumps({"event": "subscribe", "channel": "trades", "symbol": symbol}))
+         self._ws.send(json.dumps({ "event": "subscribe",
+                                    "channel": "trades",
+                                    "symbol": symbol
+                                    }))
       else:
          self.logger.info('Already subscribed to trades channel for %s' % symbol)
          try:
@@ -488,7 +519,10 @@ class BitfinexWSClient(WSClientAPI):
 
       if chanName not in self._subscriptions.values():
          self.logger.info('Subscribing to %s candels for %s ...' % (interval, symbol))
-         self._ws.send(json.dumps({"event": "subscribe", "channel": "candles", "key": 'trade:' + interval + ':t' + symbol}))
+         self._ws.send(json.dumps({ "event": "subscribe",
+                                    "channel": "candles",
+                                    "key": 'trade:' + interval + ':t' + symbol
+                                    }))
       else:
          self.logger.info('Already subscribed to %s candles' % symbol)
          try:
@@ -502,5 +536,31 @@ class BitfinexWSClient(WSClientAPI):
 
 
 
+   def authenticate(self, key=None, secret=None, keyFile=None):
+      self.key    = None
+      self.secret = None
 
+      if keyFile is not None:
+         with open(keyFile, 'r') as f:
+            self._key = f.readline().strip()
+            self._secret = f.readline().strip()
+      else:
+         if key is not None and secret is not None:
+            self.key = key
+            self.secret = secret
+      if self.key is None or self.secret is None:
+         return False
 
+      nonce = str(int(time.time() * 10000000))
+      auth_string = 'AUTH' + nonce
+      auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
+                          hashlib.sha384).hexdigest()
+
+      self.logger.info('Authenticating ...')
+      self._ws.send(json.dumps({'event': 'auth',
+                                'apiKey': self.key,
+                                'authSig': auth_sig,
+                                'authPayload': auth_string,
+                                'authNonce': nonce,
+                                'filter': ['trading', 'balance']
+                                }))

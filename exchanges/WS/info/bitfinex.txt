@@ -175,11 +175,6 @@ ERROR / INFO CODES:
                    }
 
 
-SYMBOLS:
-["btcusd","ltcusd","ltcbtc","ethusd","ethbtc","etcbtc","etcusd","rrtusd","rrtbtc",
- "zecusd","zecbtc","xmrusd","xmrbtc","dshusd","dshbtc","bccbtc","bcubtc","bccusd",
- "bcuusd","xrpusd","xrpbtc","iotusd","iotbtc","ioteth","eosusd","eosbtc","eoseth",
- "sanusd","sanbtc","saneth","omgusd","omgbtc","omgeth","bchusd","bchbtc","bcheth"]
 
 
 
@@ -469,3 +464,29 @@ Candles
   [
     CHANNEL_ID,
     [ MTS, OPEN, CLOSE, HIGH, LOW, VOLUME ] ]
+
+
+---------------------------------------------------------------------------------
+Authenticated Channels
+---------------------------------------------------------------------------------
+
+translation table for channel names:
+    Data Channels
+    os      -   Orders
+    hos     -   Historical Orders
+    ps      -   Positions
+    hts     -   Trades (snapshot)
+    te      -   Trade Event
+    tu      -   Trade Update
+    ws      -   Wallets
+    bu      -   Balance Info
+    miu     -   Margin Info
+    fiu     -   Funding Info
+    fos     -   Offers
+    hfos    -   Historical Offers
+    fcs     -   Credits
+    hfcs    -   Historical Credits
+    fls     -   Loans
+    hfls    -   Historical Loans
+    htfs    -   Funding Trades
+    n       -   Notifications (WIP)
