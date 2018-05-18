@@ -490,3 +490,73 @@ translation table for channel names:
     hfls    -   Historical Loans
     htfs    -   Funding Trades
     n       -   Notifications (WIP)
+
+
+
+ORDERS
+---------------------------------------------------------------------------------
+
+Snapshot is a list of order updates
+
+Order update:
+
+   [
+    ID,
+    GID,
+    CID,
+    SYMBOL,
+    MTS_CREATE,
+    MTS_UPDATE,
+    AMOUNT,
+    AMOUNT_ORIG,
+    TYPE,
+    TYPE_PREV,
+    _PLACEHOLDER,
+    _PLACEHOLDER,
+    FLAGS,
+    STATUS,
+    _PLACEHOLDER,
+    _PLACEHOLDER,
+    PRICE,
+    PRICE_AVG,
+    PRICE_TRAILING,
+    PRICE_AUX_LIMIT,
+    _PLACEHOLDER,
+    _PLACEHOLDER,
+    _PLACEHOLDER,
+    NOTIFY,
+    HIDDEN,
+    PLACED_ID,
+    ...
+  ]
+
+
+USER TRADES
+---------------------------------------------------------------------------------
+
+  [
+    ID,
+    PAIR,
+    MTS_CREATE,
+    ORDER_ID,
+    EXEC_AMOUNT,
+    EXEC_PRICE,
+    ORDER_TYPE,
+    ORDER_PRICE,
+    MAKER,
+    FEE,
+    FEE_CURRENCY,
+    ...
+  ]
+
+BALANCES
+---------------------------------------------------------------------------------
+
+  [
+    WALLET_TYPE,
+    CURRENCY,
+    BALANCE,
+    UNSETTLED_INTEREST,
+    BALANCE_AVAILABLE,
+    ...
+  ]

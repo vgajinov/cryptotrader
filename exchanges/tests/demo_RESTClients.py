@@ -150,6 +150,24 @@ def testBinanceAuth():
    # print(order)
 
 
+def testBinanceListenKey():
+   binance = BinanceRESTClient(key_file='/home/vladimir/work/keys/binance.key')
+
+   print()
+   print('CREATE LISTEN KEY\n' + '-'*30)
+   listenKey = binance.create_listen_key()['listenKey']
+   print(binance.create_listen_key())
+   print()
+
+   print()
+   print('PING LISTEN KEY\n' + '-'*30)
+   print(binance.ping_listen_key(listenKey))
+   print()
+
+   print()
+   print('CLOSE LISTEN KEY\n' + '-'*30)
+   print(binance.close_listen_key(listenKey))
+   print()
 
 
 # =============================================================================
@@ -294,9 +312,13 @@ def testBitfinexAuth():
 
 
 
+
+
+
 # testBinance()
 # testBitfinex()
 
-#testBinanceAuth()
-testBitfinexAuth()
+# testBinanceAuth()
+# testBitfinexAuth()
 
+testBinanceListenKey()

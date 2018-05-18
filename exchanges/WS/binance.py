@@ -19,6 +19,7 @@ class BinanceTicker(ChannelData):
    def __init__(self, name):
       super(BinanceTicker, self).__init__()
       self.name = name
+      self.data = []
 
    def update(self, data):
       self.data = [float(data[key]) for key in ['b', 'B', 'a', 'A', 'p', 'P', 'c', 'v', 'h', 'l']]
@@ -36,6 +37,7 @@ class BinanceAllTickers(ChannelData):
    def __init__(self, name):
       super(BinanceAllTickers, self).__init__()
       self.name = name
+      self.data = []
 
    def update(self, data):
       self.data = []
@@ -192,6 +194,15 @@ class BinanceWSClient(WSClientAPI):
       self._subscriptions = {}  # stream -> thread
       self._connections = {}    # thread -> websocket
 
+      # authenticated streams
+      self._listenKey = None
+      self._key = None
+      self._secret = None
+      self._keyFile = None
+      self._orders = []
+      self._trades = []
+      self._balances = {}
+
    @staticmethod
    def name():
       return 'Binance'
@@ -199,7 +210,7 @@ class BinanceWSClient(WSClientAPI):
    def _connect(self):
       stream = threading.current_thread().getName()
       self.logger.info('Connecting to websocket for stream %s' % stream)
-      #websocket.enableTrace(True)
+      # websocket.enableTrace(True)
       self.ws = websocket.WebSocketApp(WEBSOCKET_URI + stream,
                                        on_message=self._on_message,
                                        on_error=self._on_error,
@@ -272,6 +283,9 @@ class BinanceWSClient(WSClientAPI):
       elif 'kline' in stream:
          self._data[stream].update([msg['k']['t'], msg['k']['o'], msg['k']['h'],
                                     msg['k']['l'], msg['k']['c'], msg['k']['v']])
+      # AUTHENTICATED
+      elif self._listenKey == stream:
+         self._handle_auth_update(msg)
       else:
          self.logger.info('Update not handled for stream {}'.format(stream))
          self.logger.info('Message:\n{}'.format(msg))
@@ -339,8 +353,6 @@ class BinanceWSClient(WSClientAPI):
             # parent thread does not call join here to avoid blocking
          except KeyError:
             self.logger.info('No subscription for stream %s' % stream)
-         except dispatcher.errors.DispatcherKeyError as e:
-            self.logger.info(e)
 
 
    # Channels
@@ -457,5 +469,131 @@ class BinanceWSClient(WSClientAPI):
          self._publish_channel_data(stream)
 
       return stream
+
+
+   # Authenticated Channels
+   # ---------------------------------------------------------------------------------
+
+   def authenticate(self, key=None, secret=None, keyFile=None):
+      self._key = key
+      self._secret = secret
+      self._keyFile = keyFile
+
+      self.logger.info('Authenticating ...')
+      restClient = BinanceRESTClient(key=key, secret=secret, key_file=keyFile)
+      ret = restClient.create_listen_key()
+      try:
+         self._listenKey = ret['listenKey']
+         self.logger.info('Authentication successful')
+      except:
+         self.logger.info('Authentication failed')
+         return
+
+      # get a snapshot of open orders
+      openOrders = restClient.open_orders()
+      if openOrders is not None:
+         for order in openOrders:
+            orderId = int(order['orderId'])
+            timestamp = int(order['timestamp'])
+            symbol = order['symbol']
+            orderType = order['type']
+            side = order['side']
+            price = float(order['price'])
+            amount = float(order['amount'])
+            filled = float(order['filled'])
+            total = price * amount
+            percFilled = '{:.2f}'.format(100 * filled / amount)
+
+            self._orders.append([orderId, timestamp, symbol, orderType, side, price, amount, percFilled, total])
+
+      # get a snapshot of balances
+      self._balances = restClient.balance()
+      if self._balances is None:
+         self._balances = {}
+
+      self._subscribe(self._listenKey)
+
+
+   def subscribe_user_orders(self, update_handler):
+      self.logger.info('Subscribing to orders channel')
+      dispatcher.connect(update_handler, signal='orders', sender='binance')
+      if self._orders:
+         dispatcher.send(signal='orders', sender='binance', data=list(reversed(self._orders)))
+      return 'orders'
+
+   def subscribe_user_trades(self, update_handler):
+      self.logger.info('Subscribing to user trades channel')
+      dispatcher.connect(update_handler, signal='user_trades', sender='binance')
+      return 'user_trades'
+
+   def subscribe_balances(self, update_handler):
+      self.logger.info('Subscribing to balances channel')
+      dispatcher.connect(update_handler, signal='balances', sender='binance')
+      if self._balances:
+         dispatcher.send(signal='balances', sender='binance', data=self._balances)
+      return 'balances'
+
+
+   def _handle_auth_update(self, msg):
+      if msg['e'] == 'outboundAccountInfo':
+         self._handle_balance_update(msg)
+      elif msg['e'] == 'executionReport':
+         if msg['x'] == 'REJECTED':
+            dispatcher.send(signal='info', sender='binance', data=msg['r'])
+         else:
+            self._handle_order_update(msg)
+      else:
+         self.logger.info('Unknown user stream event: {}'.format(msg['event']))
+
+
+   def _handle_order_update(self, msg):
+      orderId    = int(msg['i'])
+      timestamp  = int(msg['T'])
+      symbol     = msg['s']
+      orderType  = msg['o'].lower()
+      side       = msg['S']
+      price      = float(msg['p'])
+      amount     = float(msg['q'])
+      filled     = float(msg['z'])
+      total      = price * amount
+      percFilled = '{:.2f}'.format(100 * filled / amount)
+      status     = msg['x'].lower()
+      if status == 'trade':
+         status = 'executed'
+      isActive   = msg['x'] == 'NEW'
+
+
+      orderUpdate = [orderId, timestamp, symbol, orderType, side, price, amount, percFilled, total]
+      tradeUpdate = [timestamp, symbol, orderType, side, price, amount, filled, total, status]
+
+      if isActive:
+         # is it an update of existing order
+         isNewOrder = True
+         for i, order in enumerate(self._orders):
+            if order[0] == orderId:
+               isNewOrder = False
+               self._orders[i] = orderUpdate
+               break
+         if isNewOrder:
+            self._orders.append(orderUpdate)
+         dispatcher.send(signal='orders', sender='binance', data=list(reversed(self._orders)))
+      else:
+         # delete from orders
+         for i, order in enumerate(self._orders):
+            if order[0] == orderId:
+               del self._orders[i]
+               dispatcher.send(signal='orders', sender='binance', data=list(reversed(self._orders)))
+         # add to trades
+         self._trades.append(tradeUpdate)
+         dispatcher.send(signal='user_trades', sender='binance', data=list(reversed(self._trades)))
+
+
+   def _handle_balance_update(self, msg):
+      for wallet in msg['B']:
+         self._balances[wallet['a']] = wallet['f']
+      dispatcher.send(signal='balances', sender='binance', data=self._balances)
+
+
+
 
 

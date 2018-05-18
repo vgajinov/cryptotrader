@@ -101,23 +101,55 @@ class WSClientAPI(ABC):
       return None
 
 
+   '''
+   AUTHENTHICATED CHANNELS
+   ------------------------------------------------------------------------
+   '''
+
+   '''
+   Authenticate a user 
+   '''
+   @abstractmethod
+   def authenticate(self, key=None, secret=None, keyFile=None):
+      return None
+
+   '''
+   Subscribe to user orders channel.
+   Data is returned in the form of list of orders:
+      [ ID, TIMESTAMP, SYMBOL, TYPE, SIDE, PRICE, AMOUNT, FILED%, TOTAL ]
+   Return type:
+      [ [int, int, string, string, string, float, float, string, float] ]
+   '''
+   @abstractmethod
+   def subscribe_user_orders(self, update_handler):
+      return None
+
+   '''
+   Subscribe to user trades channel.
+   Data is returned in the form of list of trades:
+      [ TIMESTAMP, SYMBOL, TYPE, SIDE, PRICE, AMOUNT, FILLED, TOTAL, STATUS ]
+   Return type:
+      [ [int, string, string, string, float, float, float, float, string] ]
+   '''
+   @abstractmethod
+   def subscribe_user_trades(self, update_handler):
+      return None
+
+   '''
+   Subscribe to balances channel.
+   Data is returned in the form of dictionary of balances:
+      { currency : balance }
+   Return type:
+      { string : float }
+   '''
+   @abstractmethod
+   def subscribe_balances(self, update_handler):
+      return None
 
 
-
-
-   # @abstractmethod
-   # def orders(self):
-   #    return None
-   #
-   # @abstractmethod
-   # def my_trades(self):
-   #    return None
-   #
-   # @abstractmethod
-   # def balances(self):  # wallets
-   #    return None
-
-
+'''
+Abstract class for channel data 
+'''
 class ChannelData(ABC):
    def __init__(self):
       super(ChannelData, self).__init__()
@@ -127,7 +159,7 @@ class ChannelData(ABC):
       pass
 
    @abstractmethod
-   def update(self):
+   def update(self, data):
       pass
 
    def publish(self):

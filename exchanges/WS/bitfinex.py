@@ -164,9 +164,16 @@ class BitfinexWSClient(WSClientAPI):
       self._thread = None
       self._ws = None
       self._connected = False
-      self._authenticated = False
       self._subscriptions  = {}   # subsriptions : channelId -> channelName
       self._data = {}             # channelId -> channel data
+
+      # authenticated channels
+      self._authenticated = False
+      self._key = None
+      self._secret = None
+      self._orders = []
+      self._trades = []
+      self._balances = {}
 
    @staticmethod
    def name():
@@ -208,6 +215,8 @@ class BitfinexWSClient(WSClientAPI):
             self.subscribe(ch[0], symbol=ch[1], interval=ch[2])
          else:
             self.subscribe(ch[0], symbol=ch[1])
+      if self._authenticated is True:
+         self.authenticate(key=self._key, secret=self._secret)
 
 
    # Websocket handlers
@@ -335,11 +344,19 @@ class BitfinexWSClient(WSClientAPI):
          else:
             self._data[chanId].update(data)
 
+
    def _update_auth_channel(self, msg):
+      self.logger.info('AUTH: {}'.format(msg[1]))
       if msg[1] == 'os':
-         self._handle_orders_update(msg[2])
+         self._handle_order_update(msg[2])
       elif msg[1] == 'on' or msg[1] == 'ou' or msg[1] == 'oc':
-         self._handle_orders_update([msg[2]])
+         self._handle_order_update([msg[2]])
+      elif msg[1] == 'tu':
+         self._handle_user_trades(msg[2])
+      elif msg[1] == 'ws':
+         self._handle_balance_update(msg[2])
+      elif msg[1] == 'wu':
+         self._handle_balance_update([msg[2]])
 
 
    # Public interface methods
@@ -395,11 +412,6 @@ class BitfinexWSClient(WSClientAPI):
          return None
 
    def unsubscribe(self, chanName, update_handler=None):
-      chanId = self._get_channel_ID(chanName)
-      if chanId is None:
-         self.logger.info('Not subscribed to %s' % chanName)
-         return
-
       # remove listener
       if update_handler is not None:
          try:
@@ -408,6 +420,16 @@ class BitfinexWSClient(WSClientAPI):
          except dispatcher.errors.DispatcherKeyError as e:
             self.logger.info(e)
 
+      # authenticated channels all have chanId 0 and are automatically subscribed
+      if chanName in ['orders', 'user_trades', 'balances']:
+         return
+
+      # get the chanId of public chanels
+      chanId = self._get_channel_ID(chanName)
+      if chanId is None:
+         self.logger.info('Not subscribed to %s' % chanName)
+         return
+
       # unsubscribe if no one is listening
       if dispatcher.getReceivers(sender='bitfinex', signal=chanName) == []:
          self.logger.info('Unsubscribing from %s ...' % chanName)
@@ -415,7 +437,7 @@ class BitfinexWSClient(WSClientAPI):
 
 
 
-   # Channels
+   # Public Channels
    # ---------------------------------------------------------------------------------
 
    def subscribe_ticker(self, symbol, update_handler=None):
@@ -535,6 +557,8 @@ class BitfinexWSClient(WSClientAPI):
       return chanName
 
 
+   # Authenticated Channels
+   # ---------------------------------------------------------------------------------
 
    def authenticate(self, key=None, secret=None, keyFile=None):
       self.key    = None
@@ -546,21 +570,126 @@ class BitfinexWSClient(WSClientAPI):
             self._secret = f.readline().strip()
       else:
          if key is not None and secret is not None:
-            self.key = key
-            self.secret = secret
-      if self.key is None or self.secret is None:
+            self._key = key
+            self._secret = secret
+      if self._key is None or self._secret is None:
          return False
 
       nonce = str(int(time.time() * 10000000))
       auth_string = 'AUTH' + nonce
-      auth_sig = hmac.new(self.secret.encode(), auth_string.encode(),
+      auth_sig = hmac.new(self._secret.encode(), auth_string.encode(),
                           hashlib.sha384).hexdigest()
 
       self.logger.info('Authenticating ...')
       self._ws.send(json.dumps({'event': 'auth',
-                                'apiKey': self.key,
+                                'apiKey': self._key,
                                 'authSig': auth_sig,
                                 'authPayload': auth_string,
                                 'authNonce': nonce,
-                                'filter': ['trading', 'balance']
+                                'filter': ['trading', 'balance', 'wallet']
                                 }))
+
+
+   def subscribe_user_orders(self, update_handler):
+      self.logger.info('Subscribing to orders channel')
+      dispatcher.connect(update_handler, signal='orders', sender='bitfinex')
+      return 'orders'
+
+   def subscribe_user_trades(self, update_handler):
+      self.logger.info('Subscribing to user trades channel')
+      dispatcher.connect(update_handler, signal='user_trades', sender='bitfinex')
+      return 'user_trades'
+
+   def subscribe_balances(self, update_handler):
+      self.logger.info('Subscribing to balances channel')
+      dispatcher.connect(update_handler, signal='balances', sender='bitfinex')
+      return 'balances'
+
+
+   def _handle_order_update(self, orders):
+      for order in orders:
+         id         = order[0]
+         timestamp  = order[5]
+         symbol     = order[3][1:]
+         price      = order[16]
+         amount     = abs(order[7])
+         filled     = amount - abs(order[6])
+         total      = price * amount
+         active     = order[13] == 'ACTIVE' or order[13].startswith('PARTIALLY FILLED')
+         canceled  = 'CANCELED' in order[13]
+         side       = 'Buy' if order[7] > 0 else 'Sell'
+         percFilled = '{:.2f}'.format(100 * filled / amount)
+
+         if 'LIMIT' in order[8]:
+            orderType = 'limit'
+         elif 'MARKET' in order[8]:
+            orderType = 'market'
+         elif 'TRAILING STOP' in order[8]:
+            orderType = 'trailing stop'
+         elif 'STOP' in order[8]:
+            orderType = 'stop'
+         elif 'FOK' in order[8]:
+            orderType = 'fok'
+
+         orderUpdate = [id, timestamp, symbol, orderType, side, price, amount, percFilled, total]
+
+         # is it an update of existing order
+         isNewOrder = True
+         for i, ord in enumerate(self._orders):
+            if ord[0] == id:
+               isNewOrder = False
+               if active:
+                  self._orders[i] = orderUpdate
+               else:
+                  del self._orders[i]
+               break
+
+         # is it a new order
+         if active and isNewOrder:
+            self._orders.append(orderUpdate)
+
+         if canceled:
+            tradeUpdate = [timestamp, symbol, orderType, side, price, amount, filled, total, 'cancelled']
+            self._trades.append(tradeUpdate)
+            dispatcher.send(signal='user_trades', sender='bitfinex', data=list(reversed(self._trades)))
+
+      # publish orders
+      dispatcher.send(signal='orders', sender='bitfinex', data=list(reversed(self._orders)))
+
+
+   def _handle_user_trades(self, trade):
+      timestamp  = trade[2]
+      symbol     = trade[1][1:]
+      price      = trade[5]
+      amount     = abs(trade[4])
+      filled     = amount
+      total      = price * amount
+      side       = 'Buy' if trade[4] > 0 else 'Sell'
+      status     = 'executed'
+
+      if 'LIMIT' in trade[6]:
+         type = 'limit'
+      elif 'MARKET' in trade[6]:
+         type = 'market'
+      elif 'TRAILING STOP' in trade[6]:
+         type = 'trailing stop'
+      elif 'STOP' in trade[6]:
+         type = 'stop'
+      elif 'FOK' in trade[6]:
+         type = 'fok'
+
+      tradeUpdate = [timestamp, symbol, type, side, price, amount, filled, total, status]
+      self._trades.append(tradeUpdate)
+      dispatcher.send(signal='user_trades', sender='bitfinex', data=list(reversed(self._trades)))
+
+
+   def _handle_balance_update(self, balances):
+      for balance in balances:
+         if balance[0] != 'exchange':
+            continue
+         currency = balance[1].upper()
+         availableBalance = balance[2]
+         self._balances[currency] = availableBalance
+
+      dispatcher.send(signal='balances', sender='bitfinex', data=self._balances)
+

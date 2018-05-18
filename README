@@ -32,3 +32,18 @@ the recomended way of importing in Python3.
         2) python -m packA.a2
 
 3. Use absolute imports rooted at the test/ directory, and add test/ to the PYTHONPATH environment variable.
+
+
+BINANCE SSL CERTIFICATE PROBLEM
+-------------------------------------
+
+Currently, we use CERT_NONE for ssl with Binance due to an issue with websocket package
+The other option would be to use proper certificate file. For example:
+
+export WEBSOCKET_CLIENT_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+and then run application.
+
+
+ssl.get_server_certificate(('stream.binance.com',9443))
+sslopt={'certfile':'/home/vladimir/work/autoTrader/exchanges/WS/binance.pem'}

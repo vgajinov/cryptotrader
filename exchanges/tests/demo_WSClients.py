@@ -10,6 +10,27 @@ from exchanges.WS.binance import BinanceWSClient
 from exchanges.WS.bitfinex import BitfinexWSClient
 
 
+class _GetchUnix:
+    def __init__(self):
+        import tty, sys
+
+    def __call__(self):
+        import sys, tty, termios
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+
+getch = _GetchUnix()
+
+
+
+
 # Ticker
 # ---------------------------------------------------------------------------------
 
@@ -130,10 +151,83 @@ def info_handler(sender, data):
    print(data)
 
 
-
-# Demos
+# Orders
 # ---------------------------------------------------------------------------------
 
+def showOrders(orders):
+   os.system('clear')
+   print()
+   print('*' * 50 + '\n   TESTING:    Orders\n' + '*' * 50 + '\n')
+   header = ['ID', 'TIMESTAMP', 'SYMBOL', 'TYPE', 'SIDE', 'PRICE', 'AMOUNT', 'FILED_PERCENT', 'TOTAL']
+   fmt = "{:^15}" * (len(header))
+   print( fmt.format(*header) )
+   for order in orders:
+      print(fmt.format(*order))
+
+# listener for candle updates
+def handleOrders(sender, data):
+   showOrders(data)
+
+def testOrders(client):
+   os.system('clear')
+   print('*' * 50 + '\n   TESTING:    Orders\n' + '*' * 50 + '\n')
+   handle = client.subscribe_user_orders(update_handler=handleOrders)
+   time.sleep(30)
+   client.unsubscribe(handle, update_handler=handleOrders)
+
+
+# User trades
+# ---------------------------------------------------------------------------------
+
+def showUserTrades(trades):
+   os.system('clear')
+   print('*' * 50 + '\n   TESTING:    User Trades\n' + '*' * 50 + '\n')
+   header = ['TIMESTAMP', 'SYMBOL', 'TYPE', 'SIDE', 'PRICE', 'AMOUNT', 'FILED', 'TOTAL', 'STATUS']
+   fmt = "{:^15}" * (len(header))
+   print( fmt.format(*header) )
+   for trade in trades:
+      print(fmt.format(*trade))
+
+# listener for candle updates
+def handleUserTrades(sender, data):
+   showUserTrades(data)
+
+def testUserTrades(client):
+   os.system('clear')
+   print('*' * 50 + '\n   TESTING:    User Trades\n' + '*' * 50 + '\n')
+   handle = client.subscribe_user_trades(update_handler=handleUserTrades)
+   time.sleep(30)
+   client.unsubscribe(handle, update_handler=handleUserTrades)
+
+
+# Balances
+# ---------------------------------------------------------------------------------
+
+def showBalances(balances):
+   os.system('clear')
+   print('*' * 50 + '\n   TESTING:    Balances\n' + '*' * 50 + '\n')
+   header = ['ASSET', 'BALANCE']
+   fmt = "{:^15}" * (len(header))
+   print( fmt.format(*header) )
+   for key, value in balances.items():
+      if float(value) > 0:
+         print(fmt.format(key, value))
+
+# listener for candle updates
+def handleBalances(sender, data):
+   showBalances(data)
+
+def testBalances(client):
+   os.system('clear')
+   print('*' * 50 + '\n   TESTING:    Balances\n' + '*' * 50 + '\n')
+   handle = client.subscribe_balances(update_handler=handleBalances)
+   time.sleep(30)
+   client.unsubscribe(handle, update_handler=handleBalances)
+
+
+# =================================================================================
+# Demos
+# =================================================================================
 
 def demoBinance():
    client = BinanceWSClient()
@@ -206,8 +300,20 @@ def demoMultiListeners(client):
    client.disconnect()
 
 
+def demoAuthenticated(client, keyFile):
+   client.connect(info_handler)
+   client.authenticate(keyFile=keyFile)
+
+   testOrders(client)
+   # testUserTrades(client)
+   # testBalances(client)
+
+   client.disconnect()
+
+
+# =================================================================================
 # Demo runs
-# ---------------------------------------------------------------------------------
+# =================================================================================
 
 # demoBinance()
 # demoBitfinex()
@@ -216,4 +322,7 @@ def demoMultiListeners(client):
 # demoMultiSubscriptions(client=BinanceWSClient())
 
 # demoMultiListeners(client=BitfinexWSClient())
-demoMultiListeners(client=BinanceWSClient())
+# demoMultiListeners(client=BinanceWSClient())
+
+# demoAuthenticated(BitfinexWSClient(), '/home/vladimir/work/keys/bitfinex.key')
+# demoAuthenticated(BinanceWSClient(), '/home/vladimir/work/keys/binance.key')

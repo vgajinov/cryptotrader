@@ -25,6 +25,9 @@ log.addHandler(logger_handler)
 # ===============================================================================
 
 class BinanceFormatter(Formatter):
+   @staticmethod
+   def echo(data, *args, **kwargs):
+      return data
 
    @staticmethod
    def server_time(data, *args, **kwargs):
@@ -108,11 +111,12 @@ class BinanceFormatter(Formatter):
                             'CANCELED'
                  }
       except KeyError:
-         return False
+         return {}
 
    @staticmethod
    def multi_order_status(data, *args, **kwargs):
-         return [ BinanceFormatter.order_status(d) for d in data]
+      return [ BinanceFormatter.order_status(d) for d in data]
+
 
    @staticmethod
    def cancel(data, *args, **kwargs):
@@ -170,6 +174,14 @@ class BinanceRESTClient(RESTClientAPI):
       params = []
       for key, value in req.items():
          params.append((key, value))
+
+      if 'userDataStream' in endpoint:
+         # body = params
+         headers = {
+            'X-MBX-APIKEY': self._key,
+            'Content-Type': 'application/x-www-form-urlencoded',
+         }
+         return url, {'headers': headers, 'params': params }
 
       # add recieve window time to compensate for clocks being out of sync
       params.append(('recvWindow', 60000))
@@ -330,7 +342,17 @@ class BinanceRESTClient(RESTClientAPI):
       q.update(kwargs)
       return self._private_query('GET', '/api/v3/allOrders', params=q)
 
+   @return_api_response(fmt.echo, log)
+   def create_listen_key(self):
+      return self._private_query('POST', '/api/v1/userDataStream')
 
+   @return_api_response(fmt.echo, log)
+   def ping_listen_key(self, listenKey):
+      return self._private_query('PUT', '/api/v1/userDataStream', params={'listenKey':listenKey})
+
+   @return_api_response(fmt.echo, log)
+   def close_listen_key(self, listenKey):
+      return self._private_query('DELETE', '/api/v1/userDataStream', params={'listenKey': listenKey})
 
 
    # These order types are in documentation, but they don't seem to work
