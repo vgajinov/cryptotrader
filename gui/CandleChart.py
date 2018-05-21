@@ -1,3 +1,4 @@
+import math
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 from abc import ABC, abstractmethod
 import numpy as np
@@ -110,6 +111,11 @@ class CandleChart(QtChart.QChart):
       self.ay.setMin(minVal)
       self.ay.applyNiceNumbers()
 
+      # set y axes font
+      font = self.ay.labelsFont()
+      font.setPointSize(8)
+      self.ay.setLabelsFont(font)
+
       # remove old axes
       for axis in self.candlestickSeries.attachedAxes():
          self.candlestickSeries.detachAxis(axis)
@@ -171,8 +177,19 @@ class CandleChart(QtChart.QChart):
       self.hoverLine.clear()
       self.hoverLine.append(0, val.y())
       self.hoverLine.append(1, val.y())
+
+      if val.y() > 0:
+         precision = min(abs(int(math.log10(val.y())) - 4), 8)
+      else:
+         precision = 1
+
       self.hoverLinePriceTag.setPos(self.plotArea().getCoords()[2] + 5, pos.y() - 7)  # TODO calculate offsets instead of hardcoding
-      self.hoverLinePriceTag.setText('{:.2f}'.format(val.y()))
+      self.hoverLinePriceTag.setText('{:.{prec}f}'.format(val.y(), prec=min(precision, 8)))
+
+      font = self.hoverLinePriceTag.font()
+      font.setPointSize(8)
+      self.hoverLinePriceTag.setFont(font)
+
       yAxes = self.hoverLine.attachedAxes()[0]
       if val.y() > yAxes.min() and val.y() < yAxes.max():
          self.hoverLinePriceTag.show()

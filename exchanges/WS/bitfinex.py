@@ -168,7 +168,7 @@ class BitfinexWSClient(WSClientAPI):
       self._data = {}             # channelId -> channel data
 
       # authenticated channels
-      self._authenticated = False
+      self.authenticated = False
       self._key = None
       self._secret = None
       self._orders = []
@@ -215,7 +215,8 @@ class BitfinexWSClient(WSClientAPI):
             self.subscribe(ch[0], symbol=ch[1], interval=ch[2])
          else:
             self.subscribe(ch[0], symbol=ch[1])
-      if self._authenticated is True:
+      if self.authenticated is True:
+         self.authenticated = False
          self.authenticate(key=self._key, secret=self._secret)
 
 
@@ -271,7 +272,7 @@ class BitfinexWSClient(WSClientAPI):
                self.logger.info('Unsubscribed from channel %s' % chanName)
             elif event == 'auth':
                if msg['status'] == 'OK':
-                  self._authenticated = True
+                  self.authenticated = True
                   self.userId = msg['userId']
                   self.logger.info('Authenticated - userId %s' % self.userId)
                else:
@@ -588,6 +589,7 @@ class BitfinexWSClient(WSClientAPI):
                                 'authNonce': nonce,
                                 'filter': ['trading', 'balance', 'wallet']
                                 }))
+      return True
 
 
    def subscribe_user_orders(self, update_handler):

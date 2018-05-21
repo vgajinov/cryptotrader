@@ -140,6 +140,23 @@ QComboBox QAbstractItemView {
 }
 
 
+/*
+----------------------------------------------------------
+    ScrollBar
+----------------------------------------------------------
+*/
+
+QScrollBar:vertical {
+    border: 1px solid rgb(167,174,186,50);
+    background: black;
+    width: 10px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgb(167,174,186,30);
+    min-height: 10px;
+    max-height: 40px;
+}
 
 
 /*
@@ -349,7 +366,6 @@ QPushButton#cancelButton {
     height: 25px;
     border-bottom: 1px solid white;
 }
-
 
 
 

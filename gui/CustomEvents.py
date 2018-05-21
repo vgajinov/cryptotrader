@@ -30,3 +30,21 @@ class CandlesUpdateEvent(QtCore.QEvent):
    def __init__(self, candles):
       super(CandlesUpdateEvent, self).__init__(self.EVENT_TYPE)
       self.candles = candles
+
+class OrdersUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, orders):
+      super(OrdersUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.orders = orders
+
+class UserTradesUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, trades):
+      super(UserTradesUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.trades = trades
+
+class BalancesUpdateEvent(QtCore.QEvent):
+   EVENT_TYPE = QtCore.QEvent.Type(QtCore.QEvent.registerEventType())
+   def __init__(self, balances):
+      super(BalancesUpdateEvent, self).__init__(self.EVENT_TYPE)
+      self.balances = balances

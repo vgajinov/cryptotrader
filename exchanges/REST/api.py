@@ -158,8 +158,8 @@ class RESTClientAPI(metaclass=ABCMeta):
    @abstractmethod
    def symbols_details(self):
       '''
-      :return: Non-standard dictionaries. The minimum subset of keys should be:
-                  { 'precision', 'minAmount', 'minPrice' }
+      :return: Non-standard dictionaries per symbol. The minimum subset of keys should be:
+                  { 'precision', 'minAmount' }
       '''
       pass
 

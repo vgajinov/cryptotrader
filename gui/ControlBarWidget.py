@@ -36,8 +36,8 @@ class ControlComboBox(QtWidgets.QComboBox):
       self.verticalScrollBar().setValue(newScrollBarValue)
       event.accept()
 
-      vs = self.verticalScrollBar()
-      print(self.model().rowCount(), vs.maximum(), vs.value())
+      # vs = self.verticalScrollBar()
+      # print(self.model().rowCount(), vs.maximum(), vs.value())
 
 
 class CheckableControlComboBox(QtWidgets.QComboBox):
@@ -157,7 +157,7 @@ class PairFilterProxyModel(QtCore.QSortFilterProxyModel):
       if row == 0:  # hidden row
          return True
       rowPair = self.sourceModel().data(self.sourceModel().index(row, 0, sourceParent), QtCore.Qt.DisplayRole)
-      if self.pairFilter in rowPair and not rowPair.startswith(self.pairFilter):
+      if isinstance(rowPair, str) and self.pairFilter in rowPair and not rowPair.startswith(self.pairFilter):
          return True
       return False
 
@@ -195,20 +195,20 @@ class PairTableView(QtWidgets.QTableView):
       super(PairTableView, self).__init__()
 
    def rowCountChanged(self, old, new):
-      print('rowCnt', old, new)
+      # print('rowCnt', old, new)
       self.verticalScrollBar().setMaximum(self.model().rowCount())
 
    def handleRowsRemoved(self, parent, first, last):
-      print('rows removed: ', first, last)
+      # print('rows removed: ', first, last)
+      pass
 
    def handleFilterChanged(self, rowCnt):
-      print('Filter changed', rowCnt)
       # self.viewport().setSizeHint(QtCore.QSize(24*rowCnt, self.viewportSizeHint().width()))
       self.verticalScrollBar().setMaximum(rowCnt)
       self.verticalScrollBar().setValue(0)
       self.scrollTo(QtCore.QModelIndex(), QtWidgets.QAbstractItemView.PositionAtTop)
-      vs = self.verticalScrollBar()
-      print(vs.minimum(), vs.maximum(), vs.value())
+      # vs = self.verticalScrollBar()
+      # print(vs.minimum(), vs.maximum(), vs.value())
 
 
    def wheelEvent(self, event):
@@ -218,8 +218,8 @@ class PairTableView(QtWidgets.QTableView):
       self.verticalScrollBar().setValue(min(newScrollBarValue, self.verticalScrollBar().maximum()))
       event.accept()
 
-      vs = self.verticalScrollBar()
-      print(self.viewportSizeHint().height(), vs.sizeHint().height(), vs.sizeHint().width(), self.model().rowCount(), vs.maximum(), vs.value())
+      # vs = self.verticalScrollBar()
+      # print(self.viewportSizeHint().height(), vs.sizeHint().height(), vs.sizeHint().width(), self.model().rowCount(), vs.maximum(), vs.value())
 
 
 
@@ -393,9 +393,8 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlPair.setEnabled(True)
 
    def pairChanged(self, currItem):
-      # self.ctrlTime.setEnabled(True)
+      self.ctrlTime.setEnabled(True)
       self.parent().pairChanged(currItem)
-      pass
 
    def intervalChanged(self, currItem):
       self.parent().intervalChanged(currItem)

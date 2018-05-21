@@ -111,7 +111,7 @@ class WSClientAPI(ABC):
    '''
    @abstractmethod
    def authenticate(self, key=None, secret=None, keyFile=None):
-      return None
+      return False
 
    '''
    Subscribe to user orders channel.

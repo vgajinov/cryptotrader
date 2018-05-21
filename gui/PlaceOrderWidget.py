@@ -127,8 +127,12 @@ class OrderFormWidget(QtWidgets.QWidget):
       if self.priceInput.text() != '':
          price = float(self.priceInput.text())
          if price != 0 and self.balanceAmountLabel.text() != '':
-            maxAmount = float(self.balanceAmountLabel.text()) / float(self.priceInput.text())
+            if self.orderSide == OrderSide.BUY:
+               maxAmount = float(self.balanceAmountLabel.text()) / float(self.priceInput.text())
+            else:
+               maxAmount = float(self.balanceAmountLabel.text())
             self.amountInput.maxValue = '{:.{prec}f}'.format(maxAmount, prec=self.pricePrecision)
+
 
          if self.amountInput.text() != '':
             self.totalValueLabel.setText(
@@ -145,14 +149,14 @@ class OrderFormWidget(QtWidgets.QWidget):
          pass
 
 
-   def setPrecision(self, minAmount, priceP):
-      minPrice = float(minAmount) * pow(10, priceP)
+   def setPrecision(self, minAmount, pricePrec):
+      minPrice = float(minAmount) * pow(10, pricePrec)
       amountPrec = 0
       if '.' in str(minAmount):
          leftDigits, rightDigits = str(minAmount).split('.')
          amountPrec = len(rightDigits.rstrip('0'))
 
-      self.priceInput.setValidator(InputValidator(minPrice, 100000.0 * minPrice, priceP))
+      self.priceInput.setValidator(InputValidator(minPrice, 100000.0 * minPrice, pricePrec))
       self.amountInput.setValidator(InputValidator(float(minAmount), 100000.0 * float(minAmount), amountPrec))
       self.amountInput.setPrecision(amountPrec)
 
@@ -178,6 +182,7 @@ class PlaceOrderWidget(QtWidgets.QWidget):
    baseCurrency   = ''
    quoteCurrency  = ''
    symbol_details = None
+   balances       = None
 
 
    def __init__(self):
@@ -200,7 +205,7 @@ class PlaceOrderWidget(QtWidgets.QWidget):
       self.addLimitOrderLayout()
       self.addMarketOrderLayout()
 
-      self.setLabels()
+      self.updateInfoLabels()
 
 
    # Limit Order Layout
@@ -267,25 +272,23 @@ class PlaceOrderWidget(QtWidgets.QWidget):
          return
 
       if sender.parent().objectName() == 'limitOrder':
-         print(pair, side, size, price)
-         # self.restClient.place_limit_order(side, pair, size, price)
+         self.restClient.place_limit_order(side, pair, float(size), float(price))
       elif sender.parent().objectName() == 'marketOrder':
-         print(pair, side, size, price)
-         # self.restClient.place_market_order(side, pair, size)
+         self.restClient.place_market_order(side, pair, float(size))
 
 
    # ------------------------------------------------------------------------------------
-   # Data setters
+   # Widget update methods
    # ------------------------------------------------------------------------------------
 
-   def setLabels(self):
+   def updateInfoLabels(self):
       self.limitOrderBuyWidget.infoLabel.setText('Buy  {}'.format(self.baseCurrency))
-      self.limitOrderSellWidget.infoLabel.setText('Sell  {}'.format(self.quoteCurrency))
+      self.limitOrderSellWidget.infoLabel.setText('Sell  {}'.format(self.baseCurrency))
       self.marketOrderBuyWidget.infoLabel.setText('Buy  {}'.format(self.baseCurrency))
-      self.marketOrderSellWidget.infoLabel.setText('Sell  {}'.format(self.quoteCurrency))
+      self.marketOrderSellWidget.infoLabel.setText('Sell  {}'.format(self.baseCurrency))
 
 
-   def setPrecisions(self):
+   def updatePrecisions(self):
       minAmount = self.symbol_details['minAmount']
       pricePrec = None
       pPrec = self.symbol_details.get('minPrice', None)
@@ -300,17 +303,19 @@ class PlaceOrderWidget(QtWidgets.QWidget):
       self.marketOrderSellWidget.setPrecision(minAmount, pricePrec)
 
 
-   def setBalances(self):
-      balances = self.parent().restClient.balance()
-      self.limitOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-      self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
-      self.marketOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-      self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(balances[self.quoteCurrency]))
+   def updateBalanceLables(self):
+      if self.baseCurrency and self.quoteCurrency and self.balances:
+         quoteBalance = self.balances.get(self.quoteCurrency, '0.0')
+         baseBalance  = self.balances.get(self.baseCurrency, '0.0')
+         self.limitOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
+         self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quoteBalance))
+         self.marketOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
+         self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quoteBalance))
 
-      self.limitOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-      self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
-      self.marketOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-      self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(balances[self.baseCurrency]))
+         self.limitOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
+         self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(baseBalance))
+         self.marketOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
+         self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(baseBalance))
 
 
    def clear(self):
@@ -324,22 +329,26 @@ class PlaceOrderWidget(QtWidgets.QWidget):
    # Data update methods (from parent)
    # ------------------------------------------------------------------------------------
 
-   def setData(self, base_currency, quote_currency, symbol_details, ticker):
+   def setSymbolDetails(self, base_currency, quote_currency, symbol_details, ticker):
       self.baseCurrency = base_currency
       self.quoteCurrency = quote_currency
       self.symbol_details = symbol_details
 
-      self.setLabels()
-      self.setPrecisions()
-      self.setBalances()
+      self.updateInfoLabels()
+      self.updatePrecisions()
+      self.updateBalanceLables()
 
 
    def setTicker(self, ticker):
       self.marketOrderBuyWidget.priceInput.setText('{}'.format(ticker[2]))
       self.marketOrderSellWidget.priceInput.setText('{}'.format(ticker[0]))
 
+   def setBalances(self, balances):
+      self.balances = balances
+      self.updateBalanceLables()
 
-
+   def setClient(self, client):
+      self.restClient = client
 
 
 

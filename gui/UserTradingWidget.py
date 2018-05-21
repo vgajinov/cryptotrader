@@ -1,45 +1,57 @@
+import math
+from datetime import datetime
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtCore import pyqtSlot
 from .Separators import *
 
 
 class UserTradingWidget(QtWidgets.QWidget):
+   restClient     = None
+   symbol_details = None
+
    def __init__(self):
       super(UserTradingWidget, self).__init__()
 
-      self.mainLayout = QtWidgets.QHBoxLayout(self)
+      self.tabOpenOrders = QtWidgets.QTableWidget()
+      self._createOpenOrdersTab()
+
+      self.tabHistory = QtWidgets.QTableWidget()
+      self._createTradeHistoryTab()
+
       self.tabTradesWidget = QtWidgets.QTabWidget()
       self.tabTradesWidget.setObjectName('tradesTabWidget')
-      self.tabOpenOrders = QtWidgets.QTableWidget()
-      self.tabOpenOrders.setObjectName('openOrdersTable')
-      self.tabHistory = QtWidgets.QTableWidget()
-      self.tabHistory.setObjectName('historyTab')
+      self.tabTradesWidget.tabBar().setObjectName('tradesTabBar')
       self.tabTradesWidget.addTab(self.tabOpenOrders, "Open Orders")
-      self.tabTradesWidget.addTab(self.tabHistory, "History")
+      self.tabTradesWidget.addTab(self.tabHistory, "Trade History")
+
+      self.mainLayout = QtWidgets.QHBoxLayout(self)
       self.mainLayout.addWidget(self.tabTradesWidget)
       self.mainLayout.setContentsMargins(0, 5, 0, 0)
-      self.tabTradesWidget.tabBar().setObjectName('tradesTabBar')
 
-      # OpenOrders tab
-      tableOpenOrdersHeader = ['Pair', 'Type', 'Amount', 'Price', 'Date', 'Filled%', '']
+
+   # OpenOrders tab
+   def _createOpenOrdersTab(self):
+      tableOpenOrdersHeader = ['', 'Time', 'Pair', 'Type', 'Side', 'Price', 'Amount', 'Filled%', 'Total', '']
+      self.tabOpenOrders.setObjectName('openOrdersTable')
       self.tabOpenOrders.setColumnCount(len(tableOpenOrdersHeader))
       self.tabOpenOrders.setHorizontalHeaderLabels(tableOpenOrdersHeader)
       self.tabOpenOrders.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
-      self.tabOpenOrders.horizontalHeader().setResizeMode(self.tabOpenOrders.columnCount( ) -1, QtWidgets.QHeaderView.ResizeToContents)
+      self.tabOpenOrders.horizontalHeader().setResizeMode(self.tabOpenOrders.columnCount()-1, QtWidgets.QHeaderView.ResizeToContents)
       self.tabOpenOrders.verticalHeader().setVisible(False)
       self.tabOpenOrders.setShowGrid(False)
       self.tabOpenOrders.setAlternatingRowColors(True)
-      self.tabOpenOrders.horizontalHeader().setStyleSheet( 'QHeaderView::s‌​ection { background-color: rgb(0,0,0); }')
       self.tabOpenOrders.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+      self.tabOpenOrders.setColumnHidden(0, True)
 
-      # History tab
+
+
+   # Trade history tab
+   def _createTradeHistoryTab(self):
       tabHistoryLayout = QtWidgets.QHBoxLayout(self.tabHistory)
       tabHistoryControlsLayout = QtWidgets.QVBoxLayout()
       self.tabHistoryTable = QtWidgets.QTableWidget()
       self.tabHistoryTable.setObjectName('historyTable')
       tabHistoryLayout.addLayout(tabHistoryControlsLayout, stretch=1)
       tabHistoryLayout.addWidget(self.tabHistoryTable, stretch=40)
-      #tabHistoryLayout.setMargin(0)
       tabHistoryLayout.setContentsMargins(0,0,0,0)
       tabHistoryLayout.setSpacing(0)
 
@@ -57,7 +69,8 @@ class UserTradingWidget(QtWidgets.QWidget):
       tabHistoryControlsLayout.setSpacing(3)
       tabHistoryControlsLayout.setContentsMargins(4 ,4 ,0 ,0)
 
-      tableHistoryHeader = ['Time', 'Pair', 'Type', 'Price', 'Amount', 'Total', 'Fee']
+      tableHistoryHeader = ['Time', 'Pair', 'Type', 'Side', 'Price', 'Amount', 'Filled', 'Total', 'Status']
+      self.tabHistory.setObjectName('historyTab')
       self.tabHistoryTable.setColumnCount(len(tableHistoryHeader))
       self.tabHistoryTable.setHorizontalHeaderLabels(tableHistoryHeader)
       self.tabHistoryTable.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
@@ -68,53 +81,131 @@ class UserTradingWidget(QtWidgets.QWidget):
       self.tabHistoryTable.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 
 
-      #parentLayout.addLayout(self.mainLayout)
+   # ------------------------------------------------------------------------------------
+   # Update methods
+   # ------------------------------------------------------------------------------------
 
-      self.setOpenOrdersData(['WTC/BTC', 'Sell', '20', '0.00107880', '2017-10-15 16:06:12', '0.00'])
-      self.setOpenOrdersData(['WTC/BTC', 'Buy', '40', '0.00107880', '2017-10-15 16:06:12', '0.00'])
-      self.setHistoryData(['2017-10-16 06:43:53', 'WTC/BTC', 'Sell', '0.00115990', '20', '0.02319800', '0.04239456 BNB'])
-      self.setHistoryData(['2017-10-16 06:36:53', 'WTC/BTC', 'Buy', '0.00113655', '20', '0.02273100', '0.04160735 BNB'])
-      self.setHistoryData(['2017-10-16 06:35:53', 'WTC/BTC', 'Buy', '0.00113655', '20', '0.02273100', '0.04160735 BNB'])
+   def _getPrecision(self, pair):
+      if self.symbol_details is None:
+         return 8, 8
 
+      minAmount = self.symbol_details[pair]['minAmount']
+      minPrice = self.symbol_details[pair].get('minPrice', None)
 
-   def setOpenOrdersData(self, rowData):
-      self.tabOpenOrders.insertRow(0)
-      self.tabOpenOrders.setRowHeight(0, 25)
-      for i, data in enumerate(rowData):
-         item = QtWidgets.QTableWidgetItem(data)
-         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
-         item.setTextAlignment(QtCore.Qt.AlignCenter)
-         if i == 1:
-            if rowData[i] == 'Sell':
-               item.setForeground(QtCore.Qt.red)
-            else:
-               item.setForeground(QtCore.Qt.green)
-         self.tabOpenOrders.setItem(0, i, item)
-      cancelButton = QtWidgets.QPushButton('Cancel')
-      cancelButton.setObjectName('cancelButton')
-      cancelButton.clicked.connect(self.cancelButtonClicked)
-      cancelButton.adjustSize()
-      self.tabOpenOrders.setCellWidget(0, len(rowData), cancelButton)
+      if minPrice is not None:
+         pricePrec = int(abs(math.log10(float(minPrice))))
+      else:
+         pricePrec = 8
+
+      amountPrec = 0
+      if '.' in str(minAmount):
+         leftDigits, rightDigits = str(minAmount).split('.')
+         amountPrec = len(rightDigits.rstrip('0'))
+
+      return pricePrec, amountPrec
 
 
-   def setHistoryData(self, rowData):
-      self.tabHistoryTable.insertRow(0)
-      self.tabHistoryTable.setRowHeight(0, 25)
-      for i, data in enumerate(rowData):
-         item = QtWidgets.QTableWidgetItem(data)
-         item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
-         item.setTextAlignment(QtCore.Qt.AlignCenter)
-         if i == 2:
-            if rowData[i] == 'Sell':
-               item.setForeground(QtCore.Qt.red)
-            else:
-               item.setForeground(QtCore.Qt.green)
-         self.tabHistoryTable.setItem(0, i, item)
+   def setClient(self, client):
+      self.restClient = client
 
+
+   def setSymbolDetails(self, symbol_details):
+      self.symbol_details = symbol_details
+
+
+   def updateOrders(self, orders):
+      # sort orders by timestamp
+      orders.sort(key=lambda x: x[1], reverse=True)
+      # remove all rows
+      self.tabOpenOrders.setRowCount(0)
+      # add orders
+      for row, order in enumerate(orders):
+         self.tabOpenOrders.insertRow(row)
+         self.tabOpenOrders.setRowHeight(row, 25)
+
+         orderId = str(order[0])
+         time = datetime.fromtimestamp(order[1] / 1000).strftime('%d-%m %H:%M:%S')
+         pair = order[2]
+         orderType = order[3].lower()
+         side = order[4].lower()
+
+         pricePrec, amountPrec = self._getPrecision(pair)
+
+         price = '{:.{prec}f}'.format(order[5], prec=pricePrec)
+         amount = '{:.{prec}f}'.format(order[6], prec=amountPrec)
+         filled = order[7]
+         total = '{:.{prec}f}'.format(order[8], prec=pricePrec)
+
+         orderStr = [orderId, time, pair, orderType, side, price, amount, filled, total]
+
+         for i, data in enumerate(orderStr):
+            item = QtWidgets.QTableWidgetItem(data)
+            item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+            item.setTextAlignment(QtCore.Qt.AlignCenter)
+            if i == 4:
+               if orderStr[i] == 'sell':
+                  item.setForeground(QtCore.Qt.red)
+               else:
+                  item.setForeground(QtCore.Qt.green)
+            self.tabOpenOrders.setItem(row, i, item)
+
+         cancelButton = QtWidgets.QPushButton('Cancel')
+         cancelButton.setObjectName('cancelButton')
+         cancelButton.clicked.connect(self.cancelButtonClicked)
+         cancelButton.adjustSize()
+         self.tabOpenOrders.setCellWidget(row, len(order), cancelButton)
+
+
+   def updateUserTrades(self, trades):
+      # remove all rows
+      self.tabHistoryTable.setRowCount(0)
+      # add trades
+      for row, trade in enumerate(trades):
+         self.tabHistoryTable.insertRow(row)
+         self.tabHistoryTable.setRowHeight(row, 25)
+
+         time = datetime.fromtimestamp(trade[0] / 1000).strftime('%d-%m %H:%M:%S')
+         pair = trade[1]
+         orderType = trade[2].lower()
+         side = trade[3].lower()
+
+         pricePrec, amountPrec = self._getPrecision(pair)
+
+         price = '{:.{prec}f}'.format(trade[4], prec=pricePrec)
+         amount = '{:.{prec}f}'.format(trade[5], prec=amountPrec)
+         filled = '{:.{prec}f}'.format(trade[6], prec=amountPrec)
+         total = '{:.{prec}f}'.format(trade[7], prec=pricePrec)
+         status = trade[8]
+
+         tradeStr = [time, pair, orderType, side, price, amount, filled, total, status]
+
+         for i, data in enumerate(tradeStr):
+            item = QtWidgets.QTableWidgetItem(data)
+            item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+            item.setTextAlignment(QtCore.Qt.AlignCenter)
+            if i == 3:
+               if trade[i] == 'sell':
+                  item.setForeground(QtCore.Qt.red)
+               else:
+                  item.setForeground(QtCore.Qt.green)
+            self.tabHistoryTable.setItem(row, i, item)
+
+
+   # should be called when changing the exchange
+   def clear(self):
+      self.tabOpenOrders.setRowCount(0)
+      self.tabHistoryTable.setRowCount(0)
+
+
+   # ------------------------------------------------------------------------------------
+   # Events
+   # ------------------------------------------------------------------------------------
 
    def cancelButtonClicked(self):
-      button = QtWidgets.qApp.focusWidget()
-      # or button = self.sender()
+      # button = QtWidgets.qApp.focusWidget()
+      button = self.sender()
       index = self.tabOpenOrders.indexAt(button.pos())
       if index.isValid():
-         self.tabOpenOrders.removeRow(index.row())
+         orderId = self.tabOpenOrders.item(index.row(), 0).text()
+         symbol  = self.tabOpenOrders.item(index.row(), 2).text()
+         self.restClient.cancel_order(orderId, symbol)

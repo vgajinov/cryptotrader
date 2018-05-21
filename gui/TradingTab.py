@@ -30,19 +30,25 @@ class TradingTab(QtWidgets.QWidget):
    all_tickers      = None
    quote_currencies = None
 
-   # channels
+   # public WS channels
    tickerChannel  = None
    bookChannel    = None
    tradeChannel   = None
    candlesChannel = None
 
+   # user WS channels
+   ordersChannel     = None
+   userTradesChannel = None
+   balancesChannel   = None
+
+
 
    def __init__(self):
       super(TradingTab, self).__init__()
-      self.createLayout()
+      self._createLayout()
 
 
-   def createLayout(self):
+   def _createLayout(self):
       # left layout
       self.controlBarWidget = ControlBarWidget(self)
       self.chartWidget = CandleChartWidget()
@@ -66,7 +72,7 @@ class TradingTab(QtWidgets.QWidget):
       self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
       self.rightLayout.addWidget(self.placeOrderWidget, stretch=2)
       self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-      self.initOrderBookAndTradesLayout()
+      self._initOrderBookAndTradesLayout()
 
       # main layout
       self.mainLayout = QtWidgets.QHBoxLayout(self)
@@ -81,7 +87,7 @@ class TradingTab(QtWidgets.QWidget):
       self.controlBarWidget.setExchangeList(ExchangeWSFactory.get_exchanges())
 
 
-   def initOrderBookAndTradesLayout(self):
+   def _initOrderBookAndTradesLayout(self):
       self.orderBookAndTradesLayout.setContentsMargins(0, 0, 0, 0)
       self.orderBookAndTradesLayout.setSpacing(0)
 
@@ -118,10 +124,34 @@ class TradingTab(QtWidgets.QWidget):
 
 
    # ------------------------------------------------------------------------------------
+   # WS client interaction
+   # ------------------------------------------------------------------------------------
+
+   def _subscribe_ws_public_channels(self):
+      self.tickerChannel = self.wsClient.subscribe_ticker(self.pair, self.updateTicker)
+      self.bookChannel = self.wsClient.subscribe_order_book(self.pair, self.updateOrderBook)
+      self.tradesChannel = self.wsClient.subscribe_trades(self.pair, self.updateTrades)
+      if self.interval is not None:
+         self.candlesChannel = self.wsClient.subscribe_candles(self.pair, self.interval, self.updateCandles)
+
+   def _subscribe_ws_user_channels(self):
+      self.ordersChannel = self.wsClient.subscribe_user_orders(self.updateOrders)
+      self.userTradesChannel = self.wsClient.subscribe_user_trades(self.updateUserTrades)
+      self.balancesChannel = self.wsClient.subscribe_balances(self.updateBalances)
+
+   def _unsubscribe_ws_public_chanels(self):
+      self.wsClient.unsubscribe(self.tickerChannel, self.updateTicker)
+      self.wsClient.unsubscribe(self.bookChannel, self.updateOrderBook)
+      self.wsClient.unsubscribe(self.tradesChannel, self.updateTrades)
+      if self.candlesChannel is not None:
+         self.wsClient.unsubscribe(self.candlesChannel, self.updateCandles)
+
+
+   # ------------------------------------------------------------------------------------
    # ControlBar interaction
    # ------------------------------------------------------------------------------------
 
-   def clearChannels(self):
+   def _clearChannels(self):
       self.tickerChannel  = None
       self.bookChannel    = None
       self.tradeChannel   = None
@@ -133,6 +163,7 @@ class TradingTab(QtWidgets.QWidget):
       self.exchange = exchangeName
 
       self.reset()
+      self.userTradingWidget.clear()
 
       self.setCursor(QtCore.Qt.WaitCursor)
 
@@ -147,19 +178,27 @@ class TradingTab(QtWidgets.QWidget):
          keyfile = keyFileName if os.path.isfile(keyFileName) else None
 
       self.wsClient = ExchangeWSFactory.create_client(exchangeName)
-      self.restClient = ExchangeRESTFactory.create_client(exchangeName, key_file=keyfile)
       self.wsClient.connect(self.infoUpdate)
+      if keyfile is not None:
+         self.wsClient.authenticate(keyFile=keyfile)
+         self._subscribe_ws_user_channels()
 
       self.pair = None
       self.interval = None
-      self.clearChannels()
+      self._clearChannels()
+
+      self.restClient = ExchangeRESTFactory.create_client(exchangeName, key_file=keyfile)
+      self.placeOrderWidget.setClient(self.restClient)
+      self.userTradingWidget.setClient(self.restClient)
 
       self.quote_currencies = self.restClient.quote_currencies()
       self.symbols = self.restClient.symbols()
       self.symbols_details = self.restClient.symbols_details()
       self.all_tickers = self.restClient.all_tickers()
+
       self.controlBarWidget.setPairList(self.all_tickers, self.restClient.quote_currencies())
       self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
+      self.userTradingWidget.setSymbolDetails(self.symbols_details)
 
       self.setCursor(QtCore.Qt.ArrowCursor)
 
@@ -172,32 +211,23 @@ class TradingTab(QtWidgets.QWidget):
 
       if self.pair is not None:
          self.reset()
-         self.wsClient.unsubscribe(self.tickerChannel, self.updateTicker)
-         self.wsClient.unsubscribe(self.bookChannel, self.updateOrderBook)
-         self.wsClient.unsubscribe(self.tradesChannel, self.updateTrades)
-         if self.candlesChannel is not None:
-            self.wsClient.unsubscribe(self.candlesChannel, self.updateCandles)
-         self.clearChannels()
+         self._unsubscribe_ws_public_chanels()
+         self._clearChannels()
 
       self.pair = pair
-      self.tickerChannel = self.wsClient.subscribe_ticker(pair, self.updateTicker)
-      self.bookChannel = self.wsClient.subscribe_order_book(pair, self.updateOrderBook)
-      self.tradesChannel = self.wsClient.subscribe_trades(pair, self.updateTrades)
-      if self.interval is not None:
-         self.candlesChannel = self.wsClient.subscribe_candles(pair, self.interval, self.updateCandles)
+      self._subscribe_ws_public_channels()
 
       for cur in self.quote_currencies:
          if pair.endswith(cur):
             base_currency = pair[:-len(cur)]
             quote_currency = cur
-            print(base_currency,quote_currency)
             break
 
       symbol_details = self.symbols_details[pair.upper()]
       self.tradesTable.setSymbolDetails(symbol_details)
       self.numericOrderBookWidget.setSymbolDetails(symbol_details)
       if self.restClient.authenticated:
-         self.placeOrderWidget.setData(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
+         self.placeOrderWidget.setSymbolDetails(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
 
       self.setCursor(QtCore.Qt.ArrowCursor)
 
@@ -221,6 +251,9 @@ class TradingTab(QtWidgets.QWidget):
          keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
          keyfile = keyFileName if os.path.isfile(keyFileName) else None
          self.restClient = ExchangeRESTFactory.create_client(self.exchange, key_file=keyfile)
+         self.wsClient.authenticate(keyFile=keyfile)
+         self._subscribe_ws_user_channels()
+
 
    # This should be called on quitting the application
    def closeConnections(self):
@@ -236,15 +269,21 @@ class TradingTab(QtWidgets.QWidget):
       if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
          self.orderBookGraph.setData(event.bids, event.asks)
          self.numericOrderBookWidget.setData(event.bids, event.asks)
-      if event.type() == TradesUpdateEvent.EVENT_TYPE:
+      elif event.type() == TradesUpdateEvent.EVENT_TYPE:
          self.tradesTable.setData(event.trades)
-      if event.type() == TickerUpdateEvent.EVENT_TYPE:
+      elif event.type() == TickerUpdateEvent.EVENT_TYPE:
          lastPrice = event.ticker[6]
          self.numericOrderBookWidget.setLastPrice(lastPrice)
          self.placeOrderWidget.setTicker(event.ticker)
-      if event.type() == CandlesUpdateEvent.EVENT_TYPE:
+      elif event.type() == CandlesUpdateEvent.EVENT_TYPE:
          self.chartWidget.setData(event.candles)
          self.chartWidget.updateChart()
+      elif event.type() == OrdersUpdateEvent.EVENT_TYPE:
+         self.userTradingWidget.updateOrders(event.orders)
+      elif event.type() == UserTradesUpdateEvent.EVENT_TYPE:
+         self.userTradingWidget.updateUserTrades(event.trades)
+      elif event.type() == BalancesUpdateEvent.EVENT_TYPE:
+         self.placeOrderWidget.setBalances(event.balances)
 
    # update OrderBook
    def updateOrderBook(self, data):
@@ -261,6 +300,18 @@ class TradingTab(QtWidgets.QWidget):
    # update Candles
    def updateCandles(self, data):
       QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(data))
+
+   # update Orders
+   def updateOrders(self, data):
+      QtWidgets.QApplication.postEvent(self, OrdersUpdateEvent(data))
+
+   # update Orders
+   def updateUserTrades(self, data):
+      QtWidgets.QApplication.postEvent(self, UserTradesUpdateEvent(data))
+
+   # update Orders
+   def updateBalances(self, data):
+      QtWidgets.QApplication.postEvent(self, BalancesUpdateEvent(data))
 
    # handle info messages
    def infoUpdate(self, data):

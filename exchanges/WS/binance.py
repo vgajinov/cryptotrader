@@ -195,6 +195,7 @@ class BinanceWSClient(WSClientAPI):
       self._connections = {}    # thread -> websocket
 
       # authenticated streams
+      self.authenticated = False
       self._listenKey = None
       self._key = None
       self._secret = None
@@ -487,7 +488,7 @@ class BinanceWSClient(WSClientAPI):
          self.logger.info('Authentication successful')
       except:
          self.logger.info('Authentication failed')
-         return
+         return False
 
       # get a snapshot of open orders
       openOrders = restClient.open_orders()
@@ -512,6 +513,9 @@ class BinanceWSClient(WSClientAPI):
          self._balances = {}
 
       self._subscribe(self._listenKey)
+
+      self.authenticated = True
+      return True
 
 
    def subscribe_user_orders(self, update_handler):
