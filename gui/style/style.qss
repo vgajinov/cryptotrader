@@ -22,10 +22,10 @@ QMenuBar {
 QMenu {
     font: 14px;
     background-color: black;
+    selection-background-color: rgb(0,80,175);
     color: white;
     border: 1px solid white;
 }
-
 
 QMenu::separator {
     height: 1px;
@@ -90,28 +90,23 @@ QTableWidget {
     margin: 0px;
 }
 
-QTableView {
+
+
+PairTableView::item {
+    background-color: rgb(0,0,0);
+}
+
+
+OrderBookTableView {
+    padding: 0px;
+    margin: 0px;
     border: none;
+    background: black;
 }
 
-QTableView::item {
-    background-color: rgb(0,0,0);
-}
-
-QTableView::item:alternate {
-    background: rgb(167,174,186,10);
-}
-
-QTableView::item::selected {
-    background-color: rgb(0,0,0);
-    text-decoration: none;
-    outline: none;
-}
-
-QTableView::item::selected:alternate {
-    background-color: rgb(167,174,186,10);
-    text-decoration: none;
-    outline: none;
+OrderBookTableView::item {
+    padding: 0px;
+    margin: 0px;
 }
 
 
@@ -321,6 +316,13 @@ QLabel#totalLabel {
 }
 
 
+#lastPriceLabel {
+    background-color: rgb(167, 174, 186, 50);
+    border: none;
+    padding: 0px;
+    margin: 0px;
+}
+
 
 /* Buttons
 --------------------------------------------------
@@ -373,3 +375,34 @@ QPushButton#cancelButton {
 
 
 
+
+
+
+
+
+/*
+
+DELETE
+
+
+QTableView {
+    border: none;
+}
+
+QTableView::item:alternate {
+    background: rgb(167,174,186,10);
+}
+
+QTableView::item::selected {
+    background-color: rgb(0,0,0);
+    text-decoration: none;
+    outline: none;
+}
+
+QTableView::item::selected:alternate {
+    background-color: rgb(167,174,186,10);
+    text-decoration: none;
+    outline: none;
+}
+
+*/

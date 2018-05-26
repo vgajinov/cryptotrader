@@ -1,8 +1,6 @@
 import math
 from PyQt5 import QtCore, QtWidgets, QtGui
-from .CustomTableWidget import CustomTableWidget
-
-
+from .CustomTables import OrderBookTableView
 
 
 # ======================================================================
@@ -20,16 +18,17 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
 
       self.mainLayout = QtWidgets.QVBoxLayout(self)
 
-      self.asksTable = CustomTableWidget()
+      # asks
+      self.asksTable = OrderBookTableView(QtCore.Qt.red)
       self.asksTable.setObjectName('asksTable')
-      self.asksTable.setColumnCount(3)
 
-      self.bidsTable = CustomTableWidget()
+      # bids
+      self.bidsTable = OrderBookTableView(QtCore.Qt.green)
       self.bidsTable.setObjectName('bidsTable')
-      self.bidsTable.setColumnCount(3)
 
       # last price
       self.priceLabel = QtWidgets.QLabel()
+      self.priceLabel.setObjectName('lastPriceLabel')
       self.priceLabel.setAlignment(QtCore.Qt.AlignCenter)
 
       # add widgets to layout
@@ -53,102 +52,67 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
 
    # set OrderBook numeric data
    def setData(self, bids, asks):
-      askItems = list(reversed(list(asks.items())))
-      askSums = [abs(x[1]) for x in askItems]
-      for i in range(len(askSums) - 2, -1, -1):
-         askSums[i] = askSums[i] + askSums[i+1]
-
+      # determine the price precision
       if self.pricePrec is None:
-         exp = math.ceil(math.log10(float(askItems[0][0])))
+         price = next(iter(asks.keys()))
+         exp = math.ceil(math.log10(float(price)))
          self.pricePrec = min(abs(exp - int(self.symbol_details['precision'])), 8)
 
-      askSumStrings    = ['{:.{prec}f}'.format(x, prec=self.amountPrec) for x in askSums]
-      askPriceStrings  = ['{:.{prec}f}'.format(x[0], prec=self.pricePrec) for x in askItems]
-      askAmountStrings = ['{:.{prec}f}'.format(abs(x[1]), prec=self.amountPrec) for x in askItems]
+      total = 0.0
+      askList = []
+      for price, amount in list(asks.items()):
+         total += abs(amount)
+         askList.append(['{:.{prec}f}'.format(price, prec=self.pricePrec),
+                         '{:,.{prec}f}'.format(abs(amount), prec=self.amountPrec),
+                         '{:,.{prec}f}'.format(total, prec=self.amountPrec)])
+      askList = list(reversed(askList))
 
-      self.asksTable.tableData = [askPriceStrings, askAmountStrings, askSumStrings]
-      self.asksTable.fitDataAndColumns()
+      total = 0.0
+      bidList = []
+      for price, amount in list(reversed(list(bids.items()))):
+         total += abs(amount)
+         bidList.append(['{:.{prec}f}'.format(price, prec=self.pricePrec),
+                         '{:,.{prec}f}'.format(abs(amount), prec=self.amountPrec),
+                         '{:,.{prec}f}'.format(total, prec=self.amountPrec)])
 
-      bidItems = list(reversed(list(bids.items())))
-      bidSums = [abs(x[1]) for x in bidItems]
-      for i in range(len(bidSums) - 1):
-         bidSums[i+1] = bidSums[i] + bidSums[i+1]
-      bidSumStrings    = ['{:.{prec}f}'.format(x, prec=self.amountPrec) for x in bidSums]
-      bidPriceStrings  = ['{:.{prec}f}'.format(x[0], prec=self.pricePrec) for x in bidItems]
-      bidAmountStrings = ['{:.{prec}f}'.format(abs(x[1]), prec=self.amountPrec) for x in bidItems]
-
-      self.bidsTable.tableData = [bidPriceStrings, bidAmountStrings, bidSumStrings]
-      self.bidsTable.fitDataAndColumns()
-
-      # set ask items
-      numItems = self.asksTable.rowCount()
-      for i in range(numItems):
-         self.asksTable.setRowHeight(i, self.asksTable.rowHeight)
-
-         # prices
-         priceItem = QtWidgets.QTableWidgetItem(askPriceStrings[-numItems + i])
-         priceItem.setForeground(QtCore.Qt.red)
-         self.asksTable.setItem(i, 0, priceItem)
-
-         # amounts
-         amountItem = QtWidgets.QTableWidgetItem(askAmountStrings[-numItems + i])
-         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
-         self.asksTable.setItem(i, 1, amountItem)
-
-         # sums
-         sumItem = QtWidgets.QTableWidgetItem(askSumStrings[-numItems + i])
-         sumItem.setTextAlignment(QtCore.Qt.AlignRight)
-         self.asksTable.setItem(i, 2, sumItem)
-
-      # set bid items
-      for i in range(self.bidsTable.rowCount()):
-         self.bidsTable.setRowHeight(i, self.bidsTable.rowHeight)
-
-         # prices
-         priceItem = QtWidgets.QTableWidgetItem(bidPriceStrings[i])
-         priceItem.setForeground(QtCore.Qt.green)
-         self.bidsTable.setItem(i, 0, priceItem)
-
-         # amounts
-         amountItem = QtWidgets.QTableWidgetItem(bidAmountStrings[i])
-         amountItem.setTextAlignment(QtCore.Qt.AlignRight)
-         self.bidsTable.setItem(i, 1, amountItem)
-
-         # sums
-         sumItem = QtWidgets.QTableWidgetItem(bidSumStrings[i])
-         sumItem.setTextAlignment(QtCore.Qt.AlignRight)
-         self.bidsTable.setItem(i, 2, sumItem)
-
-      # update asks and bids tables
-      self.asksTable.update()
-      self.bidsTable.update()
+      self.asksTable.model().setTableData(askList, True)
+      self.bidsTable.model().setTableData(bidList, False)
 
 
    # set price on the OrderBook numeric layout
    def setLastPrice(self, price):
-      if self.pricePrec is not None:
-         self.priceLabel.setText('{:.{prec}f}'.format(price, prec=self.pricePrec))
+      if self.pricePrec is None:
+         priceStr = '{:.8f}'.format(price)
+         if len(priceStr) > 9:
+            priceStr = priceStr[:9]
+      else:
+         priceStr = '{:.{prec}f}'.format(price, prec=self.pricePrec)
+
+      self.priceLabel.setText(priceStr)
+
 
    # format LastPrice label
-   def formatLastPrice(self):
-      newHeight = min(40, int(0.07 * self.height()))
-      self.priceLabel.setFixedHeight(newHeight)
+   def formatLastPrice(self, height):
+      self.priceLabel.setFixedHeight(height)
       font = QtGui.QFont(self.priceLabel.font())
-      font.setPixelSize(int(0.6 * newHeight))
+      font.setPixelSize(int(0.7 * height))
       self.priceLabel.setFont(font)
       self.priceLabel.update()
 
+
+
    def clear(self):
       self.priceLabel.clear()
-      self.asksTable.clear()
-      self.bidsTable.clear()
+      self.asksTable.model().clear()
+      self.bidsTable.model().clear()
 
    # ------------------------------------------------------------------------------------
    # Event Handlers
    # ------------------------------------------------------------------------------------
 
    def resizeEvent(self, QResizeEvent):
-      self.formatLastPrice()
-      self.asksTable.fitDataAndColumns()
-      self.bidsTable.fitDataAndColumns()
+      height = self.height() / 15
+      self.formatLastPrice(height)
+      self.asksTable.setMaximumHeight(7*height)
+      self.bidsTable.setMaximumHeight(7*height)
       QtWidgets.QWidget.resizeEvent(self, QResizeEvent)

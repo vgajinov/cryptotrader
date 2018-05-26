@@ -1,4 +1,5 @@
 import os
+import configparser
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .Separators import *
 from .TradingTab import TradingTab
@@ -7,6 +8,8 @@ from .TradingTab import TradingTab
 from .InfoMessageBox import InfoMessageBox
 
 class ATMainWindow(QtWidgets.QMainWindow):
+   keysDirectory = ''
+
    def __init__(self, width, height):
       super(ATMainWindow, self).__init__()
 
@@ -36,11 +39,13 @@ class ATMainWindow(QtWidgets.QMainWindow):
       self.horizontalLayout.addWidget(self.tabWidget)
       self.horizontalLayout.setContentsMargins(0,5,0,0)
 
-
       #import stylesheet file
       qss = open(os.path.join(os.path.dirname(__file__), 'style', 'style.qss'), 'r')
       self.setStyleSheet(qss.read())
       qss.close()
+
+      # load configuration
+      self.loadConfiguration()
 
 
 
@@ -51,17 +56,14 @@ class ATMainWindow(QtWidgets.QMainWindow):
       loadKeysAction.triggered.connect(self.loadKeysPopup)
 
       loadConfiguration = QtWidgets.QAction('Load configuration', self)
-      loadConfiguration.triggered.connect(self.loadConfiguration)
+      loadConfiguration.triggered.connect(self.loadConfigurationFromFile)
       saveConfiguration = QtWidgets.QAction('Save configuration', self)
-      saveConfiguration.triggered.connect(self.saveConfiguration)
-
+      saveConfiguration.triggered.connect(self.saveConfigurationToFile)
 
       quitAction = QtWidgets.QAction('Quit', self)
       quitAction.setShortcut('Ctrl+q')
       quitAction.setStatusTip('Quit AutoTrader')
       quitAction.triggered.connect(self.close)
-
-
 
       self.menubar = QtWidgets.QMenuBar(self)
       self.menuFile = QtWidgets.QMenu(self.menubar)
@@ -70,6 +72,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
 
       self.menubar.addAction(self.menuFile.menuAction())
       self.menuFile.addAction(loadKeysAction)
+      self.menuFile.addSeparator()
       self.menuFile.addAction(loadConfiguration)
       self.menuFile.addAction(saveConfiguration)
       self.menuFile.addSeparator()
@@ -79,8 +82,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
    # events
    # ---------------------------------------------------------
    def closeEvent(self, event):
-      # TODO: save config
-      # close connections
+      self.saveConfiguration()
       self.tabTrade.closeConnections()
       event.accept()
 
@@ -91,10 +93,43 @@ class ATMainWindow(QtWidgets.QMainWindow):
          self.keysDirectory = dlg.selectedFiles()[0]
          self.tabTrade.setKeysDirectory(self.keysDirectory)
 
-   def loadConfiguration(self):
-      pass
+   def loadConfigurationFromFile(self):
+      dlg = QtWidgets.QFileDialog()
+      dlg.setWindowTitle('Load configuration from file')
+      if dlg.exec_() == QtWidgets.QDialog.Accepted:
+         self.loadConfiguration(dlg.selectedFiles()[0])
 
-   def saveConfiguration(self):
-      pass
+   def saveConfigurationToFile(self):
+      dlg = QtWidgets.QFileDialog()
+      dlg.setWindowTitle('Save configuration to file')
+      dlg.setAcceptMode(QtGui.QFileDialog.AcceptSave)
+      dlg.setNameFilter('*.ini')
+      if dlg.exec_() == QtWidgets.QDialog.Accepted:
+         self.saveConfiguration(dlg.selectedFiles()[0])
+
+
+   # configuration
+   # ---------------------------------------------------------
+   def loadConfiguration(self, file='config.ini'):
+      try:
+         config = configparser.ConfigParser()
+         config.read(file)
+         keys = config['KEYS']['keyDirectory']
+         if keys:
+            self.keysDirectory = keys
+            self.tabTrade.setKeysDirectory(self.keysDirectory)
+         self.tabTrade.controlBarWidget.loadConfiguration(config)
+      except Exception as e:
+         print(e)
+
+   def saveConfiguration(self, file='config.ini'):
+      config = configparser.ConfigParser()
+      config['KEYS'] = {'keyDirectory': self.keysDirectory}
+      self.tabTrade.controlBarWidget.saveConfiguration(config)
+      with open(file, 'w') as cfgFile:
+         config.write(cfgFile)
+
+
+
 
 

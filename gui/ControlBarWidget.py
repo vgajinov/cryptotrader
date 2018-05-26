@@ -341,7 +341,7 @@ class ControlBarWidget(QtWidgets.QWidget):
       self.ctrlPair.view().setRowHidden(0, True)
       self.ctrlPair.setModel(pairFilterModel)
 
-      # set pairComboFilter
+      # set pairComboFilter into the header
       i = self.ctrlPair.model().index(0,0)
       self.ctrlPair.view().horizontalHeader().setIndexWidget(i, self.pairComboFilter)
 
@@ -401,14 +401,14 @@ class ControlBarWidget(QtWidgets.QWidget):
 
    def overlayChanged(self, itemChanged):
       if self.itemChangedByUser:
-         if (itemChanged.checkState() == QtCore.Qt.Checked):
+         if itemChanged.checkState() == QtCore.Qt.Checked:
             self.parent().chartWidget.addOverlay(itemChanged.text())
          else:
             self.parent().chartWidget.removeOverlay(itemChanged.text())
 
    def indicatorChanged(self, itemChanged):
       if self.itemChangedByUser:
-         if (itemChanged.checkState() == QtCore.Qt.Checked):
+         if itemChanged.checkState() == QtCore.Qt.Checked:
             self.parent().chartWidget.showIndicator(itemChanged.text())
          else:
             self.parent().chartWidget.hideIndicator(itemChanged.text())
@@ -459,3 +459,61 @@ class ControlBarWidget(QtWidgets.QWidget):
          self.ctrlTime.model().item(i).setData(QtCore.Qt.AlignHCenter, QtCore.Qt.TextAlignmentRole)
       self.ctrlTime.blockSignals(False)
 
+
+   # ------------------------------------------------------------------------------------
+   # Configuration
+   # ------------------------------------------------------------------------------------
+
+   def loadConfiguration(self, config):
+      exchange = config['EXCHANGE']['exchange']
+      pair = config['EXCHANGE']['pair']
+      interval = config['EXCHANGE']['interval']
+
+      if exchange:
+         self.ctrlExchange.setCurrentText(exchange)
+         if pair:
+            self.ctrlPair.setCurrentText(pair)
+            if interval:
+               self.ctrlTime.setCurrentText(interval)
+
+      overlays = config['TradingChart']['overlays']
+      if overlays:
+         overlays = overlays.split(',')
+         for i in range(self.ctrlOverlay.model().rowCount()):
+            item = self.ctrlOverlay.model().item(i)
+            if item.text() in overlays:
+               item.setCheckState(QtCore.Qt.Checked)
+
+      indicators = config['TradingChart']['indicators']
+      if indicators:
+         indicators = indicators.split(',')
+         for i in range(self.ctrlIndicator.model().rowCount()):
+            item = self.ctrlIndicator.model().item(i)
+            if item.text() in indicators:
+               item.setCheckState(QtCore.Qt.Checked)
+
+
+   def saveConfiguration(self, config):
+      exchange = self.ctrlExchange.currentText() if self.ctrlExchange.currentIndex() > 0 else ''
+      pair = self.ctrlPair.currentText() if self.ctrlPair.currentText() != 'PAIR' else ''
+      interval = self.ctrlTime.currentText() if self.ctrlTime.currentText() != 'TIME' else ''
+
+      overlays = []
+      for i in range(self.ctrlOverlay.model().rowCount()):
+         item = self.ctrlOverlay.model().item(i)
+         if item.checkState() == QtCore.Qt.Checked:
+            overlays.append(item.text())
+
+      indicators = []
+      for i in range(self.ctrlIndicator.model().rowCount()):
+         item = self.ctrlIndicator.model().item(i)
+         if item.checkState() == QtCore.Qt.Checked:
+            indicators.append(item.text())
+
+      config['EXCHANGE'] = {'exchange': exchange,
+                            'pair'    : pair,
+                            'interval': interval}
+      config['TradingChart'] = {
+         'overlays'  : ','.join(overlays),
+         'indicators': ','.join(indicators)
+      }

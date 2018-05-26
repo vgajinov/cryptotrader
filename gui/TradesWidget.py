@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
 from PyQt5 import QtCore, QtWidgets, QtGui
-from .CustomTableWidget import CustomTableWidget
+from .CustomTables import CustomTableWidget
 
 
 
@@ -79,3 +79,4 @@ class TradesWidget(CustomTableWidget):
    def resizeEvent(self, QResizeEvent):
       self.fitDataAndColumns()
       QtWidgets.QWidget.resizeEvent(self, QResizeEvent)
+

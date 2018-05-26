@@ -12,19 +12,19 @@ from .CustomEvents import *
 from exchanges.exchangeWSFactory import ExchangeWSFactory
 from exchanges.exchangeRESTFactory import ExchangeRESTFactory
 
-from PyQt5 import QtGui
-
 
 
 
 class TradingTab(QtWidgets.QWidget):
+   # set by a user
    keysDir    = None
-   wsClient   = None
-   restClient = None
-
    exchange   = None
    pair       = None
    interval   = None
+
+   wsClient   = None
+   restClient = None
+
    symbols    = None
    symbols_details  = None
    all_tickers      = None
@@ -97,7 +97,7 @@ class TradingTab(QtWidgets.QWidget):
 
       self.orderBookAndTradesLayout.addLayout(self.orderBookGraphLayout, stretch=4)
       self.orderBookAndTradesLayout.addWidget(LineSeparator(orientation='vertical', stroke=5))
-      self.orderBookAndTradesLayout.addLayout(self.orderBookNumericLayout, stretch=5)
+      self.orderBookAndTradesLayout.addLayout(self.orderBookNumericLayout, stretch=6)
       self.orderBookAndTradesLayout.addWidget(LineSeparator(orientation='vertical', stroke=5))
       self.orderBookAndTradesLayout.addLayout(self.orderBookTradesLayout, stretch=5)
 
@@ -109,12 +109,12 @@ class TradingTab(QtWidgets.QWidget):
       # add numeric display of order book data
       self.numericOrderBookWidget = OrderBookNumericWidget()
       self.orderBookNumericLayout.addWidget(self.numericOrderBookWidget)
-      self.orderBookNumericLayout.setContentsMargins(5, 5, 5, 2)
+      self.orderBookNumericLayout.setContentsMargins(0, 5, 0, 5)
 
       # add trades display widget
       self.tradesTable = TradesWidget()
       self.orderBookTradesLayout.addWidget(self.tradesTable)
-      self.orderBookTradesLayout.setContentsMargins(5, 5, 5, 2)
+      self.orderBookTradesLayout.setContentsMargins(2, 5, 2, 5)
 
    def reset(self):
       self.tradesTable.clear()
@@ -262,7 +262,7 @@ class TradingTab(QtWidgets.QWidget):
 
 
    # ------------------------------------------------------------------------------------
-   # Update methods
+   # Update methods (callback from dispatcher)
    # ------------------------------------------------------------------------------------
 
    def customEvent(self, event):
