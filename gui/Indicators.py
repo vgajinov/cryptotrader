@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 import talib
-import numpy as np
+from .Separators import *
 
 # check https://mrjbq7.github.io/ta-lib/func.html for ta-lib function documentation
 
@@ -200,13 +200,14 @@ class IndicatorFactory(object):
 # ------------------------------------------------------------------------------------
 
 class Indicator(QtChart.QChart):
+   frame = None
+
    def __init__(self):
       super(Indicator, self).__init__()
       self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
       self.setBackgroundRoundness(0)
       self.setMargins(QtCore.QMargins(0, 0, 0, 0))
       self.layout().setContentsMargins(0, 0, 0, 0);
-      self.setContentsMargins(0, 0, 0, 0);
       self.legend().hide()
       chartFont = QtGui.QFont(self.font())
       chartFont.setPixelSize(9)
@@ -216,6 +217,20 @@ class Indicator(QtChart.QChart):
       self.IndicatorName.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
       self.IndicatorName.setOpacity(1.0)
       self.IndicatorName.setPos(0,0)
+
+      indView = QtChart.QChartView(self)
+      indView.setRenderHint(QtGui.QPainter.Antialiasing)
+
+      indLayout = QtWidgets.QVBoxLayout()
+      indLayout.setSpacing(0)
+      indLayout.setContentsMargins(0,0,0,0)
+      indLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
+                                              spacecolor='rgb(0,0,0)', stroke=1, width=3))
+      indLayout.addWidget(indView)
+
+      self.frame = QtWidgets.QFrame()
+      self.frame.setLayout(indLayout)
+
 
    @abstractmethod
    def updateIndicator(self, data, N):

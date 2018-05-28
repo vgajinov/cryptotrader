@@ -45,10 +45,7 @@ class TradingTab(QtWidgets.QWidget):
 
    def __init__(self):
       super(TradingTab, self).__init__()
-      self._createLayout()
 
-
-   def _createLayout(self):
       # left layout
       self.controlBarWidget = ControlBarWidget(self)
       self.chartWidget = CandleChartWidget()
@@ -91,9 +88,9 @@ class TradingTab(QtWidgets.QWidget):
       self.orderBookAndTradesLayout.setContentsMargins(0, 0, 0, 0)
       self.orderBookAndTradesLayout.setSpacing(0)
 
-      self.orderBookGraphLayout = QtWidgets.QVBoxLayout()
+      self.orderBookGraphLayout   = QtWidgets.QVBoxLayout()
       self.orderBookNumericLayout = QtWidgets.QVBoxLayout()
-      self.orderBookTradesLayout = QtWidgets.QHBoxLayout()
+      self.orderBookTradesLayout  = QtWidgets.QHBoxLayout()
 
       self.orderBookAndTradesLayout.addLayout(self.orderBookGraphLayout, stretch=4)
       self.orderBookAndTradesLayout.addWidget(LineSeparator(orientation='vertical', stroke=5))
@@ -115,6 +112,7 @@ class TradingTab(QtWidgets.QWidget):
       self.tradesTable = TradesWidget()
       self.orderBookTradesLayout.addWidget(self.tradesTable)
       self.orderBookTradesLayout.setContentsMargins(2, 5, 2, 5)
+
 
    def reset(self):
       self.tradesTable.clear()
@@ -156,6 +154,7 @@ class TradingTab(QtWidgets.QWidget):
       self.bookChannel    = None
       self.tradeChannel   = None
       self.candlesChannel = None
+
 
    def exchangeChanged(self, exchangeName):
       if exchangeName == self.exchange:
@@ -262,7 +261,7 @@ class TradingTab(QtWidgets.QWidget):
 
 
    # ------------------------------------------------------------------------------------
-   # Update methods (callback from dispatcher)
+   # Event Handlers
    # ------------------------------------------------------------------------------------
 
    def customEvent(self, event):
@@ -284,6 +283,11 @@ class TradingTab(QtWidgets.QWidget):
          self.userTradingWidget.updateUserTrades(event.trades)
       elif event.type() == BalancesUpdateEvent.EVENT_TYPE:
          self.placeOrderWidget.setBalances(event.balances)
+
+
+   # ------------------------------------------------------------------------------------
+   # Update methods (callback from dispatcher)
+   # ------------------------------------------------------------------------------------
 
    # update OrderBook
    def updateOrderBook(self, data):

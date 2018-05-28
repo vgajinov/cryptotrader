@@ -42,7 +42,6 @@ class DoubleLineSeparator(QtWidgets.QWidget):
          self.setLayout(layout)
       else:
          layout = QtWidgets.QVBoxLayout()
-         #layout.setMargin(0)
          layout.setContentsMargins(0,0,0,0)
          layout.setSpacing(0)
          layout.addWidget(LineSeparator(orientation='h', color=linecolor, stroke=stroke))

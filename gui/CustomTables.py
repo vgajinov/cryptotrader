@@ -73,8 +73,8 @@ class OrderBookTableModel(QtCore.QAbstractTableModel):
 class OrderBookTableView(QtWidgets.QTableView):
    def __init__(self, color):
       super(OrderBookTableView, self).__init__()
+      # define the color of bars
       self.color = QtGui.QColor(color).darker(500)
-      # self.color.setAlpha(128)
 
       self.setEnabled(False)
       self.setShowGrid(False)

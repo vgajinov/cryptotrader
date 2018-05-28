@@ -1,8 +1,5 @@
 import math
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
-from abc import ABC, abstractmethod
-import numpy as np
-import talib
 
 
 # ------------------------------------------------------------------------------------
@@ -25,7 +22,6 @@ class CandleChart(QtChart.QChart):
       self.setBackgroundRoundness(0)
       self.layout().setContentsMargins(0, 0, 0, 0)
       self.setMargins(QtCore.QMargins(0,0,0,0))
-      self.setContentsMargins(0, 0, 0, 0)
       self.legend().hide()
       chartFont = QtGui.QFont(self.font())
       chartFont.setPixelSize(9)

@@ -1,5 +1,4 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
-import numpy as np
 from .CandleChart import CandleChart
 from .Overlays   import *
 from .Indicators import *
@@ -33,6 +32,10 @@ class CandleChartWidget(QtWidgets.QWidget):
       self.mainLayout.addWidget(chartView, stretch=4)
 
 
+   # ------------------------------------------------------------------------------------
+   # Overlays
+   # ------------------------------------------------------------------------------------
+
    def addOverlay(self, name):
       newOverlay = OverlayFactory.createOverlay(name)
       newOverlay.addToChart(self.candleGraph)
@@ -44,21 +47,14 @@ class CandleChartWidget(QtWidgets.QWidget):
       self.overlays.pop(name)
 
 
+   # ------------------------------------------------------------------------------------
+   # Indicators
+   # ------------------------------------------------------------------------------------
+
    def addIndicator(self, name):
       newIndicator = IndicatorFactory.createIndicator(name)
-      indView = QtChart.QChartView(newIndicator)
-      indView.setRenderHint(QtGui.QPainter.Antialiasing)
-
-      indFrame = QtWidgets.QFrame()
-      indLayout = QtWidgets.QVBoxLayout()
-      indLayout.setSpacing(0)
-      indLayout.setContentsMargins(0,0,0,0)
-      indFrame.setLayout(indLayout)
-      indLayout.addWidget(DoubleLineSeparator(orientation='horizontal', linecolor=COLOR_SEPARATOR,
-                                              spacecolor='rgb(0,0,0)', stroke=1, width=3))
-      indLayout.addWidget(indView)
-      self.mainLayout.addWidget(indFrame, stretch=1)
-      self.indicators[name] = (indFrame, newIndicator)
+      self.mainLayout.addWidget(newIndicator.frame, stretch=1)
+      self.indicators[name] = (newIndicator.frame, newIndicator)
 
 
    def showIndicator(self, name):
@@ -75,6 +71,10 @@ class CandleChartWidget(QtWidgets.QWidget):
       except:
          pass
 
+
+   # ------------------------------------------------------------------------------------
+   # Update methods
+   # ------------------------------------------------------------------------------------
 
    def setData(self, data):
       self.data = np.transpose(np.array(data))
@@ -97,6 +97,7 @@ class CandleChartWidget(QtWidgets.QWidget):
       for indicator in self.indicators.values():
          indicator[1].clear()
       self.candleGraph.clear()
+
 
    # ------------------------------------------------------------------------------------
    # Event handlers

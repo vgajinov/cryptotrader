@@ -1,16 +1,35 @@
 GUI
 ---------------------------------------------------------------------------------------
 
-1. BUG:
-       CandleChart works fine for small intervals, but has an issue with big intervals.
-       Only few candles are shown.
+Overlays
+--------------------------
+1. Implement using talib
+2. Make overlays configurable
 
-2. ENH:
-       Implement config load/save automatically and by user
 
-3. FIX:
-       Find a better way to display bids, asks and trades.
-       Current implmementation for font resizing is not very robust.
+Indicators
+--------------------------
+1. Implement using talib
+2. Make indicators configurable
+
+
+CandleChart
+--------------------------
+1. Review time frames
+2. Correct the problem with large time frames (only few bars are shown)
+3. Add vertical hover line with time tag
+4. Set precision of the price values on the Y axis
+
+
+OrderBookGraph
+--------------------------
+1. Implement slider to control the range around the current price
+   (currently hardcoded to 0.01)
+
+
+OrderBookNumericWidget
+--------------------------
+1. Implement control to set grouping per number of significant digits (similar to Binance)
 
 
 

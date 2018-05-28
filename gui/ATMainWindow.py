@@ -4,8 +4,8 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from .Separators import *
 from .TradingTab import TradingTab
 
-
 from .InfoMessageBox import InfoMessageBox
+
 
 class ATMainWindow(QtWidgets.QMainWindow):
    keysDirectory = ''
@@ -48,9 +48,6 @@ class ATMainWindow(QtWidgets.QMainWindow):
       self.loadConfiguration()
 
 
-
-   # createMenu
-   # ---------------------------------------------------------
    def createMenu(self):
       loadKeysAction = QtWidgets.QAction('Load exchange keys', self)
       loadKeysAction.triggered.connect(self.loadKeysPopup)
@@ -79,8 +76,10 @@ class ATMainWindow(QtWidgets.QMainWindow):
       self.menuFile.addAction(quitAction)
 
 
-   # events
-   # ---------------------------------------------------------
+   # ------------------------------------------------------------------------------------
+   # Event Handlers
+   # ------------------------------------------------------------------------------------
+
    def closeEvent(self, event):
       self.saveConfiguration()
       self.tabTrade.closeConnections()
@@ -108,9 +107,12 @@ class ATMainWindow(QtWidgets.QMainWindow):
          self.saveConfiguration(dlg.selectedFiles()[0])
 
 
-   # configuration
-   # ---------------------------------------------------------
+   # ------------------------------------------------------------------------------------
+   # Configuration
+   # ------------------------------------------------------------------------------------
+
    def loadConfiguration(self, file='config.ini'):
+      self.setCursor(QtCore.Qt.WaitCursor)
       try:
          config = configparser.ConfigParser()
          config.read(file)
@@ -121,6 +123,8 @@ class ATMainWindow(QtWidgets.QMainWindow):
          self.tabTrade.controlBarWidget.loadConfiguration(config)
       except Exception as e:
          print(e)
+      self.setCursor(QtCore.Qt.ArrowCursor)
+
 
    def saveConfiguration(self, file='config.ini'):
       config = configparser.ConfigParser()

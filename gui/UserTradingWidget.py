@@ -202,7 +202,6 @@ class UserTradingWidget(QtWidgets.QWidget):
    # ------------------------------------------------------------------------------------
 
    def cancelButtonClicked(self):
-      # button = QtWidgets.qApp.focusWidget()
       button = self.sender()
       index = self.tabOpenOrders.indexAt(button.pos())
       if index.isValid():
