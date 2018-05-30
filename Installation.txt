@@ -1,7 +1,7 @@
-Install Qt5.9
+Install Qt5.x (min Qt5.9)
 =================================
 
-Download Qt5.9 setup from this address:
+For example, download Qt5.9 setup from this address:
    https://download.qt.io/official_releases/qt/5.9/5.9.2/qt-opensource-linux-x64-5.9.2.run
 
 Follow installation instructions from this page:

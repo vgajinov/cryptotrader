@@ -1,1 +1,0 @@
-# The REST API code is borrowed from https://github.com/sammchardy/python-binance/tree/master/binance

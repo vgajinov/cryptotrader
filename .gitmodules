@@ -1,6 +1,3 @@
-[submodule "Thirdparty/coinbase"]
-	path = Thirdparty/coinbase
-	url = https://github.com/coinbase/coinbase-python.git
 [submodule "Thirdparty/pydispatch"]
 	path = Thirdparty/pydispatch
 	url = https://github.com/feedmagnet/pydispatch.git
