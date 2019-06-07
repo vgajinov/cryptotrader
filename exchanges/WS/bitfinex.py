@@ -561,12 +561,12 @@ class BitfinexWSClient(WSClientAPI):
    # Authenticated Channels
    # ---------------------------------------------------------------------------------
 
-   def authenticate(self, key=None, secret=None, keyFile=None):
+   def authenticate(self, key=None, secret=None, key_file=None):
       self.key    = None
       self.secret = None
 
-      if keyFile is not None:
-         with open(keyFile, 'r') as f:
+      if key_file is not None:
+         with open(key_file, 'r') as f:
             self._key = f.readline().strip()
             self._secret = f.readline().strip()
       else:

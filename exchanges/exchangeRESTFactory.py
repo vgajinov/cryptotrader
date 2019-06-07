@@ -4,25 +4,36 @@ from exchanges.REST.bitfinex import BitfinexRESTClient
 
 
 class ExchangeRESTFactory(object):
-   exchanges = None
+    """
+    The Factory class that exposes to a user the names of supported exchanges with the REST interface
+    and creates the exchange handling object using the name of an exchange provided by a user
+    """
+    exchanges = {ex.name(): ex for ex in RESTClientAPI.__subclasses__()}
 
-   @staticmethod
-   def get_exchanges():
-      if not ExchangeRESTFactory.exchanges:
-         ExchangeRESTFactory.exchanges = {}
-         for ex in RESTClientAPI.__subclasses__():
-            ExchangeRESTFactory.exchanges[ex.name()] = ex
-      return sorted(list(ExchangeRESTFactory.exchanges.keys()))
+    @staticmethod
+    def get_exchanges():
+        """
+        A method that returns a sorted list of supported exchanges
 
-   @staticmethod
-   def create_client(name, key_file=None) -> RESTClientAPI:
-      if not ExchangeRESTFactory.exchanges:
-         ExchangeRESTFactory.get_exchanges()
-      if name in ExchangeRESTFactory.exchanges.keys():
-         return ExchangeRESTFactory.exchanges[name](key_file=key_file)
-      else:
-         print('Exchange name not recognized : ', name)
-         return None
+        :return: list of strings (names)
+        """
+        return sorted(ExchangeRESTFactory.exchanges.keys())
 
 
+    @staticmethod
+    def create_client(name, key_file=None) -> RESTClientAPI:
+        """
+        Create an exchange handling object
 
+        :param name:      name of the exchange
+        :param key_file:  an file with private API keys
+        :return:          an object for handling requested exchange
+
+        Note: RESTClientAPI is an abstract class implemented by all
+              REST-based exchange client classes
+        """
+        try:
+            return ExchangeRESTFactory.exchanges[name](key_file=key_file)
+        except KeyError:
+            print('Exchange name not recognized')
+            return None

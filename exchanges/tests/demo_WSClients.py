@@ -302,7 +302,7 @@ def demoMultiListeners(client):
 
 def demoAuthenticated(client, keyFile):
    client.connect(info_handler)
-   client.authenticate(keyFile=keyFile)
+   client.authenticate(key_file=keyFile)
 
    testOrders(client)
    # testUserTrades(client)

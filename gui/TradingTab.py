@@ -179,7 +179,7 @@ class TradingTab(QtWidgets.QWidget):
       self.wsClient = ExchangeWSFactory.create_client(exchangeName)
       self.wsClient.connect(self.infoUpdate)
       if keyfile is not None:
-         self.wsClient.authenticate(keyFile=keyfile)
+         self.wsClient.authenticate(key_file=keyfile)
          self._subscribe_ws_user_channels()
 
       self.pair = None
@@ -250,7 +250,7 @@ class TradingTab(QtWidgets.QWidget):
          keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
          keyfile = keyFileName if os.path.isfile(keyFileName) else None
          self.restClient = ExchangeRESTFactory.create_client(self.exchange, key_file=keyfile)
-         self.wsClient.authenticate(keyFile=keyfile)
+         self.wsClient.authenticate(key_file=keyfile)
          self._subscribe_ws_user_channels()
 
 

@@ -475,13 +475,13 @@ class BinanceWSClient(WSClientAPI):
    # Authenticated Channels
    # ---------------------------------------------------------------------------------
 
-   def authenticate(self, key=None, secret=None, keyFile=None):
+   def authenticate(self, key=None, secret=None, key_file=None):
       self._key = key
       self._secret = secret
-      self._keyFile = keyFile
+      self._keyFile = key_file
 
       self.logger.info('Authenticating ...')
-      restClient = BinanceRESTClient(key=key, secret=secret, key_file=keyFile)
+      restClient = BinanceRESTClient(key=key, secret=secret, key_file=key_file)
       ret = restClient.create_listen_key()
       try:
          self._listenKey = ret['listenKey']
