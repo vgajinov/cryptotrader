@@ -4,8 +4,9 @@ from exchanges.REST.bitfinex import BitfinexRESTClient
 
 
 class ExchangeRESTFactory(object):
-    """
-    The Factory class that exposes to a user the names of supported exchanges with the REST interface
+    """REST exchange client factory class.
+
+    Exposes to a user the names of supported exchanges with the REST interface
     and creates the exchange handling object using the name of an exchange provided by a user
     """
     exchanges = {ex.name(): ex for ex in RESTClientAPI.__subclasses__()}
@@ -28,12 +29,11 @@ class ExchangeRESTFactory(object):
         :param name:      name of the exchange
         :param key_file:  an file with private API keys
         :return:          an object for handling requested exchange
+        :raises KeyError
 
-        Note: RESTClientAPI is an abstract class implemented by all
-              REST-based exchange client classes
+        RESTClientAPI is an abstract class implemented by all REST-based exchange client classes
         """
         try:
             return ExchangeRESTFactory.exchanges[name](key_file=key_file)
-        except KeyError:
-            print('Exchange name not recognized')
-            return None
+        except KeyError as e:
+            raise KeyError('Exchange name not recognized') from e

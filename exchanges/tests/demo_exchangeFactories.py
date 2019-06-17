@@ -10,10 +10,10 @@ print('-'*40)
 print(', '.join(rest_exchanges))
 
 for ex in rest_exchanges:
-   client = ExchangeRESTFactory.createClient(ex)
-   print()
-   print(ex, 'symbols:')
-   print(client.symbols())
+    client = ExchangeRESTFactory.createClient(ex)
+    print()
+    print(ex, 'symbols:')
+    print(client.symbols())
 
 
 

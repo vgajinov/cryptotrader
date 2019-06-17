@@ -16,12 +16,12 @@ client = ExchangeRESTFactory.create_client('Binance')
 symbols = client.symbols()
 
 for symbol in symbols[:2]:
-   with open(symbol + '.csv', 'w') as f:
-      csvwriter = csv.writer(f)
-      for starttime in range(BEGIN_TIME, END_TIME, DELTA):
-         endtime = starttime + DELTA
-         candles = client.historical_candles(symbol, '1m', starttime, endtime)
-         csvwriter.writerows(candles)
+    with open(symbol + '.csv', 'w') as f:
+        csvwriter = csv.writer(f)
+        for starttime in range(BEGIN_TIME, END_TIME, DELTA):
+            endtime = starttime + DELTA
+            candles = client.historical_candles(symbol, '1m', starttime, endtime)
+            csvwriter.writerows(candles)
 
 
 # Try increasing MAX_CANDLES
