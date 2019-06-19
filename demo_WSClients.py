@@ -1,11 +1,6 @@
-# Import Built-ins
 import os
 import time
-
-# Import Third-Party
 from pydispatch import dispatcher
-
-# Import Homebrew
 from exchanges.WS.binance import BinanceWSClient
 from exchanges.WS.bitfinex import BitfinexWSClient
 
@@ -29,8 +24,6 @@ class _GetchUnix:
 getch = _GetchUnix()
 
 
-
-
 # Ticker
 # ---------------------------------------------------------------------------------
 
@@ -40,6 +33,7 @@ def showTicker(ticker):
     print( fmt.format('BID', 'BID_SIZE', 'ASK', 'ASK_SIZE', 'DAY_CHANGE', 'DAY_CH_PERC',
                       'LAST_PRICE', 'VOLUME', 'HIGH', 'LOW') )
     print(fmt.format(*ticker))
+
 
 # listener for ticker updates
 def handleTicker(sender, data):
@@ -51,7 +45,6 @@ def testTicker(client):
     handle = client.subscribe_ticker('LTCBTC', update_handler=handleTicker)
     time.sleep(10)
     client.unsubscribe(handle, update_handler=handleTicker)
-
 
 
 # All tickers
@@ -66,14 +59,17 @@ def showAllTickers(tickers):
     for ticker in tickers[:20]:
         print(fmt.format(*ticker))
 
+
 # listener for all ticker updates
 def handleAllTickers(sender, data):
     showAllTickers(data)
+
 
 def testAllTickers(client):
     handle = client.subscribe_all_tickers(update_handler=handleAllTickers)
     time.sleep(10)
     client.unsubscribe(handle, update_handler=handleAllTickers)
+
 
 # Order book
 # ---------------------------------------------------------------------------------
@@ -134,15 +130,16 @@ def showCandles(candles):
     for candle in candles[-20:]:
         print(fmt.format(*candle))
 
+
 # listener for candle updates
 def handleCandles(sender, data):
     showCandles(data)
+
 
 def testCandles(client):
     handle = client.subscribe_candles('LTCBTC', update_handler=handleCandles)
     time.sleep(5)
     client.unsubscribe(handle, update_handler=handleCandles)
-
 
 
 # INFO handler
@@ -164,9 +161,11 @@ def showOrders(orders):
     for order in orders:
         print(fmt.format(*order))
 
+
 # listener for candle updates
 def handleOrders(sender, data):
     showOrders(data)
+
 
 def testOrders(client):
     os.system('clear')
@@ -188,9 +187,11 @@ def showUserTrades(trades):
     for trade in trades:
         print(fmt.format(*trade))
 
+
 # listener for candle updates
 def handleUserTrades(sender, data):
     showUserTrades(data)
+
 
 def testUserTrades(client):
     os.system('clear')
@@ -213,9 +214,11 @@ def showBalances(balances):
         if float(value) > 0:
             print(fmt.format(key, value))
 
+
 # listener for candle updates
 def handleBalances(sender, data):
     showBalances(data)
+
 
 def testBalances(client):
     os.system('clear')
@@ -253,14 +256,15 @@ def demoBitfinex():
 
     testTicker(client)
     time.sleep(3)
-    testBook(client)
-    time.sleep(3)
-    testTrades(client)
-    time.sleep(3)
-    testCandles(client)
-    time.sleep(3)
+#    testBook(client)
+#    time.sleep(3)
+#    testTrades(client)
+#    time.sleep(3)
+#    testCandles(client)
+#    time.sleep(3)
 
     client.disconnect()
+
 
 
 # Test multiple subscriptions and disconnect

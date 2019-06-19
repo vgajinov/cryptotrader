@@ -29,11 +29,7 @@ class BinanceFormatter(Formatter):
 
     @staticmethod
     def server_time(data, *args, **kwargs):
-        try:
-            return data['serverTime']
-        except KeyError as e:
-            raise
-
+        return data['serverTime']
 
     @staticmethod
     def symbols(data, *args, **kwargs):
@@ -43,15 +39,16 @@ class BinanceFormatter(Formatter):
     @staticmethod
     def symbols_details(data, *args, **kwargs):
         # create a temporary dictionary for each symbol as a key,
-        # where values are dictionaries of filters where filter name is the key.
+        # where values are dictionaries of filters with filter name as the key.
         filters = {d['symbol']: {f['filterType']: f for f in d['filters']} for d in data['symbols']}
         return {d['symbol'].upper(): {'precision':      d['baseAssetPrecision'],
                                       'minAmount':      filters[d['symbol']]['LOT_SIZE']['minQty'],
+                                      'minPrice':       filters[d['symbol']]['PRICE_FILTER']['minPrice'],
                                       'baseAsset':      d['baseAsset'],
                                       'quoteAsset':     d['quoteAsset'],
                                       'quotePrecision': d['quotePrecision'],
                                       'orderTypes':     d['orderTypes'],
-                                      'minPrice':       filters[d['symbol']]['PRICE_FILTER']['minPrice']}
+                                      'status':         d['status']}
                 for d in data['symbols']}
 
 
@@ -97,8 +94,8 @@ class BinanceFormatter(Formatter):
 
     @staticmethod
     def candles(data, *args, **kwargs):
-        return [d[:6] for d in data]
         # we could find the rest of data useful: number of trades, buy volume, sell volume
+        return [d[:6] for d in data]
 
 
     @staticmethod
@@ -106,17 +103,17 @@ class BinanceFormatter(Formatter):
         # Order status can be one of these:
         #   NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED, EXPIRED
         try:
-            return {'symbol': data['symbol'],
-                    'orderId': data['orderId'],
-                    'price': data['price'],
-                    'amount': data['origQty'],
-                    'filled': data['executedQty'],
-                    'type': data['type'],
-                    'side': data['side'],
-                    'timestamp': data['transactTime'],
-                    'status': 'LIVE' if data['status'] == 'NEW' or data['status'] == 'PARTIALLY_FILLED' else
-                    'EXECUTED' if data['status'] == 'FILLED' else
-                    'CANCELED'
+            return {'symbol':     data['symbol'],
+                    'orderId':    data['orderId'],
+                    'price':      data['price'],
+                    'amount':     data['origQty'],
+                    'filled':     data['executedQty'],
+                    'type':       data['type'],
+                    'side':       data['side'],
+                    'timestamp':  data['transactTime'],
+                    'status':     'LIVE' if data['status'] == 'NEW' or data['status'] == 'PARTIALLY_FILLED' else
+                                  'EXECUTED' if data['status'] == 'FILLED' else
+                                  'CANCELED'
                     }
         except KeyError:
             return False
@@ -125,18 +122,18 @@ class BinanceFormatter(Formatter):
     @staticmethod
     def order_status(data, *args, **kwargs):
         try:
-            return {'symbol': data['symbol'],
-                    'orderId': data['orderId'],
-                    'price': data['price'],
-                    'stopPrice': data['stopPrice'],
-                    'amount': data['origQty'],
-                    'filled': data['executedQty'],
-                    'type': data['type'],
-                    'side': data['side'],
-                    'timestamp': data['time'],
-                    'status': 'LIVE' if data['status'] == 'NEW' or data['status'] == 'PARTIALLY_FILLED' else
-                    'EXECUTED' if data['status'] == 'FILLED' else
-                    'CANCELED'
+            return {'symbol':     data['symbol'],
+                    'orderId':    data['orderId'],
+                    'price':      data['price'],
+                    'stopPrice':  data['stopPrice'],
+                    'amount':     data['origQty'],
+                    'filled':     data['executedQty'],
+                    'type':       data['type'],
+                    'side':       data['side'],
+                    'timestamp':  data['time'],
+                    'status':     'LIVE' if data['status'] == 'NEW' or data['status'] == 'PARTIALLY_FILLED' else
+                                  'EXECUTED' if data['status'] == 'FILLED' else
+                                  'CANCELED'
                     }
         except KeyError:
             return {}
@@ -154,28 +151,27 @@ class BinanceFormatter(Formatter):
 
     @staticmethod
     def balance(data, *args, **kwargs):
-        try:
-            tmp = data['balances']
-        except KeyError as e:
-            print('BAD RESPONSE')
-            return {}
         return {d['asset']: d['free'] for d in data['balances']}
 
 
     @staticmethod
     def my_trades(data, *args, **kwargs):
-        return [{'orderId': d['orderId'], 'price': d['price'], 'amount': d['qty'],
-                 'fee': d['commission'], 'feeAsset': d['commissionAsset'],
-                 'side': 'buy' if d['isBuyer'] else 'sell'} for d in data]
+        return [{'orderId': d['orderId'],
+                 'price': d['price'],
+                 'amount': d['qty'],
+                 'fee': d['commission'],
+                 'feeAsset': d['commissionAsset'],
+                 'side': 'buy' if d['isBuyer'] else 'sell'}
+                for d in data]
 
 
     @staticmethod
     def historical_trades(data, *args, **kwargs):
-        return [[t['time'], t['price'], t['qty'], 'sell' if t['isBuyerMaker'] else 'buy'] for t in data]
-
-
-# alias for the formatter
-fmt = BinanceFormatter
+        return [[ t['time'],
+                  t['price'],
+                  t['qty'],
+                  'sell' if t['isBuyerMaker'] else 'buy']
+                for t in data]
 
 
 # ===============================================================================
@@ -252,12 +248,12 @@ class BinanceRESTClient(RESTClientAPI):
         return ['BTC', 'ETH', 'BNB', 'USDT']
 
 
-    @response_formatter(fmt.symbols, logger)
+    @response_formatter(BinanceFormatter.symbols, logger)
     def symbols(self):
         return self._public_query('/api/v1/exchangeInfo')
 
 
-    @response_formatter(fmt.symbols_details, logger)
+    @response_formatter(BinanceFormatter.symbols_details, logger)
     def symbols_details(self):
         return self._public_query('/api/v1/exchangeInfo')
 
@@ -267,27 +263,27 @@ class BinanceRESTClient(RESTClientAPI):
         return ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']
 
 
-    @response_formatter(fmt.ticker, logger)
+    @response_formatter(BinanceFormatter.ticker, logger)
     def ticker(self, pair, **kwargs):
         return self._public_query('/api/v1/ticker/24hr?symbol=%s' % pair.upper(), params=kwargs)
 
 
-    @response_formatter(fmt.tickers, logger)
+    @response_formatter(BinanceFormatter.tickers, logger)
     def all_tickers(self, **kwargs):
         return self._public_query('/api/v1/ticker/24hr', params=kwargs)
 
 
-    @response_formatter(fmt.order_book, logger)
+    @response_formatter(BinanceFormatter.order_book, logger)
     def order_book(self, pair, **kwargs):
         return self._public_query('/api/v1/depth?symbol=%s' % pair.upper(), params=kwargs)
 
 
-    @response_formatter(fmt.trades, logger)
+    @response_formatter(BinanceFormatter.trades, logger)
     def trades(self, pair, **kwargs):
         return self._public_query('/api/v1/trades?symbol=%s' % pair.upper(), params=kwargs)
 
 
-    @response_formatter(fmt.candles, logger)
+    @response_formatter(BinanceFormatter.candles, logger)
     def candles(self, pair, interval='1m', **kwargs):
         if interval not in self.candle_intervals():
             interval = '1m'
@@ -316,52 +312,52 @@ class BinanceRESTClient(RESTClientAPI):
         return self._private_query('POST', '/api/v3/order', params=q)
 
 
-    @response_formatter(fmt.order, logger)
+    @response_formatter(BinanceFormatter.order, logger)
     def place_market_order(self, side, pair, size, **kwargs):
         return self._place_order('MARKET', side, pair, size, None, None, **kwargs)
 
 
-    @response_formatter(fmt.order, logger)
+    @response_formatter(BinanceFormatter.order, logger)
     def place_limit_order(self, side, pair, size, price, **kwargs):
         return self._place_order('LIMIT', side, pair, size, price, None, timeInForce='GTC', **kwargs)
 
 
-    @response_formatter(fmt.order_status, logger)
+    @response_formatter(BinanceFormatter.order_status, logger)
     def order(self, order_id, symbol, **kwargs):
         q = {'symbol': symbol, 'orderId': int(order_id)}
         q.update(kwargs)
         return self._private_query('GET', '/api/v3/order', params=q)
 
 
-    @response_formatter(fmt.multi_order_status, logger)
+    @response_formatter(BinanceFormatter.multi_order_status, logger)
     def open_orders(self, **kwargs):
         q = {}
         q.update(kwargs)
         return self._private_query('GET', '/api/v3/openOrders', params=q)
 
 
-    @response_formatter(fmt.multi_order_status, logger)
+    @response_formatter(BinanceFormatter.multi_order_status, logger)
     def all_orders(self, symbol, **kwargs):
         q = {'symbol': symbol}
         q.update(kwargs)
         return self._private_query('GET', '/api/v3/allOrders', params=q)
 
 
-    @response_formatter(fmt.cancel, logger)
+    @response_formatter(BinanceFormatter.cancel, logger)
     def cancel_order(self, order_id, symbol, **kwargs):
         q = {'symbol': symbol, 'orderId': int(order_id)}
         q.update(kwargs)
         return self._private_query('DELETE', '/api/v3/order', params=q)
 
 
-    @response_formatter(fmt.my_trades, logger)
+    @response_formatter(BinanceFormatter.my_trades, logger)
     def my_trades(self, symbol, **kwargs):
         q = {'symbol': symbol}
         q.update(kwargs)
         return self._private_query('GET', '/api/v3/myTrades', params=q)
 
 
-    @response_formatter(fmt.balance, logger)
+    @response_formatter(BinanceFormatter.balance, logger)
     def balance(self, **kwargs):
         return self._private_query('GET', '/api/v3/account', params=kwargs)
 
@@ -370,19 +366,19 @@ class BinanceRESTClient(RESTClientAPI):
     #    Exchange Specific Methods
     # -----------------------------------------------------
 
-    @response_formatter(fmt.server_time, logger)
+    @response_formatter(BinanceFormatter.server_time, logger)
     def server_time(self):
         return self._public_query('/api/v1/time')
 
 
-    @response_formatter(fmt.multi_order_status, logger)
+    @response_formatter(BinanceFormatter.multi_order_status, logger)
     def open_orders_for(self, symbol, **kwargs):
         q = {'symbol': symbol}
         q.update(kwargs)
         return self._private_query('GET', '/api/v3/openOrders', params=q)
 
 
-    @response_formatter(fmt.multi_order_status, logger)
+    @response_formatter(BinanceFormatter.multi_order_status, logger)
     def all_orders_since(self, symbol, order_id, **kwargs):
         q = {'symbol': symbol}
         if order_id:
@@ -391,39 +387,39 @@ class BinanceRESTClient(RESTClientAPI):
         return self._private_query('GET', '/api/v3/allOrders', params=q)
 
 
-    @response_formatter(fmt.forward, logger)
+    @response_formatter(BinanceFormatter.forward, logger)
     def create_listen_key(self):
         return self._private_query('POST', '/api/v1/userDataStream')
 
 
-    @response_formatter(fmt.forward, logger)
+    @response_formatter(BinanceFormatter.forward, logger)
     def ping_listen_key(self, listenKey):
         return self._private_query('PUT', '/api/v1/userDataStream', params={'listenKey': listenKey})
 
 
-    @response_formatter(fmt.forward, logger)
+    @response_formatter(BinanceFormatter.forward, logger)
     def close_listen_key(self, listenKey):
         return self._private_query('DELETE', '/api/v1/userDataStream', params={'listenKey': listenKey})
 
     # These order types are in documentation, but they don't seem to work
     #
-    # @return_api_response(fmt.order, log)
+    # @return_api_response(BinanceFormatter.order, log)
     # def place_stoploss_order(self, side, pair, size, stopPrice, **kwargs):
     #    return self._place_order('STOP_LOSS', side, pair, size, None, stopPrice, **kwargs)
     #
-    # @return_api_response(fmt.order, log)
+    # @return_api_response(BinanceFormatter.order, log)
     # def place_stoplosslimit_order(self, side, pair, size, price, stopPrice, **kwargs):
     #    return self._place_order('STOP_LOSS_LIMIT', side, pair, size, price, stopPrice, timeInForce='GTC', **kwargs)
     #
-    # @return_api_response(fmt.order, log)
+    # @return_api_response(BinanceFormatter.order, log)
     # def place_takeprofit_order(self, side, pair, size, stopPrice,  **kwargs):
     #    return self._place_order('TAKE_PROFIT', side, pair, size, None, stopPrice, **kwargs)
     #
-    # @return_api_response(fmt.order, log)
+    # @return_api_response(BinanceFormatter.order, log)
     # def place_takeprofitlimit_order(self, side, pair, size, price, stopPrice,  **kwargs):
     #    return self._place_order('TAKE_PROFIT_LIMIT', side, pair, size, price, stopPrice, timeInForce='GTC', **kwargs)
 
     # This is failing ...  401 Client Error: Unauthorized for url: ...
-    # @return_api_response(fmt.historical_trades, log)
+    # @return_api_response(BinanceFormatter.historical_trades, log)
     # def historical_trades(self, pair, **kwargs):
     #    return self.public_query('/api/v1/historicalTrades?symbol=%s' % pair.upper(), params=kwargs)

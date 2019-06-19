@@ -21,7 +21,7 @@ class ExchangeWSFactory(object):
 
 
     @staticmethod
-    def create_client(name, key_file=None) -> WSClientAPI:
+    def create_client(name) -> WSClientAPI:
         """Create an exchange handling object.
 
         :param name:      name of the exchange
@@ -32,6 +32,6 @@ class ExchangeWSFactory(object):
         WSClientAPI is an abstract class implemented by all websocket-based exchange client classes
         """
         try:
-            return ExchangeWSFactory.exchanges[name](key_file=key_file)
+            return ExchangeWSFactory.exchanges[name]()
         except KeyError as e:
             raise KeyError('Exchange name not recognized') from e

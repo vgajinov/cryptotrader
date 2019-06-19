@@ -186,7 +186,7 @@ REST_URI      = 'https://api.binance.com'
 
 
 class BinanceWSClient(WSClientAPI):
-    def __init__(self, key_file=None):
+    def __init__(self):
         super(BinanceWSClient, self).__init__()
         self._data = {}           # stream -> data
         self._subscriptions = {}  # stream -> thread

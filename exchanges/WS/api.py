@@ -28,6 +28,8 @@ class WSClientAPI(ABC):
 
     def _stop_logger(self):
         """Terminate the logger"""
+        self.logger_handler.flush()
+        self.logger_handler.close()
         self.logger.removeHandler(self.logger_handler)
         self.logger = None
 
@@ -42,7 +44,11 @@ class WSClientAPI(ABC):
 
     @abstractmethod
     def connect(self, info_handler=None):
-        """Connect to the exchange via websocket stream."""
+        """Connect to the exchange via websocket stream.
+        :param info_handler   a callback handler for info messages
+        Info messages cover any information that is not related to concrete data from the exchange,
+        but rather about the protocol or various exchange events, such as maintenance, or connection issues.
+        """
         pass
 
     @abstractmethod
@@ -53,7 +59,6 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe(self, **kwargs):
         """Generic method to subscribe to a channel of an exchange.
-
         :param kwargs: Arbitrary keyword arguments. Depend on the specific exchange.
         """
         return None
@@ -61,7 +66,6 @@ class WSClientAPI(ABC):
     @abstractmethod
     def unsubscribe(self, **kwargs):
         """Generic method to unsubscribe from the channel.
-
         :param kwargs: Arbitrary keyword arguments. Depend on the specific exchange.
         """
         pass
@@ -69,11 +73,10 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_ticker(self, symbol, update_handler=None):
         """Subscribe to ticker channel.
-
         :param symbol:            A string that represents a ticker symbol (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of a ticker.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
+        :raises ExchangeException
         Data is returned by dispatcher via update_handler in the following format:
            [ BID, BID_SIZE, ASK, ASK_SIZE, DAY_CHANGE, DAY_CHANGE_PERCENT, LAST_PRICE, VOLUME, HIGH, LOW ]
         Return type:
@@ -84,11 +87,10 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_order_book(self, symbol, update_handler=None, **kwargs):
         """Subscribe to order book channel.
-
         :param symbol:          A symbol for a ticker (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of the order book.
         :param kwargs:          Additional parameters that differ between exchanges.
-
+        :raises ExchangeException
         Data is returned by dispatcher as two ordered dictionaries, bids and asks,
         ordered by price from low to high. The format is
            { PRICE : AMOUNT }
@@ -102,11 +104,10 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_trades(self, symbol, update_handler=None):
         """Subscribe to the channel for trades.
-
         :param symbol:          A symbol for a ticker (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of trades.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
+        :raises ExchangeException
         Data is returned by dispatcher as a list of trades:
             [ [ TIMESTAMP, AMOUNT, PRICE ], ... ]
         Return type:
@@ -117,12 +118,11 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_candles(self, symbol, interval='1m', update_handler=None):
         """Subscribe to the channel fro candles.
-
         :param symbol:          A symbol for a ticker (pair).
         :param interval         Time interval for a candle.
         :param update_handler:  A callback handler that should handle the asynchronous update of trades.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
+        :raises ExchangeException
         Data is returned by dispatcher as a list of candles:
            [ TIMESTAMP, OPEN, CLOSE, HIGH, LOW, VOLUME ]
         Return type:
@@ -138,12 +138,10 @@ class WSClientAPI(ABC):
     @abstractmethod
     def authenticate(self, key=None, secret=None, key_file=None):
         """Authenticate a user.
-
         :param key:        User's public key.
         :param secret:     User's private key.
         :param key_file:   A ke file with public and private keys.
         :return True if authentication was successful
-
         If key file is provided, it will override values of provided via key and secret
         """
         return False
@@ -151,10 +149,8 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_user_orders(self, update_handler):
         """Subscribe to user orders channel.
-
         :param update_handler:  A callback handler that should handle the asynchronous update of user orders.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
         Data is returned by dispatcher in the form of list of orders:
            [ ID, TIMESTAMP, SYMBOL, TYPE, SIDE, PRICE, AMOUNT, FILED%, TOTAL ]
         Return type:
@@ -165,10 +161,8 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_user_trades(self, update_handler):
         """Subscribe to user trades channel.
-
         :param update_handler:  A callback handler that should handle the asynchronous update of user trades.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
         Data is returned by dispatcher in the form of list of trades:
            [ TIMESTAMP, SYMBOL, TYPE, SIDE, PRICE, AMOUNT, FILLED, TOTAL, STATUS ]
         Return type:
@@ -179,10 +173,8 @@ class WSClientAPI(ABC):
     @abstractmethod
     def subscribe_balances(self, update_handler):
         """Subscribe to balances channel.
-
         :param update_handler:  A callback handler that should handle the asynchronous update of user balances.
         :return: A string that represents a stream (channel) identifier. Specific for each exchange.
-
         Data is returned by dispatcher as a dictionary of balances:
            { currency : balance }
         Return type:
@@ -205,7 +197,6 @@ class ChannelData(ABC):
     @abstractmethod
     def update(self, data):
         """Updates subscribers with channel updates.
-
         :param data: Data to be published (sent to subscribers).
         """
         pass

@@ -1,10 +1,10 @@
 import unittest
-from exchanges.REST.binance import BinanceRESTClient
+from exchanges.REST.bitfinex import BitfinexRESTClient
 
-client = BinanceRESTClient()
+client = BitfinexRESTClient()
 
 
-class BinanceRESTClientTestCase(unittest.TestCase):
+class BitfinexRESTClientTestCase(unittest.TestCase):
 
     def test_ping(self):
         self.assertTrue(client.ping())
@@ -13,7 +13,7 @@ class BinanceRESTClientTestCase(unittest.TestCase):
         currencies = client.quote_currencies()
         self.assertIs(type(currencies), list)
         self.assertTrue('BTC' in currencies)
-        self.assertTrue('USDT' in currencies)
+        self.assertTrue('USD' in currencies)
 
     def test_symbols(self):
         try:
@@ -21,8 +21,8 @@ class BinanceRESTClientTestCase(unittest.TestCase):
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(symbols), list)
-        self.assertTrue('BTCUSDT' in symbols)
-        self.assertTrue('BNBBTC' in symbols)
+        self.assertTrue('BTCUSD' in symbols)
+        self.assertTrue('LTCBTC' in symbols)
 
     def test_symbols_details(self):
         try:
@@ -30,10 +30,10 @@ class BinanceRESTClientTestCase(unittest.TestCase):
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(symbols_details), dict)
-        self.assertTrue('BTCUSDT' in symbols_details)
-        self.assertEqual(symbols_details['BTCUSDT']['baseAsset'], 'BTC')
-        self.assertEqual(symbols_details['BTCUSDT']['quoteAsset'], 'USDT')
-        self.assertEqual(symbols_details['BTCUSDT']['minAmount'], '0.00000100')
+        self.assertTrue('BTCUSD' in symbols_details)
+        self.assertEqual(symbols_details['BTCUSD']['baseAsset'], 'BTC')
+        self.assertEqual(symbols_details['BTCUSD']['quoteAsset'], 'USD')
+        self.assertEqual(symbols_details['BTCUSD']['precision'], 5)
 
     def test_candle_intervals(self):
         try:
@@ -45,7 +45,7 @@ class BinanceRESTClientTestCase(unittest.TestCase):
 
     def test_ticker(self):
         try:
-            ticker = client.ticker('BTCUSDT')
+            ticker = client.ticker('BTCUSD')
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(ticker), list)
@@ -57,13 +57,13 @@ class BinanceRESTClientTestCase(unittest.TestCase):
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(tickers), dict)
-        self.assertTrue('BTCUSDT' in tickers)
-        self.assertIs(type(tickers['BTCUSDT']), list)
-        self.assertEqual(len(tickers['BTCUSDT']), 8)
+        self.assertTrue('BTCUSD' in tickers)
+        self.assertIs(type(tickers['BTCUSD']), list)
+        self.assertEqual(len(tickers['BTCUSD']), 8)
 
     def test_order_book(self):
         try:
-            book = client.order_book('BTCUSDT')
+            book = client.order_book('BTCUSD')
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(book), dict)
@@ -72,7 +72,7 @@ class BinanceRESTClientTestCase(unittest.TestCase):
 
     def test_trades(self):
         try:
-            trades = client.trades('BTCUSDT')
+            trades = client.trades('BTCUSD')
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(trades), list)
@@ -83,9 +83,9 @@ class BinanceRESTClientTestCase(unittest.TestCase):
     def test_candles(self):
         # this also covers testing the historical_candles method
         try:
-            candles = client.candles('BTCUSDT', '1m', startTime=1560696720000, endTime=1560696780000)
+            candles = client.candles('BTCUSD', '1m', start=1560696720000, end=1560696780000)
         except Exception as e:
             self.fail("Method threw an exception: {}".format(e))
         self.assertIs(type(candles), list)
-        self.assertListEqual(candles[0], [1560696720000, "9215.67000000", "9230.00000000",
-                                          "9215.01000000", "9226.26000000", "38.22828700"])
+        self.assertListEqual(candles[0], [1560696720000, 9261.33251778, 9269, 9260, 9269, 3.21300032])
+
