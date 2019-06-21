@@ -10,8 +10,8 @@ files.
 </seealso>
 """
 from time import mktime, strptime
-import time
 import csv
+import pandas as pd
 from exchanges.exchangeRESTFactory import ExchangeRESTFactory
 
 
@@ -39,9 +39,10 @@ for symbol in symbols:
             candles = client.historical_candles(symbol, '1m', starttime, endtime)
             csvwriter.writerows(candles)
 
+    # sanity check for the fetched data
+    data_csv = pd.read_csv(fobj.name)
+    assert len(data_csv) == 1499
+
 # Try increasing MAX_CANDLES
 # Maybe add sleep(1) between each call to client.historical_candles
 # to avoid being banned due to rate limitation of the API
-
-
-
