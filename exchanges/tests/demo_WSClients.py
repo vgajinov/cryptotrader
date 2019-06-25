@@ -316,7 +316,7 @@ def demoAuthenticated(client, keyFile):
 # =================================================================================
 
 # demoBinance()
-# demoBitfinex()
+demoBitfinex()
 
 # demoMultiSubscriptions(client=BitfinexWSClient())
 # demoMultiSubscriptions(client=BinanceWSClient())

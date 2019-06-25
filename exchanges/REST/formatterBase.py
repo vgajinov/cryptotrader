@@ -7,33 +7,26 @@ class Formatter:
 
 
     @staticmethod
-    def forward(data):
-        """Forwards passed data unchanged.
-        :param data: Arbitrary data response from the exchange
+    def forward(data, *args, **kwargs):
+        """Forwards passed data unchanged - no format applied.
+        :param data:   Arbitrary data response from the exchange
+        :param args:   Ignored
+        :param kwargs: Ignored
         :return: data
-
+        :raises: ExchangeException
         """
         return data
 
-
-    @staticmethod
-    def format_symbol(symbol):
-        """Returns the pair properly formatted for the exchange's API.
-        :param symbol:  String representing a symbol (pair).
-        :return: Formatted symbol string
-        """
-        return symbol
-
     @staticmethod
     def symbols(data, *args, **kwargs):
-        """Formats the data into a list of symbols.
+        """Formats the data into a list of symbols in uppercase.
         :param data:   Response from the exchange.
         :param args:
         :param kwargs:
         :return: list
         :raises: ExchangeException
         Example of the returned list of symbols:
-            ['btcusd', 'ltcusd', 'ltcbtc', 'ethusd', 'ethbtc',...]
+            ['BTCUSD', 'LTCUSD', 'LTCBTC', ...]
         """
         return data
 
@@ -47,8 +40,10 @@ class Formatter:
         :raises: ExchangeException
         The return format is the following:
            { 'btcusd' : {
-                         'precision': 8,
-                         'minAmount': 0.01
+                         'precision':  8,
+                         'minAmount':  0.01,
+                         'baseAsset':  'BTC',
+                         'quoteAsset': 'USD'
                         }
             }
         There can be other details beside the above two (precision and minAmount)
@@ -108,7 +103,7 @@ class Formatter:
         :return: list
         :raises: ExchangeException
         Return format:
-            [ [ts, price, size, side], ... ]
+            [ [timestamp, price, size, side], ... ]
         """
         return data
 
@@ -206,6 +201,7 @@ class Formatter:
         :param args:
         :param kwargs:
         :return: bool
+        :raises: ExchangeException
         """
         return data
 

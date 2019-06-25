@@ -58,43 +58,53 @@ class ApiClassesTestCase(unittest.TestCase):
         self.assertRaises(TypeError, RESTClientAPI, 'http://testurl.com')
         self.assertRaises(TypeError, DummyRESTClient)
         try:
-            cl = DummyRESTClient('http://testurl.com')
+            rest_client = DummyRESTClient('http://testurl.com')
         except TypeError:
             self.fail('Instantiation of the concrete implementation of the abstract RESTClientAPI class failed!')
-        self.assertEqual(cl._uri, 'http://testurl.com')
-        self.assertIsNone(cl._key)
-        self.assertIsNone(cl._secret)
-        self.assertEqual(cl._version, '')
-        self.assertEqual(cl.timeout, 5)
-        self.assertIsNotNone(cl._log)
-        self.assertEqual(cl._log.name, 'RESTClientAPILogger')
+        self.assertEqual(rest_client._uri, 'http://testurl.com')
+        self.assertIsNone(rest_client._key)
+        self.assertIsNone(rest_client._secret)
+        self.assertEqual(rest_client._version, '')
+        self.assertEqual(rest_client.timeout, 5)
+        self.assertIsNotNone(rest_client._log)
+        self.assertEqual(rest_client._log.name, 'RESTClientAPILogger')
 
-        cl2 = DummyRESTClient('http://testurl.com', key='userName', secret='abcd',
-                              timeout=33, log=logging.getLogger('testLogger'), api_version='0.1.9')
-        self.assertEqual(cl2._key, 'userName')
-        self.assertEqual(cl2._secret, 'abcd')
-        self.assertEqual(cl2.timeout, 33)
-        self.assertEqual(cl2._version, '0.1.9')
-        self.assertEqual(cl2._log.name, 'testLogger')
 
+    def test_REST_client_creation_with_keys(self):
+        try:
+            rest_client = DummyRESTClient('http://testurl.com', key='userName', secret='abcd',
+                                  timeout=33, log=logging.getLogger('testLogger'), api_version='0.1.9')
+        except TypeError:
+            self.fail('Instantiation of the concrete implementation of the abstract RESTClientAPI class failed!')
+        self.assertEqual(rest_client._key, 'userName')
+        self.assertEqual(rest_client._secret, 'abcd')
+        self.assertEqual(rest_client.timeout, 33)
+        self.assertEqual(rest_client._version, '0.1.9')
+        self.assertEqual(rest_client._log.name, 'testLogger')
+
+
+    def test_REST_client_creation_with_keyfile(self):
         file_path = os.path.dirname(os.path.relpath(__file__))
-        cl3 = DummyRESTClient('http://testurl.com', key='userName', secret='abcd',
-                              key_file=os.path.join(file_path, 'test.key'))
-        self.assertEqual(cl3._key, 'storedUserName')
-        self.assertEqual(cl3._secret, 'storedKeyABC')
+        try:
+            rest_client = DummyRESTClient('http://testurl.com', key='userName', secret='abcd',
+                                  key_file=os.path.join(file_path, 'test.key'))
+        except TypeError:
+            self.fail('Instantiation of the concrete implementation of the abstract RESTClientAPI class failed!')
+        self.assertEqual(rest_client._key, 'storedUserName')
+        self.assertEqual(rest_client._secret, 'storedKeyABC')
 
 
     def test_WS_client_creation(self):
         self.assertRaises(TypeError, WSClientAPI)
         try:
-            cl = DummyWSClient()
+            ws_client = DummyWSClient()
         except TypeError:
             self.fail('Instantiation of the concrete implementation of the abstract WSClientAPI class failed!')
 
-        self.assertEqual(cl.logger.name, 'WSClientAPILogger')
-        self.assertEqual(len(cl.logger.handlers), 1)
-        self.assertTrue(cl.logger.handlers[0].baseFilename.endswith('DummyWSClient.log'))
+        self.assertEqual(ws_client.logger.name, 'WSClientAPILogger')
+        self.assertEqual(len(ws_client.logger.handlers), 1)
+        self.assertTrue(ws_client.logger.handlers[0].baseFilename.endswith('DummyWSClient.log'))
 
-        cl._stop_logger()
-        self.assertIsNone(cl.logger)
+        ws_client._stop_logger()
+        self.assertIsNone(ws_client.logger)
 

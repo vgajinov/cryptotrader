@@ -6,7 +6,8 @@ class ExchangeException(Exception):
     def __init__(self, name, msg, data=None, orig_exception=None, logger=None):
         exception_msg = "Exception in handling the response from {0} exchange:\n{1}".format(name, msg)
         if orig_exception:
-            exception_msg += "\nOriginal exception:\n{0} with arguments {1}".format(orig_exception.__class__, orig_exception.args)
+            exception_msg += "\nOriginal exception:\n{0} with arguments {1}".format(orig_exception.__class__,
+                                                                                    orig_exception.args)
             self.with_traceback(orig_exception.__traceback__)  # or sys.exc_info()[2]
         if logger:
             self._log_exception(logger, exception_msg, data)
@@ -29,3 +30,9 @@ class ExchangeException(Exception):
         except:
             # ignore any exception while logging the current one.
             pass
+
+
+class WSException(Exception):
+    def __init__(self, msg):
+        exception_msg = "Websocket exception: {}". format(msg)
+        super().__init__(exception_msg)
