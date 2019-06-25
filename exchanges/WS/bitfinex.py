@@ -3,7 +3,6 @@ import json
 import hashlib
 import hmac
 import time
-import traceback
 from threading import Thread
 from pydispatch import dispatcher
 from collections import OrderedDict, deque
@@ -47,6 +46,10 @@ class BitfinexTicker(ChannelData):
             raise WSException("Error updating ticker channel {}: {}".format(self.name, e))
         self._publish()
 
+    def snapshot(self):
+        """Get the current snapshot of the ticker"""
+        return self.data
+
     def _publish(self):
         """Send ticker to listeners"""
         dispatcher.send(signal=self.name, sender='bitfinex', data=self.data)
@@ -86,7 +89,7 @@ class BitfinexOrderBook(ChannelData):
                 if amount > 0:
                     self.bids[price] = amount
                 else:
-                    self.asks[price] = amount
+                    self.asks[price] = -amount
         except Exception as e:
             raise WSException("Error initializing order book channel {}: {}".format(self.name, e))
         self._publish()
@@ -108,7 +111,7 @@ class BitfinexOrderBook(ChannelData):
                 if amount > 0:
                     self.bids[price] = amount
                 else:
-                    self.asks[price] = amount
+                    self.asks[price] = -amount
             else:
                 if amount == 1:
                     if self.bids.get(price, None):
@@ -120,6 +123,11 @@ class BitfinexOrderBook(ChannelData):
             raise WSException("Error updating order book channel {}: {}".format(self.name, e))
         self._publish()
 
+    def snapshot(self):
+        """Get the latest snapshot of the order book"""
+        bids, asks = self._sort_book()
+        return {'bids': bids, 'asks': asks}
+
     def _sort_book(self):
         """Create two ordered lists, one for asks and the other for bids
         :return: (OrderedDict, OrderedDict)
@@ -129,9 +137,9 @@ class BitfinexOrderBook(ChannelData):
         return bids, asks
 
     def _publish(self):
-        """Send updated book to listeners"""
+        """Sends updated book to listeners"""
         bids, asks = self._sort_book()
-        dispatcher.send(signal=self.name, sender='bitfinex', data={'bids':bids, 'asks':asks})
+        dispatcher.send(signal=self.name, sender='bitfinex', data={'bids': bids, 'asks': asks})
 
 
 # ==========================================================================================
@@ -147,17 +155,17 @@ class BitfinexTrades(ChannelData):
         :param name:   channel name (i.e. 'trades_' + symbol)
         :param trades: trades for a symbol from the exchange
         :raises WSException
-        Keeps trades in a deque with size limited to 100 elements.
         """
         super(BitfinexTrades, self).__init__()
         self.name = name
-        self.trades = deque(maxlen=100)
+        self.trades = deque(maxlen=self.MAX_TRADES)
         try:
             for trade in trades:
                 self.trades.append(trade[1:])
         except Exception as e:
             raise WSException("Error initializing trades channel {}: {}".format(self.name, e))
-        self._publish()
+        # publish full list of trades
+        dispatcher.send(signal=self.name, sender='bitfinex', data=('snapshot', list(self.trades)))
 
     def update(self, trade):
         """Update trades
@@ -167,14 +175,14 @@ class BitfinexTrades(ChannelData):
         Also update all listeners.
         """
         try:
-            self.trades.append(trade[1:])
+            self.trades.appendleft(trade[1:])
         except Exception as e:
             raise WSException("Error updating trades channel {}: {}".format(self.name, e))
-        self._publish()
+        dispatcher.send(signal=self.name, sender='bitfinex', data=('update', trade[1:]))
 
-    def _publish(self):
-        """Sends updated trades to listeners"""
-        dispatcher.send(signal=self.name, sender='bitfinex', data=list(self.trades))
+    def snapshot(self):
+        """Get the current snapshot of the trades"""
+        return 'snapshot', list(self.trades)
 
 
 # ==========================================================================================
@@ -183,29 +191,33 @@ class BitfinexTrades(ChannelData):
 
 class BitfinexCandles(ChannelData):
     """Bitfinex per-channel candles
-    Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
-    Direction of updates in the list is from the most recent to the least recent.
-    We keep candles in [MTS, OPEN, HIGH, LOW, CLOSE, VOLUME] form as usual
-    # ain a list from the least recent to the most recent.
+    1. Updates are in the form of a list [MTS, OPEN, CLOSE, HIGH, LOW, VOLUME]
+    so it is necessary to transform them into a standard ohlc form - [MTS, OPEN, HIGH, LOW, CLOSE, VOLUME].
+    2. The order of received updates in the list is from the most recent to the least recent.
+    We maintain the opposite order.
     """
     def __init__(self, name, candles):
         """Initializes a new candles object
         :param name:   channel name (i.e. 'candles_' + symbol)
         :param candles: a candles snapshot received from the exchange
         :raises WSException
-        Keeps candles in a deque with size limited to 10000 elements (just a safety).
+        Keeps candles in a deque with size limited to MAX_CANDLES elements (just a safety).
         """
         super(BitfinexCandles, self).__init__()
         self.name = name
         try:
             for candle in candles:
+                # make all values float except for the timestamp.
+                # Bitfinex will send rounded price as int (i.e., 92.0 as 92)
+                for i in range(1,len(candle)):
+                    candle[i] = float(candle[i])
                 # swap columns 3->2 4->3 2->4
                 candle[2], candle[3] = candle[3], candle[2]
                 candle[3], candle[4] = candle[4], candle[3]
-            self.candles = deque(list(reversed(candles)), maxlen=10000)
+            self.candles = deque(list(reversed(candles)), maxlen=self.MAX_CANDLES)
         except Exception as e:
             raise WSException("Error initializing candles channel {}: {}".format(self.name, e))
-        self._publish()
+        dispatcher.send(signal=self.name, sender='bitfinex', data=('snapshot', list(self.candles)))
 
     def update(self, candle):
         """Update the candles
@@ -223,20 +235,20 @@ class BitfinexCandles(ChannelData):
             if candle[0] > self.candles[-1][0]:
                 # add new candle
                 self.candles.append(candle)
+                dispatcher.send(signal=self.name, sender='bitfinex', data=('add', candle))
             elif candle[0] == self.candles[-1][0]:
                 # update last candle
                 self.candles[-1] = candle
+                dispatcher.send(signal=self.name, sender='bitfinex', data=('update', candle))
             else:
                 # bitfinex sometimes sends old candles. We just ignore it.
                 return
         except Exception as e:
             raise WSException("Error updating candles channel {}: {}".format(self.name, e))
-        self._publish()
 
-
-    def _publish(self):
-        """Sends updated candles to listeners"""
-        dispatcher.send(signal=self.name, sender='bitfinex', data=list(self.candles))
+    def snapshot(self):
+        """Get the current snapshot of the candles"""
+        return 'snapshot', list(self.candles)
 
 
 # ==========================================================================================
@@ -279,7 +291,7 @@ class BitfinexWSClient(WSClientAPI):
         return 'Bitfinex'
 
 
-    def _get_channel_ID(self, channel_name):
+    def _get_channel_id(self, channel_name):
         """Finds the channel ID for a given channel name.
         :param channel_name:   the name of the channel
         :return str           channel ID
@@ -429,9 +441,8 @@ class BitfinexWSClient(WSClientAPI):
                     self._update_channel(msg)
 
         except Exception as e:
-            self.logger.info(e)
-            self.logger.info(traceback.format_exc())
-            raise ExchangeException(self.name(), '', data=msg, orig_exception=e)
+            # a more specific exception message is provided in the exception itself.
+            raise ExchangeException(self.name(), '', data=msg, orig_exception=e, logger=self.logger)
 
 
     def _channel_subscribed(self, msg):
@@ -442,7 +453,6 @@ class BitfinexWSClient(WSClientAPI):
         """
         try:
             channel = msg['channel']
-            self.logger.info(msg)
             if channel == 'ticker':
                 symbol = msg['pair']
                 self._subscriptions[msg['chanId']] = 'ticker_' + symbol
@@ -582,9 +592,11 @@ class BitfinexWSClient(WSClientAPI):
 
 
     def subscribe(self, channel, **kwargs):
-        """Generic method to subscribe to a channel of an exchange.
+        """Generic method for subscribing to a channel on the exchange.
         :param channel:  a concrete channel to subscribe to
         :param kwargs:   Arbitrary keyword arguments. Depend on the specific exchange.
+        :returns str:    channel name that is used as a handle for a stream.
+        :raises: ExchangeException
         A channel must be one of the following: ticker, book, trades or candles
         A remainder of the arguments is passed directly to concrete methods
         for subscribing to a given channel.
@@ -598,7 +610,8 @@ class BitfinexWSClient(WSClientAPI):
         elif channel == 'candles':
             return self.subscribe_candles(**kwargs)
         else:
-            return None
+            raise ExchangeException(self.name(), 'Unrecognized channel requested. ' +
+                                    'A channel must be one of the following: ticker, book, trades or candles')
 
 
     def unsubscribe(self, channel_name, update_handler=None):
@@ -623,7 +636,7 @@ class BitfinexWSClient(WSClientAPI):
             return
 
         # get the channel_id of public channels
-        channel_id = self._get_channel_ID(channel_name)
+        channel_id = self._get_channel_id(channel_name)
         if channel_id is None:
             self.logger.info('Not subscribed to %s' % channel_name)
             return
@@ -652,23 +665,21 @@ class BitfinexWSClient(WSClientAPI):
             dispatcher.connect(update_handler, signal=channel_name, sender='bitfinex')
 
         if channel_name not in self._subscriptions.values():
-            self.logger.info('Subscribing to {} {} ...'.format(channel_type, symbol))
+            self.logger.info('Subscribing to {} for {} ...'.format(channel_type, symbol))
             self._ws.send(payload)
         else:
-            self.logger.info('Already subscribed to {} {}.'.format(symbol, channel_type))
-            try:
-                channel_id = self._get_channel_ID(channel_name)
-                if channel_id:
-                    self._data[channel_id].publish()
-            except KeyError:
-                pass
+            self.logger.info('Already subscribed to {} for {}.'.format(symbol, channel_type))
+            channel_id = self._get_channel_id(channel_name)
+            if channel_id:
+                return self._data[channel_id].snapshot()
+        return None
 
 
     def subscribe_ticker(self, symbol, update_handler=None):
         """Subscribe to ticker channel.
         :param symbol:            A string that represents a ticker symbol (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of a ticker.
-        :return: A string that represents a stream (channel) identifier. Specific for each exchange.
+        :return: A tuple of a string that represents a stream (channel) identifier and a snapshot.
         :raises ExchangeException
         """
         try:
@@ -677,8 +688,8 @@ class BitfinexWSClient(WSClientAPI):
             payload = json.dumps({ "event": "subscribe",
                                    "channel": "ticker",
                                    "symbol": symbol  })
-            self._handle_subscription(channel_name, payload, 'ticker', symbol, update_handler)
-            return channel_name
+            ret = self._handle_subscription(channel_name, payload, 'ticker', symbol, update_handler)
+            return channel_name, ret
         except Exception as e:
             raise ExchangeException(self.name(), 'Exception while trying to subscribe to a ticker',
                                     orig_exception=e, logger=self.logger)
@@ -689,6 +700,7 @@ class BitfinexWSClient(WSClientAPI):
         :param symbol:          A symbol for a ticker (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of the order book.
         :param kwargs:          Additional parameters that differ between exchanges.
+        :return: A tuple of a string that represents a stream (channel) identifier and a snapshot.
         :raises ExchangeException
         """
         try:
@@ -708,9 +720,8 @@ class BitfinexWSClient(WSClientAPI):
                                    "freq":     freq,
                                    "len":      length
                                    })
-            self._handle_subscription(channel_name, payload, 'order book', symbol, update_handler)
-
-            return channel_name
+            ret = self._handle_subscription(channel_name, payload, 'order book', symbol, update_handler)
+            return channel_name, ret
         except Exception as e:
             raise ExchangeException(self.name(), 'Exception while trying to subscribe to an order book',
                                     orig_exception=e, logger=self.logger)
@@ -720,7 +731,7 @@ class BitfinexWSClient(WSClientAPI):
         """Subscribe to the channel for trades.
         :param symbol:          A symbol for a ticker (pair).
         :param update_handler:  A callback handler that should handle the asynchronous update of trades.
-        :return: A string that represents a stream (channel) identifier. Specific for each exchange.
+        :return: A tuple of a string that represents a stream (channel) identifier and a snapshot.
         :raises ExchangeException
         """
         try:
@@ -729,36 +740,34 @@ class BitfinexWSClient(WSClientAPI):
             payload = json.dumps({ "event": "subscribe",
                                    "channel": "trades",
                                    "symbol": symbol  })
-            self._handle_subscription(channel_name, payload, 'trades', symbol, update_handler)
-            return channel_name
+            ret = self._handle_subscription(channel_name, payload, 'trades', symbol, update_handler)
+            return channel_name, ret
         except Exception as e:
             raise ExchangeException(self.name(), 'Exception while trying to subscribe to a channel for trades',
                                     orig_exception=e, logger=self.logger)
 
 
     def subscribe_candles(self, symbol, interval='1m', update_handler=None):
-        """Subscribe to the channel fro candles.
+        """Subscribe to the channel for candles.
         :param symbol:          A symbol for a ticker (pair).
         :param interval         Time interval for a candle.
         :param update_handler:  A callback handler that should handle the asynchronous update of trades.
-        :return: A string that represents a stream (channel) identifier. Specific for each exchange.
+        :return: A tuple of a string that represents a stream (channel) identifier and a snapshot.
         :raises ExchangeException
         """
-        try:
-            symbol = symbol.upper()
-            valid_intervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
-            if interval not in valid_intervals:
-                raise ExchangeException('Bitfinex',
-                                        'Unsupported candle interval. Must be one of {}'.format(valid_intervals))
+        symbol = symbol.upper()
+        valid_intervals = ['1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D', '7D', '14D', '1M']
+        if interval not in valid_intervals:
+            raise ExchangeException(self.name(), f'Unsupported candle interval. Must be one of {valid_intervals}')
 
+        try:
             channel_name = 'candles_' + symbol + '_' + interval
             payload = json.dumps({ "event": "subscribe",
                                    "channel": "candles",
                                    "key": 'trade:' + interval + ':t' + symbol
                                    })
-            self._handle_subscription(channel_name, payload, 'candles', symbol, update_handler)
-
-            return channel_name
+            ret = self._handle_subscription(channel_name, payload, 'candles', symbol, update_handler)
+            return channel_name, ret
         except Exception as e:
             raise ExchangeException(self.name(), 'Exception while trying to subscribe to a channel for candles',
                                     orig_exception=e, logger=self.logger)
@@ -773,31 +782,30 @@ class BitfinexWSClient(WSClientAPI):
         :param secret:     User's private key.
         :param key_file:   A ke file with public and private keys.
         :return True if authentication was successful
-        If key file is provided, it will override values of provided via key and secret
+        If key file is provided, it will override values provided via key and secret
         """
-        if key_file is not None:
+        if key_file:
             with open(key_file, 'r') as f:
                 self._key = f.readline().strip()
                 self._secret = f.readline().strip()
         else:
-            if key is not None and secret is not None:
+            if key and secret:
                 self._key = key
                 self._secret = secret
-        if self._key is None or self._secret is None:
+        if not self._key or not self._secret:
             return False
 
         nonce = str(int(time.time() * 10000000))
         auth_string = 'AUTH' + nonce
-        auth_sig = hmac.new(self._secret.encode(), auth_string.encode(),
-                            hashlib.sha384).hexdigest()
+        auth_sig = hmac.new(self._secret.encode(), auth_string.encode(), hashlib.sha384).hexdigest()
 
         self.logger.info('Authenticating ...')
-        self._ws.send(json.dumps({'event': 'auth',
-                                  'apiKey': self._key,
-                                  'authSig': auth_sig,
-                                  'authPayload': auth_string,
-                                  'authNonce': nonce,
-                                  'filter': ['trading', 'balance', 'wallet']
+        self._ws.send(json.dumps({'event':        'auth',
+                                  'apiKey':       self._key,
+                                  'authSig':      auth_sig,
+                                  'authPayload':  auth_string,
+                                  'authNonce':    nonce,
+                                  'filter':       ['trading', 'balance', 'wallet']
                                   }))
         return True
 

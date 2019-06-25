@@ -423,3 +423,64 @@ class BinanceRESTClient(RESTClientAPI):
     # @return_api_response(BinanceFormatter.historical_trades, log)
     # def historical_trades(self, pair, **kwargs):
     #    return self.public_query('/api/v1/historicalTrades?symbol=%s' % pair.upper(), params=kwargs)
+
+
+    # NOT IMPLEMENTED:
+    # -------------------------------------------------------------------------------------
+    # https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md
+    #
+    # Should be checking for the request limits (error codes) to avoid beining banned. See LIMITS in docs.
+    #
+    #
+    # AGGREGATE TRADES LIST:
+    # ---------------------------
+    # https://api.binance.com/api/v1/aggTrades
+    #
+    #
+    # symbol    STRING
+    # fromId    LONG      ID to get aggregate trades from INCLUSIVE.
+    # startTime LONG      Timestamp in ms to get aggregate trades from INCLUSIVE.
+    # endTime   LONG      Timestamp in ms to get aggregate trades until INCLUSIVE.
+    # limit     INT       Default 500; max 1000.
+    #
+    # [
+    #   {
+    #     "a": 26129,         // Aggregate tradeId
+    #     "p": "0.01633102",  // Price
+    #     "q": "4.70443515",  // Quantity
+    #     "f": 27781,         // First tradeId
+    #     "l": 27781,         // Last tradeId
+    #     "T": 1498793709153, // Timestamp
+    #     "m": true,          // Was the buyer the maker?
+    #     "M": true           // Was the trade the best price match?
+    #   }
+    # ]
+    #
+    #
+    # CURRENT AVERAGE PRICE
+    # ---------------------------
+    #
+    # https://api.binance.com/api/v3/avgPrice
+    # https://api.binance.com/api/v3/avgPrice?BTCUSDT
+    #
+    # {
+    #   "mins": 5,
+    #   "price": "9.35751834"
+    # }
+    #
+    #
+    # SYMBOL ORDER BOOK TICKER
+    # ---------------------------
+    #
+    # https://api.binance.com/api/v3/ticker/bookTicker
+    # https://api.binance.com/api/v3/ticker/bookTicker?BTCUSDT
+    #
+    # {
+    #   "symbol": "LTCBTC",
+    #   "bidPrice": "4.00000000",
+    #   "bidQty": "431.00000000",
+    #   "askPrice": "4.00000200",
+    #   "askQty": "9.00000000"
+    # }
+    #
+    # or a list for all symbols

@@ -326,3 +326,58 @@ class BitfinexRESTClient(RESTClientAPI):
         return self._private_query('/v1/order/cancel/all')
 
 
+    # NOT IMPLEMENTED:
+    # -------------------------------------------------------------------------------------
+    # https://docs.bitfinex.com/reference
+    # https://docs.bitfinex.com/v2/reference
+    #
+    #
+    # V1 STATS
+    # ---------------------------
+    #
+    # https://api.bitfinex.com/v1/stats/<symbol>
+    # https://api.bitfinex.com/v1/stats/BTCUSD
+    #
+    # period	[integer]    Period covered in days
+    # volume	[price]      Volume
+    #
+    # [{
+    #   "period":1,
+    #   "volume":"7967.96766158"
+    # },{
+    #   "period":7,
+    #   "volume":"55938.67260266"
+    # },{
+    #   "period":30,
+    #   "volume":"275148.09653645"
+    # }]
+    #
+    #
+    # V2 BOOKS
+    # ---------------------------
+    #
+    # https://api-pub.bitfinex.com/v2/book/Symbol/Precision
+    # https://api-pub.bitfinex.com/v2/book/tBTCUSD/P0
+    #
+    # PATH PARAMS
+    # Symbol
+    # Precision    Level of price aggregation (P0, P1, P2, P3, P4, R0)    P0
+    #
+    # QUERY PARAMS
+    #
+    # len          Number of price points ("25", "100")                   25
+    #
+    # [
+    #   [
+    #     PRICE,
+    #     COUNT,
+    #     AMOUNT
+    #   ]
+    # ]
+    #
+    #
+    # Margin related:
+    # ---------------------------
+    # FUNDINGBOOK:  https://api.bitfinex.com/v1/lendbook/<currency>
+    # LENDS:        https://api.bitfinex.com/v1/lends/<currency>
+    # V2 STATS:     https://api-pub.bitfinex.com/v2/stats1/Key:Size:Symbol/Section
