@@ -290,8 +290,8 @@ class BinanceRESTClient(RESTClientAPI):
         return self._public_query('/api/v1/klines?symbol=%s&interval=%s' % (pair.upper(), interval), params=kwargs)
 
 
-    def historical_candles(self, pair, interval, startTime, endTime, **kwargs):
-        return self.candles(pair, interval, startTime=startTime, endTime=endTime, **kwargs)
+    def historical_candles(self, pair, interval, start_time, end_time, **kwargs):
+        return self.candles(pair, interval, startTime=start_time, endTime=end_time, **kwargs)
 
 
     # ------------------------------------------------------------------
