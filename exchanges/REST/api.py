@@ -28,6 +28,7 @@ class RESTClientAPI(ABC):
         self._secret = secret
         if key_file:
             self._load_key(key_file)
+        self.authenticated = False
         self._uri = uri
         self._version = api_version if api_version else ''
         self.timeout = timeout

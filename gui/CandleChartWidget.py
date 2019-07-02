@@ -6,6 +6,7 @@ from .Separators import *
 
 
 class CandleChartWidget(QtWidgets.QWidget):
+    """The widget for displaying candle chart."""
     data = None
     numCandlesVisible = 50
     minCandlesVisible = 20
@@ -16,7 +17,7 @@ class CandleChartWidget(QtWidgets.QWidget):
     def __init__(self):
         super(CandleChartWidget, self).__init__()
 
-        self.setContentsMargins(0,0,0,0)
+        self.setContentsMargins(0, 0, 0, 0)
         palette = QtGui.QPalette()
         palette.setColor(QtGui.QPalette.Background, QtCore.Qt.black)
         self.setAutoFillBackground(True)
@@ -28,7 +29,7 @@ class CandleChartWidget(QtWidgets.QWidget):
 
         self.mainLayout = QtWidgets.QVBoxLayout(self)
         self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.mainLayout.addWidget(chartView, stretch=4)
 
 
@@ -37,12 +38,18 @@ class CandleChartWidget(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def addOverlay(self, name):
-        newOverlay = OverlayFactory.createOverlay(name)
-        newOverlay.addToChart(self.candleGraph)
-        self.overlays[name] = newOverlay
+        """Adds an overlay to the candle chart
+        :param name:  the name of an overlay to add
+        """
+        new_overlay = OverlayFactory.createOverlay(name)
+        new_overlay.addToChart(self.candleGraph)
+        self.overlays[name] = new_overlay
         self.updateChart()
 
     def removeOverlay(self, name):
+        """Removes an overlay to the candle chart
+        :param name:  the name of an overlay to remove
+        """
         self.overlays[name].removeFromChart(self.candleGraph)
         self.overlays.pop(name)
 
@@ -52,23 +59,32 @@ class CandleChartWidget(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def addIndicator(self, name):
-        newIndicator = IndicatorFactory.createIndicator(name)
-        self.mainLayout.addWidget(newIndicator.frame, stretch=1)
-        self.indicators[name] = (newIndicator.frame, newIndicator)
+        """Adds an indicator bellow the candle chart
+        :param name:  the name of an indicator to add
+        """
+        new_indicator = IndicatorFactory.createIndicator(name)
+        self.mainLayout.addWidget(new_indicator.frame, stretch=1)
+        self.indicators[name] = (new_indicator.frame, new_indicator)
 
 
     def showIndicator(self, name):
+        """Displays an indicator bellow the candle chart
+        :param name:  the name of an indicator
+        """
         try:
             self.indicators[name][0].show()
-        except:
+        except KeyError:
             self.addIndicator(name)
         self.updateChart()
 
 
     def hideIndicator(self, name):
+        """Hides an indicator.
+        :param name:  the name of an indicator
+        """
         try:
             self.indicators[name][0].hide()
-        except:
+        except KeyError:
             pass
 
 
@@ -77,10 +93,27 @@ class CandleChartWidget(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def setData(self, data):
-        self.data = np.transpose(np.array(data))
+        """Sets/updates the candle values.
+        :param data    candles snapshot or and update
+        Data is one of the (type, data) tuples:
+            ('snapshot', list(candles))    data is a a complete snapshot
+            ('add', candle)                data is a new candle
+            ('update', candle)             data is an update of the last candle
+        """
+        if not data:
+            return
+        elif data[0] == 'snapshot':
+            self.data = np.transpose(np.array(data[1]))
+        elif data[0] == 'add':
+            self.data = np.c_[self.data, data[1]]
+        elif data[0] == 'update':
+            self.data[:, -1] = data[1]
+        else:
+            pass
 
 
     def updateChart(self):
+        """Updates the candle chart display"""
         if self.data is None:
             return
         self.candleGraph.updateCandleChart(self.data, self.numCandlesVisible)
@@ -92,6 +125,7 @@ class CandleChartWidget(QtWidgets.QWidget):
 
 
     def reset(self):
+        """Clears the candle chart and displayed overlays and indicators"""
         for overlay in self.overlays.values():
             overlay.clear()
         for indicator in self.indicators.values():
@@ -103,8 +137,10 @@ class CandleChartWidget(QtWidgets.QWidget):
     # Event handlers
     # ------------------------------------------------------------------------------------
 
-    # handle mouse wheel event for zooming
     def wheelEvent(self, QWheelEvent):
+        """handle mouse wheel event for zooming in and out.
+        :param QWheelEvent:  mouse wheel event
+        """
         if QWheelEvent.angleDelta().y() < 0:
             # wheel down - zoom out
             self.numCandlesVisible = min(self.numCandlesVisible + 10, self.maxCandlesVisible)

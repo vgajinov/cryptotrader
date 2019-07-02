@@ -1,8 +1,8 @@
 import math
+from collections import deque
 from datetime import datetime
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .CustomTables import CustomTableWidget
-
 
 
 # ======================================================================
@@ -10,9 +10,14 @@ from .CustomTables import CustomTableWidget
 # ======================================================================
 
 class TradesWidget(CustomTableWidget):
-    symbol_details = None
-    pricePrec      = None
-    amountPrec     = None
+    """The widget for displaying recent trades."""
+
+    MAX_TRADES = 100
+    trades = deque(maxlen=MAX_TRADES)
+    symbol_details   = None
+    price_precision  = None
+    amount_precision = None
+
 
     def __init__(self):
         super(TradesWidget, self).__init__()
@@ -21,56 +26,83 @@ class TradesWidget(CustomTableWidget):
 
 
     def setSymbolDetails(self, details):
+        """Sets the symbol (pair details and determines price and amount precisions."""
         self.symbol_details = details
-        leftDigits, rightDigits = str(details['minAmount']).split('.')
-        self.amountPrec = len(rightDigits.rstrip('0'))
 
-        self.pricePrec = None
-        pricePrec = details.get('minPrice', None)
-        if pricePrec is not None:
-            self.pricePrec = int(abs(math.log10(float(pricePrec))))
+        left_digits, right_digits = str(details['minAmount']).split('.')
+        self.amount_precision = len(right_digits.rstrip('0'))
+
+        self.price_precision = None
+        price_precision = details.get('minPrice', None)
+        if price_precision:
+            self.price_precision = int(abs(math.log10(float(price_precision))))
 
 
     # set trades data
-    def setData(self, trades):
-        if trades == []:
+    def setData(self, data):
+        """Sets/updates the the trades data.
+        :param data    trades snapshot or and update
+        Data is received as one of the following two tuples
+            ('snapshot', list(trades))    data is a a complete snapshot
+            ('update', new_trade)         data is an update of the most recent trade
+        """
+        if not data:
             return
-        self.data = list(reversed(trades))
 
-        if self.pricePrec is None:
-            exp = math.ceil(math.log10(float(self.data[0][2])))
-            self.pricePrec = min(abs(exp - int(self.symbol_details['precision'])), 8)
+        # handle update
+        if data[0] == 'update':
+            self.trades.appendleft(data[1])
+        elif data[0] == 'snapshot':
+            self.trades.clear()
+            self.trades = deque(list(reversed(data[1])), maxlen=self.MAX_TRADES)
+        else:
+            return
+        self.displayTrades()
 
-        priceStrings = ['{:.{prec}f}'.format(x[2], prec=self.pricePrec) for x in self.data]
-        amountStrings = ['{:.{prec}f}'.format(abs(x[1]), prec=self.amountPrec) for x in self.data]
-        dateStrings = [datetime.fromtimestamp(x[0] / 1000).strftime('%H:%M:%S') for x in self.data]
-        self.tableData = [priceStrings, amountStrings, dateStrings]
+
+    def displayTrades(self):
+        """Displays the current state of trades data."""
+
+        # deduce the price precision if we didn't get it from the exchange
+        if not self.price_precision:
+            exp = math.ceil(math.log10(float(self.trades[0][2])))
+            self.price_precision = min(abs(exp - int(self.symbol_details['precision'])), 8)
+
+        # get string representations of the values in trades
+        prices = [f'{x[2]:.{self.price_precision}f}' for x in self.trades]
+        amounts = [f'{abs(x[1]):.{self.amount_precision}f}' for x in self.trades]
+        timestamps = [datetime.fromtimestamp(x[0] / 1000).strftime('%H:%M:%S') for x in self.trades]
+
+        # let Qt deduce the proper column dimensions for the trades
+        self.tableData = [prices, amounts, timestamps]
         self.fitDataAndColumns()
 
-        # set items
-        amountThreshold = 0.1 * sum([abs(x[1]) for x in self.data])
+        # the threshold for the amount to highlight
+        amount_threshold = 0.1 * sum([abs(x[1]) for x in self.trades])
+
+        # set table items
         for i in range(self.rowCount()):
             self.setRowHeight(i, self.rowHeight)
 
             # prices
-            priceItem = QtWidgets.QTableWidgetItem(priceStrings[i])
-            if self.data[i][1] < 0:
-                priceItem.setForeground(QtCore.Qt.red)
+            price_item = QtWidgets.QTableWidgetItem(prices[i])
+            if self.trades[i][1] < 0:
+                price_item.setForeground(QtCore.Qt.red)
             else:
-                priceItem.setForeground(QtCore.Qt.green)
-            self.setItem(i, 0, priceItem)
+                price_item.setForeground(QtCore.Qt.green)
+            self.setItem(i, 0, price_item)
 
             # amounts
-            amountItem = QtWidgets.QTableWidgetItem(amountStrings[i])
-            amountItem.setTextAlignment(QtCore.Qt.AlignRight)
-            if abs(self.data[i][1]) > amountThreshold:
-                amountItem.setForeground(QtCore.Qt.yellow)
-            self.setItem(i, 1, amountItem)
+            amount_tem = QtWidgets.QTableWidgetItem(amounts[i])
+            amount_tem.setTextAlignment(QtCore.Qt.AlignRight)
+            if abs(self.trades[i][1]) > amount_threshold:
+                amount_tem.setForeground(QtCore.Qt.yellow)
+            self.setItem(i, 1, amount_tem)
 
             # date/time
-            dateItem = QtWidgets.QTableWidgetItem(dateStrings[i])
-            dateItem.setTextAlignment(QtCore.Qt.AlignRight)
-            self.setItem(i, 2, dateItem)
+            date_item = QtWidgets.QTableWidgetItem(timestamps[i])
+            date_item.setTextAlignment(QtCore.Qt.AlignRight)
+            self.setItem(i, 2, date_item)
 
         # update tradesTable
         self.update()

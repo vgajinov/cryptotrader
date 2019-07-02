@@ -194,7 +194,7 @@ class BitfinexRESTClient(RESTClientAPI):
         return self.status()[0] == 1
 
     def quote_currencies(self):
-        return ['USD', 'BTC', 'EUR', 'JPY', 'GBP', 'ETH', 'UST', 'EOS', 'XLM', 'DAI']
+        return ['USD', 'BTC', 'EUR', 'JPY', 'GBP', 'ETH', 'UST', 'EOS', 'XLM', 'DAI', 'USTF0', 'XCH']
 
     @response_formatter(BitfinexFormatter.symbols, logger)
     def symbols(self):

@@ -3,13 +3,14 @@ from PyQt5 import QtGui
 import pyqtgraph as pg
 
 
-
 # ======================================================================
 # OrderBookGraphWidget class provides
 # the OrderBook graph display
 # ======================================================================
 
 class OrderBookGraphWidget(pg.PlotWidget):
+    """The widget for the order book graph display"""
+
     def __init__(self):
         super(OrderBookGraphWidget, self).__init__()
 
@@ -27,31 +28,39 @@ class OrderBookGraphWidget(pg.PlotWidget):
         self.addItem(self.curveAsks)
 
         # set font for axes
-        tickFont = QtGui.QFont()
-        tickFont.setPointSize(8)
-        tickFont.setStretch(QtGui.QFont.Condensed)
-        self.fm = QtGui.QFontMetrics(tickFont)
-        self.getAxis('left').tickFont = tickFont
-        self.getAxis('bottom').tickFont = tickFont
+        tick_font = QtGui.QFont()
+        tick_font.setPointSize(8)
+        tick_font.setStretch(QtGui.QFont.Condensed)
+        self.fm = QtGui.QFontMetrics(tick_font)
+        self.getAxis('left').tickFont = tick_font
+        self.getAxis('bottom').tickFont = tick_font
 
 
-    # set/update OrderBook graph
-    def setData(self, bids, asks):
-        limit     = 0.01    # minumum percent of midPrice for lower and upper bound to show on a graph
-        tickRatio = 0.2     # amount delta to show price tick
+    def setData(self, data):
+        """Sets/updates the order book graph
+        :param data    order book snapshot or and update
+        """
+        if not data:
+            return
+
+        limit      = 0.01    # minimum percent of mid_price for lower and upper bound to show on a graph
+        tick_ratio = 0.2     # amount delta to show price tick
+
+        asks = data['asks']
+        bids = data['bids']
 
         # get bids and ask prices and amounts in increasing order
-        askPrices  = list(asks.keys())
-        askAmounts = [-x for x in asks.values()]
-        bidPrices  = list(bids.keys())
-        bidAmounts = list(bids.values())
+        ask_prices  = list(asks.keys())
+        ask_amounts = list(asks.values())   # [-x for x in asks.values()]
+        bid_prices  = list(bids.keys())
+        bid_amounts = list(bids.values())
 
         # find the medium price and lower and upper bounds
         try:
-            midPrice = bidPrices[-1] + (askPrices[0] - bidPrices[-1]) / 2
-            bound = limit * midPrice
-            lowerBound = midPrice - bound
-            upperBound = midPrice + bound
+            mid_price = bid_prices[-1] + (ask_prices[0] - bid_prices[-1]) / 2
+            bound = limit * mid_price
+            lower_bound = mid_price - bound
+            upper_bound = mid_price + bound
         except IndexError as e:
             print(e)
             print('len(bids) = ', len(bids))
@@ -59,74 +68,75 @@ class OrderBookGraphWidget(pg.PlotWidget):
             return
 
         # purge bids and asks list of excessive items
-        bidPrices = [ x for x in bidPrices if x > lowerBound]
-        bidAmounts = bidAmounts[-len(bidPrices):]
-        askPrices = [ x for x in askPrices if x < upperBound]
-        askAmounts = askAmounts[:len(askPrices)]
+        bid_prices = [ x for x in bid_prices if x > lower_bound]
+        bid_amounts = bid_amounts[-len(bid_prices):]
+        ask_prices = [ x for x in ask_prices if x < upper_bound]
+        ask_amounts = ask_amounts[:len(ask_prices)]
 
         # calculate histograms
-        bidSums = bidAmounts[:]
-        for i in range(len(bidAmounts) - 2, -1, -1):
-            bidSums[i] = bidSums[i] + bidSums[i + 1]
+        bid_sums = bid_amounts[:]
+        for i in range(len(bid_amounts) - 2, -1, -1):
+            bid_sums[i] = bid_sums[i] + bid_sums[i + 1]
 
-        askSums = askAmounts[:]
-        for i in range(len(askAmounts) - 1):
-            askSums[i + 1] = askSums[i] + askSums[i + 1]
+        ask_sums = ask_amounts[:]
+        for i in range(len(ask_amounts) - 1):
+            ask_sums[i + 1] = ask_sums[i] + ask_sums[i + 1]
 
         # adjust bounds for plotting
-        lowerBound = lowerBound - 0.01*bound
-        upperBound = upperBound + 0.01*bound
+        lower_bound = lower_bound - 0.01*bound
+        upper_bound = upper_bound + 0.01*bound
 
         # add extra points to produce zig-zag curves
-        bidPrices = [lowerBound] + [item for item in bidPrices for cnt in range(2)]
-        bidSums = [item for item in bidSums for cnt in range(2)] + [0]
-        askPrices = [item for item in askPrices for cnt in range(2)] + [upperBound]
-        askSums = [0] + [item for item in askSums for cnt in range(2)]
+        bid_prices = [lower_bound] + [item for item in bid_prices for cnt in range(2)]
+        bid_sums = [item for item in bid_sums for cnt in range(2)] + [0]
+        ask_prices = [item for item in ask_prices for cnt in range(2)] + [upper_bound]
+        ask_sums = [0] + [item for item in ask_sums for cnt in range(2)]
 
         # find price ticks
-        ticks = [lowerBound]
-        bidMax = max(bidSums)
-        for i in range(len(bidPrices) - 1):
-            if (bidSums[i] - bidSums[i + 1]) / bidMax > tickRatio:
-                if not bidPrices[i] - ticks[-1] < 0.05 * bound:
-                    ticks.append(bidPrices[i])
-        if midPrice - ticks[-1] < 0.05 * bound:
+        ticks = [lower_bound]
+        bid_max = max(bid_sums)
+        for i in range(len(bid_prices) - 1):
+            if (bid_sums[i] - bid_sums[i + 1]) / bid_max > tick_ratio:
+                if not bid_prices[i] - ticks[-1] < 0.05 * bound:
+                    ticks.append(bid_prices[i])
+        if mid_price - ticks[-1] < 0.05 * bound:
             ticks = ticks[:-1]
-        ticks.append(midPrice)
-        askMax = max(askSums)
-        for i in range(len(askPrices) - 1):
-            if (askSums[i + 1] - askSums[i]) / askMax > tickRatio:
-                if not askPrices[i] - ticks[-1] < 0.05 * bound:
-                    ticks.append(askPrices[i + 1])
-        if askPrices[-1] - ticks[-1] < 0.05 * bound:
-            ticks[-1] = upperBound
+        ticks.append(mid_price)
+
+        ask_max = max(ask_sums)
+        for i in range(len(ask_prices) - 1):
+            if (ask_sums[i + 1] - ask_sums[i]) / ask_max > tick_ratio:
+                if not ask_prices[i] - ticks[-1] < 0.05 * bound:
+                    ticks.append(ask_prices[i + 1])
+        if ask_prices[-1] - ticks[-1] < 0.05 * bound:
+            ticks[-1] = upper_bound
         else:
-            ticks.append(upperBound)
+            ticks.append(upper_bound)
 
         # update graph data
-        self.curveBids.setData(bidPrices, bidSums)
-        self.curveAsks.setData(askPrices, askSums)
-        self.setYRange(lowerBound, upperBound, padding=0.01)
-        self.setXRange(0, 1.1*max(bidMax, askMax), padding=0.01)
+        self.curveBids.setData(bid_prices, bid_sums)
+        self.curveAsks.setData(ask_prices, ask_sums)
+        self.setYRange(lower_bound, upper_bound, padding=0.01)
+        self.setXRange(0, 1.1*max(bid_max, ask_max), padding=0.01)
 
         # determine the float precision for left axis
-        # precision is usually in 5 siginificant digits
+        # precision is usually in 5 significant digits
         # but we don't need last two, so we subtract with 3
-        exp = math.ceil(math.log10(midPrice)) - 3
-        pricePrec = abs(exp) if exp < 0  else 0
+        exp = math.ceil(math.log10(mid_price)) - 3
+        price_precision = abs(exp) if exp < 0 else 0
 
         # update Y axis (prices)
         ay = self.getAxis('left')
-        ay.setTicks([[(t, '{0:.{prec}f}'.format(t, prec=pricePrec)) for t in ticks]])
+        ay.setTicks([[(tick, f'{tick:.{price_precision}f}') for tick in ticks]])
         ay.setStyle(stopAxisAtTick=(True, True))
-        self.getAxis('left').setWidth(self.fm.width('{0:.{prec}f}'.format(ticks[0], prec=pricePrec+1)))
+        self.getAxis('left').setWidth(self.fm.width(f'{ticks[0]:.{price_precision+1}f}'))
 
         # set tick for X axis (amount)
-        maxAmount = max(bidMax, askMax)
-        exp = math.floor(math.log10(maxAmount))
-        maxAmount = math.ceil(maxAmount/pow(10,exp-1)) * pow(10,exp-1)
+        max_amount = max(bid_max, ask_max)
+        exp = math.floor(math.log10(max_amount))
+        max_amount = math.ceil(max_amount/pow(10, exp-1)) * pow(10, exp-1)
         ax = self.getAxis('bottom')
-        ax.setTicks([[(t, str(t)) for t in [maxAmount, maxAmount/2, 0]]])
+        ax.setTicks([[(t, str(t)) for t in [max_amount, max_amount/2, 0]]])
 
 
     def reset(self):

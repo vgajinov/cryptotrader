@@ -11,19 +11,20 @@ from .CustomEvents import *
 
 from exchanges.exchangeWSFactory import ExchangeWSFactory
 from exchanges.exchangeRESTFactory import ExchangeRESTFactory
-
-
+from exchanges.exception import ExchangeException
 
 
 class TradingTab(QtWidgets.QWidget):
+    """The main trading tab that displays the candle chart, order book, trades and user order controls."""
+
     # set by a user
-    keysDir    = None
+    keys_dir   = None
     exchange   = None
     pair       = None
     interval   = None
 
-    wsClient   = None
-    restClient = None
+    ws_client   = None
+    rest_client = None
 
     symbols    = None
     symbols_details  = None
@@ -31,16 +32,15 @@ class TradingTab(QtWidgets.QWidget):
     quote_currencies = None
 
     # public WS channels
-    tickerChannel  = None
-    bookChannel    = None
-    tradeChannel   = None
-    candlesChannel = None
+    ticker_channel  = None
+    book_channel    = None
+    trade_channel   = None
+    candles_channel = None
 
     # user WS channels
-    ordersChannel     = None
-    userTradesChannel = None
-    balancesChannel   = None
-
+    orders_channel      = None
+    user_trades_channel = None
+    balances_channel    = None
 
 
     def __init__(self):
@@ -69,7 +69,7 @@ class TradingTab(QtWidgets.QWidget):
         self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
         self.rightLayout.addWidget(self.placeOrderWidget, stretch=2)
         self.rightLayout.addWidget(LineSeparator(orientation='horizontal', stroke=5))
-        self._initOrderBookAndTradesLayout()
+        self.setupOrderBookAndTradesLayout()
 
         # main layout
         self.mainLayout = QtWidgets.QHBoxLayout(self)
@@ -84,7 +84,8 @@ class TradingTab(QtWidgets.QWidget):
         self.controlBarWidget.setExchangeList(ExchangeWSFactory.get_exchanges())
 
 
-    def _initOrderBookAndTradesLayout(self):
+    def setupOrderBookAndTradesLayout(self):
+        """Creates the Order Book and the Trades layouts"""
         self.orderBookAndTradesLayout.setContentsMargins(0, 0, 0, 0)
         self.orderBookAndTradesLayout.setSpacing(0)
 
@@ -115,6 +116,7 @@ class TradingTab(QtWidgets.QWidget):
 
 
     def reset(self):
+        """Resets the widget controls"""
         self.tradesTable.clear()
         self.orderBookGraph.reset()
         self.numericOrderBookWidget.clear()
@@ -126,138 +128,209 @@ class TradingTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def _subscribe_ws_public_channels(self):
-        self.tickerChannel = self.wsClient.subscribe_ticker(self.pair, self.updateTicker)
-        self.bookChannel = self.wsClient.subscribe_order_book(self.pair, self.updateOrderBook)
-        self.tradesChannel = self.wsClient.subscribe_trades(self.pair, self.updateTrades)
-        if self.interval is not None:
-            self.candlesChannel = self.wsClient.subscribe_candles(self.pair, self.interval, self.updateCandles)
+        """Subscribes to public channels for a currently set pair.
+        Uses a snapshot returned by a subscribe call to initialize corresponding controls.
+        """
+        # subscribe to a ticker
+        try:
+            self.ticker_channel, snapshot = self.ws_client.subscribe_ticker(self.pair, self.update_ticker)
+            if snapshot:
+                last_price = snapshot[6]
+                self.numericOrderBookWidget.setLastPrice(last_price)
+                self.placeOrderWidget.setTicker(snapshot)
+
+            # subscribe to an order book
+            self.book_channel, snapshot = self.ws_client.subscribe_order_book(self.pair, self.update_order_book)
+            if snapshot:
+                self.orderBookGraph.setData(snapshot)
+                self.numericOrderBookWidget.setData(snapshot)
+
+            # subscribe to a trades channel
+            self.tradesChannel, snapshot = self.ws_client.subscribe_trades(self.pair, self.update_trades)
+            if snapshot:
+                self.tradesTable.setData(snapshot)
+
+            # subscribe to a candles channel
+            if self.interval:
+                self.candles_channel, snapshot = self.ws_client.subscribe_candles(self.pair, self.interval,
+                                                                                  self.update_candles)
+                if snapshot:
+                    self.chartWidget.setData(snapshot)
+                    self.chartWidget.updateChart()
+
+        except ExchangeException as e:
+            # TODO: create an exception popup
+            pass
+
+
 
     def _subscribe_ws_user_channels(self):
-        self.ordersChannel = self.wsClient.subscribe_user_orders(self.updateOrders)
-        self.userTradesChannel = self.wsClient.subscribe_user_trades(self.updateUserTrades)
-        self.balancesChannel = self.wsClient.subscribe_balances(self.updateBalances)
+        """Subscribes to user (authenticated) channels."""
+        self.orders_channel = self.ws_client.subscribe_user_orders(self.update_user_orders)
+        self.user_trades_channel = self.ws_client.subscribe_user_trades(self.update_user_trades)
+        self.balances_channel = self.ws_client.subscribe_balances(self.update_balances)
 
-    def _unsubscribe_ws_public_chanels(self):
-        self.wsClient.unsubscribe(self.tickerChannel, self.updateTicker)
-        self.wsClient.unsubscribe(self.bookChannel, self.updateOrderBook)
-        self.wsClient.unsubscribe(self.tradesChannel, self.updateTrades)
-        if self.candlesChannel is not None:
-            self.wsClient.unsubscribe(self.candlesChannel, self.updateCandles)
+    def _unsubscribe_ws_public_channels(self):
+        """Unsubscribes from currently subscribed public channels for currently selected pair."""
+        self.ws_client.unsubscribe(self.ticker_channel, self.update_ticker)
+        self.ws_client.unsubscribe(self.book_channel, self.update_order_book)
+        self.ws_client.unsubscribe(self.tradesChannel, self.update_trades)
+        if self.candles_channel:
+            self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
 
 
     # ------------------------------------------------------------------------------------
     # ControlBar interaction
     # ------------------------------------------------------------------------------------
 
-    def _clearChannels(self):
-        self.tickerChannel  = None
-        self.bookChannel    = None
-        self.tradeChannel   = None
-        self.candlesChannel = None
+    def _clear_channels(self):
+        """Clears internal channel related state"""
+        self.ticker_channel  = None
+        self.book_channel    = None
+        self.trade_channel   = None
+        self.candles_channel = None
 
 
-    def exchangeChanged(self, exchangeName):
-        if exchangeName == self.exchange:
+    def exchangeChanged(self, exchange_name):
+        """Handles the change of the exchange.
+        Unsubscribes from all currently subscribed channels,
+        disconnects from the current exchange and connect to newly selected exchange
+        and subscribes to the channels for the newly selected pair.
+        """
+        if exchange_name == self.exchange:
             return
-        self.exchange = exchangeName
+        self.exchange = exchange_name
 
         self.reset()
         self.userTradingWidget.clear()
 
         self.setCursor(QtCore.Qt.WaitCursor)
 
-        if self.wsClient is not None:
-            self.wsClient.disconnect()
-            self.wsClient = None
-            self.restClient = None
+        # disconnect from the current exchange
+        # all channels will be automatically unsubscribed
+        if self.ws_client:
+            self.ws_client.disconnect()
+            self.ws_client = None
+            self.rest_client = None
 
-        keyfile = None
-        if self.keysDir is not None:
-            keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
-            keyfile = keyFileName if os.path.isfile(keyFileName) else None
+        # set the key file for the newly selected exchange
+        key_file = None
+        if self.keys_dir:
+            key_file = os.path.join(self.keys_dir, '{}.key'.format(self.exchange.lower()))
+            key_file = key_file if os.path.isfile(key_file) else None
 
-        self.wsClient = ExchangeWSFactory.create_client(exchangeName)
-        self.wsClient.connect(self.infoUpdate)
-        if keyfile is not None:
-            self.wsClient.authenticate(key_file=keyfile)
+        # connect to the new exchange and authenticate
+        self.ws_client = ExchangeWSFactory.create_client(exchange_name)
+        self.ws_client.connect(self.info_update)
+        if key_file:
+            self.ws_client.authenticate(key_file=key_file)
             self._subscribe_ws_user_channels()
 
-        self.pair = None
-        self.interval = None
-        self._clearChannels()
+        self._clear_channels()
 
-        self.restClient = ExchangeRESTFactory.create_client(exchangeName, key_file=keyfile)
-        self.placeOrderWidget.setClient(self.restClient)
-        self.userTradingWidget.setClient(self.restClient)
+        # create a new client for the REST requests which will handle all user (authenticated) requests
+        self.rest_client = ExchangeRESTFactory.create_client(exchange_name, key_file=key_file)
+        self.placeOrderWidget.setClient(self.rest_client)
+        self.userTradingWidget.setClient(self.rest_client)
 
-        self.quote_currencies = self.restClient.quote_currencies()
-        self.symbols = self.restClient.symbols()
-        self.symbols_details = self.restClient.symbols_details()
-        self.all_tickers = self.restClient.all_tickers()
+        # update the basic info for the new exchange
+        self.quote_currencies = self.rest_client.quote_currencies()
+        self.symbols = self.rest_client.symbols()
+        self.symbols_details = self.rest_client.symbols_details()
+        self.all_tickers = self.rest_client.all_tickers()
 
-        self.controlBarWidget.setPairList(self.all_tickers, self.restClient.quote_currencies())
-        self.controlBarWidget.setIntervalList(self.restClient.candle_intervals())
+        # update controls to match the new exchange
         self.userTradingWidget.setSymbolDetails(self.symbols_details)
+        self.controlBarWidget.setPairList(self.all_tickers, self.rest_client.quote_currencies())
+        self.controlBarWidget.setIntervalList(self.rest_client.candle_intervals())
+        self.controlBarWidget.setDisabled(True)
+        self.pair = None
+        self.interval = '1m'
+        self.controlBarWidget.ctrlTime.setCurrentText(self.interval)
+        self.controlBarWidget.setDisabled(False)
 
         self.setCursor(QtCore.Qt.ArrowCursor)
 
 
     def pairChanged(self, pair):
+        """Handles the change of the exchange pair (symbol).
+        Unsubscribes from the currently subscribed public channels for a given pair
+        and subscribes to the channels for the newly selected pair.
+        """
         if pair == self.pair:
             return
 
         self.setCursor(QtCore.Qt.WaitCursor)
 
-        if self.pair is not None:
+        if self.pair:
             self.reset()
-            self._unsubscribe_ws_public_chanels()
-            self._clearChannels()
-
+            self._unsubscribe_ws_public_channels()
+            self._clear_channels()
         self.pair = pair
-        self._subscribe_ws_public_channels()
 
-        for cur in self.quote_currencies:
-            if pair.endswith(cur):
-                base_currency = pair[:-len(cur)]
-                quote_currency = cur
+        # deduce base and quote currency from a pair symbol
+        for qcurrency in self.quote_currencies:
+            if pair.endswith(qcurrency):
+                base_currency = pair[:-len(qcurrency)]
+                quote_currency = qcurrency
                 break
 
+        # get symbols details and update affected controls
         symbol_details = self.symbols_details[pair.upper()]
         self.tradesTable.setSymbolDetails(symbol_details)
         self.numericOrderBookWidget.setSymbolDetails(symbol_details)
-        if self.restClient.authenticated:
-            self.placeOrderWidget.setSymbolDetails(base_currency, quote_currency, symbol_details, self.all_tickers[pair])
+        if self.rest_client.authenticated:
+            self.placeOrderWidget.setSymbolDetails(base_currency, quote_currency, symbol_details,
+                                                   self.all_tickers[pair])
+
+        self._subscribe_ws_public_channels()
 
         self.setCursor(QtCore.Qt.ArrowCursor)
 
 
     def intervalChanged(self, interval):
+        """Handles the change of the candles interval.
+        Unsubscribes from the channel for current interval
+        and subscribes to the channel for the new interval.
+        """
+        self.setCursor(QtCore.Qt.WaitCursor)
         if interval == self.interval:
             return
         self.interval = interval
-        if self.candlesChannel is not None:
-            self.wsClient.unsubscribe(self.candlesChannel, self.updateCandles)
-        self.candlesChannel = self.wsClient.subscribe_candles(self.pair, interval, self.updateCandles)
+        if self.candles_channel:
+            self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
+
+        # subscribe to a candles channel
+        self.candles_channel, snapshot = self.ws_client.subscribe_candles(self.pair, self.interval,
+                                                                          self.update_candles)
+        if snapshot:
+            self.chartWidget.setData(snapshot)
+            self.chartWidget.updateChart()
+        self.setCursor(QtCore.Qt.ArrowCursor)
 
 
     # ------------------------------------------------------------------------------------
     # MainWindow interactions
     # ------------------------------------------------------------------------------------
 
-    def setKeysDirectory(self, dir):
-        self.keysDir = dir
-        if self.restClient is not None:
-            keyFileName = os.path.join(self.keysDir, '{}.key'.format(self.exchange.lower()))
-            keyfile = keyFileName if os.path.isfile(keyFileName) else None
-            self.restClient = ExchangeRESTFactory.create_client(self.exchange, key_file=keyfile)
-            self.wsClient.authenticate(key_file=keyfile)
+    def setKeysDirectory(self, dir_path):
+        """Sets the path to the directory that holds exchange private api keys.
+        The keys are expected to be named as the <exchange_name>.key,
+        and exchange names should be in lower case.
+        """
+        self.keys_dir = dir_path
+        if self.rest_client:
+            key_file = os.path.join(self.keys_dir, '{}.key'.format(self.exchange.lower()))
+            key_file = key_file if os.path.isfile(key_file) else None
+            self.rest_client = ExchangeRESTFactory.create_client(self.exchange, key_file=key_file)
+            self.ws_client.authenticate(key_file=key_file)
             self._subscribe_ws_user_channels()
 
 
-    # This should be called on quitting the application
     def closeConnections(self):
-        if self.wsClient is not None:
-            self.wsClient.disconnect()
+        """Should be called on quitting the application to properly close exchange connections."""
+        if self.ws_client is not None:
+            self.ws_client.disconnect()
 
 
     # ------------------------------------------------------------------------------------
@@ -265,14 +338,21 @@ class TradingTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def customEvent(self, event):
+        """Handles update events triggered by the exchange dispatcher
+        :param event:  update event
+        A dispatcher send the updates via callbacks, each of which
+        only triggers appropriate event. Thus, keeping the overhead
+        for the dispatcher thread low and assuring that all gui updates
+        are handled by the gui thread.
+        """
         if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
-            self.orderBookGraph.setData(event.bids, event.asks)
-            self.numericOrderBookWidget.setData(event.bids, event.asks)
+            self.orderBookGraph.setData(event.book)
+            self.numericOrderBookWidget.setData(event.book)
         elif event.type() == TradesUpdateEvent.EVENT_TYPE:
             self.tradesTable.setData(event.trades)
         elif event.type() == TickerUpdateEvent.EVENT_TYPE:
-            lastPrice = event.ticker[6]
-            self.numericOrderBookWidget.setLastPrice(lastPrice)
+            last_price = event.ticker[6]
+            self.numericOrderBookWidget.setLastPrice(last_price)
             self.placeOrderWidget.setTicker(event.ticker)
         elif event.type() == CandlesUpdateEvent.EVENT_TYPE:
             self.chartWidget.setData(event.candles)
@@ -286,41 +366,54 @@ class TradingTab(QtWidgets.QWidget):
 
 
     # ------------------------------------------------------------------------------------
-    # Update methods (callback from dispatcher)
+    # Update methods (callbacks from dispatcher)
     # ------------------------------------------------------------------------------------
 
-    # update OrderBook
-    def updateOrderBook(self, data):
-        QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(data['bids'], data['asks']))
+    def update_order_book(self, data):
+        """Callback handler for order book updates
+        :param data:  order book update
+        """
+        QtWidgets.QApplication.postEvent(self, OrderBookUpdateEvent(data))
 
-    # update Trades
-    def updateTrades(self, data):
+    def update_trades(self, data):
+        """Callback handler for trades updates
+        :param data:  trades update
+        """
         QtWidgets.QApplication.postEvent(self, TradesUpdateEvent(data))
 
-    # update Ticker
-    def updateTicker(self, data):
+    def update_ticker(self, data):
+        """Callback handler for ticker updates
+        :param data:  ticker update
+        """
         QtWidgets.QApplication.postEvent(self, TickerUpdateEvent(data))
 
-    # update Candles
-    def updateCandles(self, data):
+    def update_candles(self, data):
+        """Callback handler for candles updates
+        :param data:  candles update
+        """
         QtWidgets.QApplication.postEvent(self, CandlesUpdateEvent(data))
 
-    # update Orders
-    def updateOrders(self, data):
+    def update_user_orders(self, data):
+        """Callback handler for user orders updates
+        :param data:  user orders update
+        """
         QtWidgets.QApplication.postEvent(self, OrdersUpdateEvent(data))
 
-    # update Orders
-    def updateUserTrades(self, data):
+    def update_user_trades(self, data):
+        """Callback handler for user trades updates
+        :param data:  user trades update
+        """
         QtWidgets.QApplication.postEvent(self, UserTradesUpdateEvent(data))
 
-    # update Orders
-    def updateBalances(self, data):
+    def update_balances(self, data):
+        """Callback handler for balances updates
+        :param data:  balances update
+        """
         QtWidgets.QApplication.postEvent(self, BalancesUpdateEvent(data))
 
     # handle info messages
-    def infoUpdate(self, data):
+    def info_update(self, data):
+        """Callback handler for info messages
+        :param data:  info message
+        """
         pass
-
-
-
-

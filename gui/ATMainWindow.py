@@ -4,10 +4,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from .Separators import *
 from .TradingTab import TradingTab
 
-from .InfoMessageBox import InfoMessageBox
-
 
 class ATMainWindow(QtWidgets.QMainWindow):
+    """The main GUI window."""
     keysDirectory = ''
 
     def __init__(self, width, height):
@@ -18,28 +17,28 @@ class ATMainWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__), 'style', 'logo.png')))
         self.setMinimumSize(1280, 720)
         width = max(1280, width)
-        height = max(720,height)
+        height = max(720, height)
         self.resize(width, height)
 
         # menu
         self.createMenu()
 
         # set central widget
-        self.centralwidget = QtWidgets.QWidget(self)
-        self.setCentralWidget(self.centralwidget)
-        self.horizontalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.central_widget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        self.horizontalLayout = QtWidgets.QVBoxLayout(self.central_widget)
 
         # add Tab widget
-        self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
+        self.tabWidget = QtWidgets.QTabWidget(self.central_widget)
         self.tabWidget.setObjectName('mainTabWidget')
         self.tabTrade = TradingTab()
         self.tabPredictors = QtWidgets.QWidget()
         self.tabWidget.addTab(self.tabTrade, "Trade")
         self.tabWidget.addTab(self.tabPredictors, "Predictors")
         self.horizontalLayout.addWidget(self.tabWidget)
-        self.horizontalLayout.setContentsMargins(0,5,0,0)
+        self.horizontalLayout.setContentsMargins(0, 5, 0, 0)
 
-        #import stylesheet file
+        # import stylesheet file
         qss = open(os.path.join(os.path.dirname(__file__), 'style', 'style.qss'), 'r')
         self.setStyleSheet(qss.read())
         qss.close()
@@ -49,18 +48,19 @@ class ATMainWindow(QtWidgets.QMainWindow):
 
 
     def createMenu(self):
-        loadKeysAction = QtWidgets.QAction('Load exchange keys', self)
-        loadKeysAction.triggered.connect(self.loadKeysPopup)
+        """Create the main window menu."""
+        load_keys_action = QtWidgets.QAction('Load exchange keys', self)
+        load_keys_action.triggered.connect(self.load_keys_popup)
 
-        loadConfiguration = QtWidgets.QAction('Load configuration', self)
-        loadConfiguration.triggered.connect(self.loadConfigurationFromFile)
-        saveConfiguration = QtWidgets.QAction('Save configuration', self)
-        saveConfiguration.triggered.connect(self.saveConfigurationToFile)
+        load_config_action = QtWidgets.QAction('Load configuration', self)
+        load_config_action.triggered.connect(self.load_config_dialog)
+        save_config_action = QtWidgets.QAction('Save configuration', self)
+        save_config_action.triggered.connect(self.save_config_dialog)
 
-        quitAction = QtWidgets.QAction('Quit', self)
-        quitAction.setShortcut('Ctrl+q')
-        quitAction.setStatusTip('Quit AutoTrader')
-        quitAction.triggered.connect(self.close)
+        quit_action = QtWidgets.QAction('Quit', self)
+        quit_action.setShortcut('Ctrl+q')
+        quit_action.setStatusTip('Quit AutoTrader')
+        quit_action.triggered.connect(self.close)
 
         self.menubar = QtWidgets.QMenuBar(self)
         self.menuFile = QtWidgets.QMenu(self.menubar)
@@ -68,12 +68,12 @@ class ATMainWindow(QtWidgets.QMainWindow):
         self.setMenuBar(self.menubar)
 
         self.menubar.addAction(self.menuFile.menuAction())
-        self.menuFile.addAction(loadKeysAction)
+        self.menuFile.addAction(load_keys_action)
         self.menuFile.addSeparator()
-        self.menuFile.addAction(loadConfiguration)
-        self.menuFile.addAction(saveConfiguration)
+        self.menuFile.addAction(load_config_action)
+        self.menuFile.addAction(save_config_action)
         self.menuFile.addSeparator()
-        self.menuFile.addAction(quitAction)
+        self.menuFile.addAction(quit_action)
 
 
     # ------------------------------------------------------------------------------------
@@ -81,27 +81,31 @@ class ATMainWindow(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------------------------
 
     def closeEvent(self, event):
+        """Handles application closing event.
+        Saves the current configuration to a config file and closes all connection to exchange clients.
+        """
         self.saveConfiguration()
         self.tabTrade.closeConnections()
         event.accept()
 
-    def loadKeysPopup(self):
+
+    def load_keys_popup(self):
         dlg = QtWidgets.QFileDialog()
         dlg.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.keysDirectory = dlg.selectedFiles()[0]
             self.tabTrade.setKeysDirectory(self.keysDirectory)
 
-    def loadConfigurationFromFile(self):
+    def load_config_dialog(self):
         dlg = QtWidgets.QFileDialog()
         dlg.setWindowTitle('Load configuration from file')
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.loadConfiguration(dlg.selectedFiles()[0])
 
-    def saveConfigurationToFile(self):
+    def save_config_dialog(self):
         dlg = QtWidgets.QFileDialog()
         dlg.setWindowTitle('Save configuration to file')
-        dlg.setAcceptMode(QtGui.QFileDialog.AcceptSave)
+        dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
         dlg.setNameFilter('*.ini')
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.saveConfiguration(dlg.selectedFiles()[0])
@@ -132,8 +136,3 @@ class ATMainWindow(QtWidgets.QMainWindow):
         self.tabTrade.controlBarWidget.saveConfiguration(config)
         with open(file, 'w') as cfgFile:
             config.write(cfgFile)
-
-
-
-
-
