@@ -1,5 +1,5 @@
-from .Overlays import OverlayFactory
-from .Indicators import IndicatorFactory
+from .overlays.factory import OverlayFactory
+from .indicators.factory import IndicatorFactory
 from .CustomComboBoxes import *
 
 
@@ -131,7 +131,7 @@ class ControlBarWidget(QtWidgets.QWidget):
 
     def setOverlayCombo(self):
         # Set overlays
-        overlayList = OverlayFactory.getOverlayNames()
+        overlayList = OverlayFactory.get_overlays()
         self.ctrlOverlay.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
         # which happens only with Fusion style
         overlayModel = self.ctrlOverlay.model()
@@ -150,7 +150,7 @@ class ControlBarWidget(QtWidgets.QWidget):
 
     def setIndicatorCombo(self):
         # Set indicators
-        indicatorList = IndicatorFactory.getIndicatorNames()
+        indicatorList = IndicatorFactory.get_indicators()
         self.ctrlIndicator.setView(QtWidgets.QListView())  # this is a workaround for the known Qt > 5.5 bug
         # which happens only with Fusion style
         indicatorModel = self.ctrlIndicator.model()

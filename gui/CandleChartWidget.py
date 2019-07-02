@@ -1,7 +1,8 @@
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 from .CandleChart import CandleChart
-from .Overlays   import *
-from .Indicators import *
+from .overlays.factory import OverlayFactory
+from .indicators.factory import IndicatorFactory
 from .Separators import *
 
 
@@ -41,7 +42,7 @@ class CandleChartWidget(QtWidgets.QWidget):
         """Adds an overlay to the candle chart
         :param name:  the name of an overlay to add
         """
-        new_overlay = OverlayFactory.createOverlay(name)
+        new_overlay = OverlayFactory.create_overlay(name)
         new_overlay.addToChart(self.candleGraph)
         self.overlays[name] = new_overlay
         self.updateChart()
@@ -62,7 +63,7 @@ class CandleChartWidget(QtWidgets.QWidget):
         """Adds an indicator bellow the candle chart
         :param name:  the name of an indicator to add
         """
-        new_indicator = IndicatorFactory.createIndicator(name)
+        new_indicator = IndicatorFactory.create_indicator(name)
         self.mainLayout.addWidget(new_indicator.frame, stretch=1)
         self.indicators[name] = (new_indicator.frame, new_indicator)
 
