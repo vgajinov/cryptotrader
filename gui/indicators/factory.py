@@ -1,18 +1,12 @@
 from .base import Indicator
 from .macd import MACD
 from .volumeIndicator import Volume
-
 from .trueRange import TrueRange
-#from .trueRangeAverage import TrueRange_AVG
-#from .trueRangeNormalized import TrueRange_NORM
+from .trueRangeAverage import TrueRange_AVG
+from .obv import OBV_OnBalanceVolume
+from .chaikinMoneyFlow import ChaikinMoneyFlow
+from .chaikinOscillator import ChaikinOscillator
 
-# Implement:
-#
-# Volume Indicators
-# ------------------------------------
-# OBV - On Balance Volume
-# AD - Chaikin A/D Line (Money Flow)
-# ADOSC - Chaikin A/D Oscillator
 
 
 # ------------------------------------------------------------------------------------
