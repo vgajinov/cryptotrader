@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class ChaikinMoneyFlow(Indicator):
     """Chaikin Money Flow"""
-    chart = None
 
     def __init__(self):
         super().__init__()

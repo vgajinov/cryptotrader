@@ -1,11 +1,9 @@
 from .base import *
 
 
-# ------------------------------------------------------------------------------------
-# Volume
-# ------------------------------------------------------------------------------------
-
 class Volume(Indicator):
+    """Volume"""
+
     def __init__(self):
         super(Volume, self).__init__()
         self.volumeBars = QtChart.QCandlestickSeries()

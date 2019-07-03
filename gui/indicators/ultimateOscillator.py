@@ -4,30 +4,33 @@ from PyQt5 import QtCore, QtGui, QtChart
 from gui.indicators.base import Indicator
 
 
-class TrueRange_AVG(Indicator):
-    """Average True Range volatility index"""
+class UltimateOscillator(Indicator):
+    """Ultimate Oscillator"""
 
     def __init__(self):
         super().__init__()
-        self.true_range_line = QtChart.QLineSeries()
-        self.true_range_line.setColor(QtCore.Qt.yellow)
-        self.addSeries(self.true_range_line)
+        self.line = QtChart.QLineSeries()
+        self.line.setColor(QtCore.Qt.green)
+        self.addSeries(self.line)
 
 
     def updateIndicator(self, data, candles_visible):
-        true_range = talib.ATR(data[2], data[3], data[4], timeperiod=14)
-        firstNotNan = np.where(np.isnan(true_range))[0][-1] + 1
-        true_range[:firstNotNan] = true_range[firstNotNan]
+        # ULTOSC(high, low, close, timeperiod1=7, timeperiod2=14, timeperiod3=28)
+        ult_osc = talib.ULTOSC(data[2], data[3], data[4], timeperiod1=7, timeperiod2=14, timeperiod3=28)
+        try:
+            firstNotNan = np.where(np.isnan(ult_osc))[0][-1] + 1
+        except:
+            firstNotNan = 0
+        ult_osc[:firstNotNan] = ult_osc[firstNotNan]
+        ult_osc = ult_osc[-candles_visible:]
 
-        true_range = true_range[-candles_visible:]
-
-        self.true_range_line.clear()
+        self.line.clear()
         for i in range(candles_visible):
-            self.true_range_line.append(i + 0.5, true_range[i])
+            self.line.append(i + 0.5, ult_osc[i])
 
         # detach and remove old axes
-        for ax in self.true_range_line.attachedAxes():
-            self.true_range_line.detachAxis(ax)
+        for ax in self.line.attachedAxes():
+            self.line.detachAxis(ax)
         for ax in self.axes():
             self.removeAxis(ax)
 
@@ -38,7 +41,7 @@ class TrueRange_AVG(Indicator):
 
         # set y axes
         ay = QtChart.QValueAxis()
-        ay.setRange(min(true_range), max(true_range))
+        ay.setRange(0, 100)
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
         ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
         ay.applyNiceNumbers()
@@ -47,7 +50,10 @@ class TrueRange_AVG(Indicator):
         # add and attach new axes
         self.addAxis(ax, QtCore.Qt.AlignBottom)
         self.addAxis(ay, QtCore.Qt.AlignRight)
-        self.true_range_line.attachAxis(ax)
-        self.true_range_line.attachAxis(ay)
+        self.line.attachAxis(ax)
+        self.line.attachAxis(ay)
+
+
+
 
 

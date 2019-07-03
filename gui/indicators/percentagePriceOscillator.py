@@ -4,33 +4,34 @@ from PyQt5 import QtCore, QtGui, QtChart
 from gui.indicators.base import Indicator
 
 
-class AROON_Oscillator(Indicator):
-    """Absolute Price Oscillator"""
+class PPO_PercentagePriceOscillator(Indicator):
+    """PPO - Percentage Price Oscillator"""
 
     def __init__(self):
         super().__init__()
-        self.aroon = QtChart.QLineSeries()
-        self.aroon.setColor(QtCore.Qt.magenta)
-        self.addSeries(self.aroon)
+        self.line = QtChart.QLineSeries()
+        self.line.setColor(QtCore.Qt.green)
+        self.addSeries(self.line)
 
 
     def updateIndicator(self, data, candles_visible):
-        # AROONOSC(high, low, timeperiod=14)
-        aroon = talib.AROONOSC(data[2], data[3], timeperiod=14)
+        # PPO(close, fastperiod=12, slowperiod=26, matype=0)
+        ppo = talib.PPO(data[4], fastperiod=12, slowperiod=26, matype=0)
         try:
-            firstNotNan = np.where(np.isnan(aroon))[0][-1] + 1
+            firstNotNan = np.where(np.isnan(ppo))[0][-1] + 1
         except:
             firstNotNan = 0
-        aroon[:firstNotNan] = aroon[firstNotNan]
-        aroon = aroon[-candles_visible:]
+        ppo[:firstNotNan] = ppo[firstNotNan]
+        ppo = np.round(100 * ppo, 2)
+        ppo = ppo[-candles_visible:]
 
-        self.aroon.clear()
+        self.line.clear()
         for i in range(candles_visible):
-            self.aroon.append(i + 0.5, aroon[i])
+            self.line.append(i + 0.5, ppo[i])
 
         # detach and remove old axes
-        for ax in self.aroon.attachedAxes():
-            self.aroon.detachAxis(ax)
+        for ax in self.line.attachedAxes():
+            self.line.detachAxis(ax)
         for ax in self.axes():
             self.removeAxis(ax)
 
@@ -41,7 +42,8 @@ class AROON_Oscillator(Indicator):
 
         # set y axes
         ay = QtChart.QValueAxis()
-        ay.setRange(min(aroon), max(aroon))
+        bound = max(abs(min(ppo)), max(ppo))
+        ay.setRange(-bound, bound)
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
         ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
         ay.applyNiceNumbers()
@@ -50,7 +52,10 @@ class AROON_Oscillator(Indicator):
         # add and attach new axes
         self.addAxis(ax, QtCore.Qt.AlignBottom)
         self.addAxis(ay, QtCore.Qt.AlignRight)
-        self.aroon.attachAxis(ax)
-        self.aroon.attachAxis(ay)
+        self.line.attachAxis(ax)
+        self.line.attachAxis(ay)
+
+
+
 
 

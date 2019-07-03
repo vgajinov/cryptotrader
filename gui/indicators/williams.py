@@ -4,8 +4,8 @@ from PyQt5 import QtCore, QtGui, QtChart
 from gui.indicators.base import Indicator
 
 
-class CommodityChannelIndex(Indicator):
-    """Commodity Channel Index"""
+class Williams_pR(Indicator):
+    """Williams' %R"""
 
     def __init__(self):
         super().__init__()
@@ -22,31 +22,31 @@ class CommodityChannelIndex(Indicator):
         self.cci = QtChart.QLineSeries()
         pen = QtGui.QPen(QtCore.Qt.SolidLine)
         pen.setWidthF(0.75)
-        pen.setColor(QtCore.Qt.magenta)
+        pen.setColor(QtCore.Qt.blue)
         self.cci.setPen(pen)
         self.addSeries(self.cci)
 
 
     def updateIndicator(self, data, candles_visible):
-        # CCI(high, low, close, timeperiod=14)
-        cci = talib.CCI(data[2], data[3], data[4], timeperiod=14)
+        # WILLR(high, low, close, timeperiod=14)
+        willr = talib.WILLR(data[2], data[3], data[4], timeperiod=14)
         try:
-            firstNotNan = np.where(np.isnan(cci))[0][-1] + 1
+            firstNotNan = np.where(np.isnan(willr))[0][-1] + 1
         except:
             firstNotNan = 0
-        cci[:firstNotNan] = cci[firstNotNan]
-        cci = cci[-candles_visible:]
+        willr[:firstNotNan] = willr[firstNotNan]
+        willr = willr[-candles_visible:]
 
         self.cci.clear()
         for i in range(candles_visible):
-            self.cci.append(i + 0.5, cci[i])
+            self.cci.append(i + 0.5, willr[i])
 
         self.top_line.clear()
         self.bottom_line.clear()
-        self.top_line.append(0, 100)
-        self.top_line.append(candles_visible, 100)
-        self.bottom_line.append(0, -100)
-        self.bottom_line.append(candles_visible, -100)
+        self.top_line.append(0, -20)
+        self.top_line.append(candles_visible, -20)
+        self.bottom_line.append(0, -80)
+        self.bottom_line.append(candles_visible, -80)
 
         # detach and remove old axes
         for ax in self.cci.attachedAxes():
@@ -63,8 +63,7 @@ class CommodityChannelIndex(Indicator):
 
         # set y axes
         ay = QtChart.QValueAxis()
-        bound = max(abs(min(cci)), max(cci))
-        ay.setRange(min(-bound, -200), max(bound, 200))
+        ay.setRange(-100, 0)
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
         ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
         ay.applyNiceNumbers()

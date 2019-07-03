@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class Absolute_Price_Oscillator(Indicator):
     """Absolute Price Oscillator"""
-    chart = None
 
     def __init__(self):
         super().__init__()

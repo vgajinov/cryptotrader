@@ -10,6 +10,18 @@ from .averageDirectionaIndex import ADX_AverageDirectionalIndex
 from .absolutePriceOscillator import Absolute_Price_Oscillator
 from .aroon import AROON_Oscillator
 from .commodityChannelIndex import CommodityChannelIndex
+from .chandeOscillator import Chande_Momentum_Oscillator
+from .momentum import Momentum
+from .moneyFlowIndex import Money_Flow_Index
+from .percentagePriceOscillator import PPO_PercentagePriceOscillator
+from .rsi import RSI_RelativeStrengthIndex
+from .stochasticSlow import StochasticSlow
+from .stochasticFast import StochasticFast
+from .stochasticRSI import StochasticRSI
+from .ultimateOscillator import UltimateOscillator
+from .williams import Williams_pR
+from .trix import TRIX_1dayRateOfChange
+
 
 # ------------------------------------------------------------------------------------
 # Indicator Factory

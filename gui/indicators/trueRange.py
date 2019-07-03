@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class TrueRange(Indicator):
     """True Range volatility index"""
-    chart = None
 
     def __init__(self):
         super().__init__()

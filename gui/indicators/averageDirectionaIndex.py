@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class ADX_AverageDirectionalIndex(Indicator):
     """ADX - Average Directional Movement Index with Rating"""
-    chart = None
 
     def __init__(self):
         super().__init__()

@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class OBV_OnBalanceVolume(Indicator):
     """On Balance Volume indicator"""
-    chart = None
 
     def __init__(self):
         super().__init__()

@@ -2,11 +2,9 @@ import talib
 from .base import *
 
 
-# ------------------------------------------------------------------------------------
-# MACD
-# ------------------------------------------------------------------------------------
-
 class MACD(Indicator):
+    """Moving average convergence / divergence"""
+
     def __init__(self):
         super().__init__()
         self.macdBars = QtChart.QCandlestickSeries()

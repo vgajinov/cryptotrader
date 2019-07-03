@@ -6,7 +6,6 @@ from gui.indicators.base import Indicator
 
 class ChaikinOscillator(Indicator):
     """Chaikin Oscillator"""
-    chart = None
 
     def __init__(self):
         super().__init__()
