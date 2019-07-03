@@ -19,7 +19,7 @@ class Overlay(ABC):
         pass
 
     @abstractmethod
-    def removeFromChart(self, chart: QtChart.QChart):
+    def removeFromChart(self):
         """Removes an overlay from the chart"""
         pass
 

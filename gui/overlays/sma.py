@@ -2,40 +2,39 @@ import talib
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtChart
 from .base import Overlay
-from ..CandleChart import CandleChart
 
-
-# ------------------------------------------------------------------------------------
-# SMA - Simple Moving Average
-# ------------------------------------------------------------------------------------
 
 class SMA(Overlay):
+    """SMA - Simple Moving Average"""
+    chart = None
+
     def __init__(self):
         self.series15 = QtChart.QSplineSeries()
         self.series50 = QtChart.QSplineSeries()
         pen = QtGui.QPen(QtCore.Qt.SolidLine)
-        pen.setWidth(0.5)
-        pen.setColor(QtGui.QColor(255,255,0))
+        pen.setWidthF(0.5)
+        pen.setColor(QtGui.QColor(255, 255, 0))
         self.series15.setPen(pen)
         pen.setColor(QtGui.QColor(255, 0, 255))
         self.series50.setPen(pen)
 
 
-    def addToChart(self, chart : QtChart.QChart):
-        chart.addSeries(self.series15)
-        chart.addSeries(self.series50)
+    def addToChart(self, chart: QtChart.QChart):
+        self.chart = chart
+        self.chart.addSeries(self.series15)
+        self.chart.addSeries(self.series50)
 
-    def removeFromChart(self, chart : QtChart.QChart):
-        chart.removeSeries(self.series15)
-        chart.removeSeries(self.series50)
+    def removeFromChart(self):
+        self.chart.removeSeries(self.series15)
+        self.chart.removeSeries(self.series50)
 
-    def update(self, data, N, chart : CandleChart):
+    def update(self, data, N):
         close = data[4]
         self.clear()
-        self.series15.attachAxis(chart.ax)
-        self.series15.attachAxis(chart.ay)
-        self.series50.attachAxis(chart.ax)
-        self.series50.attachAxis(chart.ay)
+        self.series15.attachAxis(self.chart.ax)
+        self.series15.attachAxis(self.chart.ay)
+        self.series50.attachAxis(self.chart.ax)
+        self.series50.attachAxis(self.chart.ay)
 
         sma15 = talib.SMA(close, timeperiod=15)
         firstNotNan = np.where(np.isnan(sma15))[0][-1] + 1

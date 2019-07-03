@@ -1,16 +1,19 @@
 import talib
 import numpy as np
-from PyQt5 import QtChart
+from PyQt5 import QtCore, QtGui, QtChart
 from .base import Overlay
 
 
-class ParabolicSAR(Overlay):
-    """Parabolic SAR"""
+class TSForecast(Overlay):
+    """Time Series Forecast"""
     chart = None
 
     def __init__(self):
-        self.series = QtChart.QScatterSeries()
-        self.series.setMarkerSize(1)
+        self.series = QtChart.QSplineSeries()
+        pen = QtGui.QPen(QtCore.Qt.SolidLine)
+        pen.setWidthF(0.5)
+        pen.setColor(QtGui.QColor(255, 255, 0))
+        self.series.setPen(pen)
 
     def addToChart(self, chart: QtChart.QChart):
         self.chart = chart
@@ -21,16 +24,17 @@ class ParabolicSAR(Overlay):
         self.chart = None
 
     def update(self, data, N):
-        high = data[2]
-        low = data[3]
-
+        close = data[4]
         self.clear()
         self.series.attachAxis(self.chart.ax)
         self.series.attachAxis(self.chart.ay)
-        psarValues = talib.SAR(high, low)   # , acceleration=0, maximum=0
-        psarValues = psarValues[-N:]
-        for i, val in enumerate(psarValues):
+
+        tsf = talib.TSF(close, timeperiod=14)
+        firstNotNan = np.where(np.isnan(tsf))[0][-1] + 1
+        tsf[:firstNotNan] = tsf[firstNotNan]
+        for i, val in enumerate(tsf[-N:]):
             self.series.append(i + 0.5, val)
+
 
     def clear(self):
         self.series.clear()

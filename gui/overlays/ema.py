@@ -2,46 +2,47 @@ import talib
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtChart
 from .base import Overlay
-from ..CandleChart import CandleChart
 
-
-# ------------------------------------------------------------------------------------
-# EMA - Exponential Moving Average
-# ------------------------------------------------------------------------------------
 
 class EMA(Overlay):
+    """EMA - Exponential Moving Average"""
+    chart = None
+
     def __init__(self):
+        super().__init__()
         self.series9 = QtChart.QSplineSeries()
         self.series26 = QtChart.QSplineSeries()
         self.series100 = QtChart.QSplineSeries()
         pen = QtGui.QPen(QtCore.Qt.SolidLine)
-        pen.setWidth(0.5)
-        pen.setColor(QtGui.QColor(255,255,0))
+        pen.setWidthF(0.5)
+        pen.setColor(QtGui.QColor(255, 255, 0))
         self.series9.setPen(pen)
         pen.setColor(QtGui.QColor(255, 0, 255))
         self.series26.setPen(pen)
         pen.setColor(QtGui.QColor(0, 127, 255))
         self.series100.setPen(pen)
 
-    def addToChart(self, chart : QtChart.QChart):
-        chart.addSeries(self.series9)
-        chart.addSeries(self.series26)
-        chart.addSeries(self.series100)
+    def addToChart(self, chart: QtChart.QChart):
+        self.chart = chart
+        self.chart.addSeries(self.series9)
+        self.chart.addSeries(self.series26)
+        self.chart.addSeries(self.series100)
 
-    def removeFromChart(self, chart : QtChart.QChart):
-        chart.removeSeries(self.series9)
-        chart.removeSeries(self.series26)
-        chart.removeSeries(self.series100)
+    def removeFromChart(self):
+        self.chart.removeSeries(self.series9)
+        self.chart.removeSeries(self.series26)
+        self.chart.removeSeries(self.series100)
+        self.chart = None
 
-    def update(self, data, N, chart : CandleChart):
+    def update(self, data, N):
         close = data[4]
         self.clear()
-        self.series9.attachAxis(chart.ax)
-        self.series9.attachAxis(chart.ay)
-        self.series26.attachAxis(chart.ax)
-        self.series26.attachAxis(chart.ay)
-        self.series100.attachAxis(chart.ax)
-        self.series100.attachAxis(chart.ay)
+        self.series9.attachAxis(self.chart.ax)
+        self.series9.attachAxis(self.chart.ay)
+        self.series26.attachAxis(self.chart.ax)
+        self.series26.attachAxis(self.chart.ay)
+        self.series100.attachAxis(self.chart.ax)
+        self.series100.attachAxis(self.chart.ay)
 
         ema9 = talib.EMA(close, timeperiod=9)
         firstNotNan = np.where(np.isnan(ema9))[0][-1] + 1

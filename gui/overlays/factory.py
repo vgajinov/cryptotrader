@@ -1,7 +1,16 @@
 from .base import Overlay
 from .ema import EMA
 from .sma import SMA
+from .wma import WMA
 from .parabolicSAR import ParabolicSAR
+from .hilbertTransform import HTTrendline
+from .priceAverage import PriceAverage
+from .priceMedian import PriceMedian
+from .priceWeighted import PriceWeighted
+from .forecast import TSForecast
+from .regression import *
+#from .variance import Variance
+#from .bolingerBands import BolingerBands
 
 
 # ------------------------------------------------------------------------------------

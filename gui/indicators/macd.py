@@ -8,7 +8,7 @@ from .base import *
 
 class MACD(Indicator):
     def __init__(self):
-        super(MACD, self).__init__()
+        super().__init__()
         self.macdBars = QtChart.QCandlestickSeries()
         self.macdBars.setIncreasingColor(QtCore.Qt.black)
         self.macdBars.setDecreasingColor(QtCore.Qt.red)

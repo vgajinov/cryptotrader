@@ -51,7 +51,7 @@ class CandleChartWidget(QtWidgets.QWidget):
         """Removes an overlay to the candle chart
         :param name:  the name of an overlay to remove
         """
-        self.overlays[name].removeFromChart(self.candleGraph)
+        self.overlays[name].removeFromChart()
         self.overlays.pop(name)
 
 
@@ -119,7 +119,7 @@ class CandleChartWidget(QtWidgets.QWidget):
             return
         self.candleGraph.updateCandleChart(self.data, self.numCandlesVisible)
         for overlay in self.overlays.values():
-            overlay.update(self.data, self.numCandlesVisible, self.candleGraph)
+            overlay.update(self.data, self.numCandlesVisible)
         for indicator in self.indicators.values():
             if indicator[0].isVisible:
                 indicator[1].updateIndicator(self.data, self.numCandlesVisible)
