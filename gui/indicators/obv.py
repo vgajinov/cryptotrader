@@ -18,9 +18,6 @@ class OBV_OnBalanceVolume(Indicator):
     def updateIndicator(self, data, candles_visible):
         # OBV(close, volume)
         obv = talib.OBV(data[4], data[5])
-        firstNotNan = np.where(np.isnan(obv))[0][-1] + 1
-        obv[:firstNotNan] = obv[firstNotNan]
-
         obv = obv[-candles_visible:]
 
         self.obv.clear()
@@ -33,12 +30,12 @@ class OBV_OnBalanceVolume(Indicator):
         for ax in self.axes():
             self.removeAxis(ax)
 
-        # candle_set hidden x axis
+        # set x axes
         ax = QtChart.QValueAxis()
         ax.setRange(0, candles_visible)
         ax.hide()
 
-        # candle_set y price delta axis
+        # set y axes
         ay = QtChart.QValueAxis()
         ay.setRange(min(obv), max(obv))
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))

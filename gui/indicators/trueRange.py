@@ -44,12 +44,12 @@ class TrueRange(Indicator):
         for ax in self.axes():
             self.removeAxis(ax)
 
-        # candle_set hidden x axis
+        # set x axes
         ax = QtChart.QValueAxis()
         ax.setRange(0, candles_visible)
         ax.hide()
 
-        # candle_set y price delta axis
+        # set y axes
         ay = QtChart.QValueAxis()
         ay.setRange(0.0, abs(max(true_range)))
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))

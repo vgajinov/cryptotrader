@@ -5,7 +5,7 @@ from gui.indicators.base import Indicator
 
 
 class ChaikinMoneyFlow(Indicator):
-    """On Balance Volume indicator"""
+    """Chaikin Money Flow"""
     chart = None
 
     def __init__(self):
@@ -56,12 +56,12 @@ class ChaikinMoneyFlow(Indicator):
         for ax in self.axes():
             self.removeAxis(ax)
 
-        # candle_set hidden x axis
+        # set x axes
         ax = QtChart.QValueAxis()
         ax.setRange(0, candles_visible)
         ax.hide()
 
-        # candle_set y price delta axis
+        # set x axes
         ay = QtChart.QValueAxis()
         bound = max(abs(min(cmf)), max(cmf))
         ay.setRange(-bound, bound)

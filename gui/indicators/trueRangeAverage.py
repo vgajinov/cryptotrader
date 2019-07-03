@@ -5,7 +5,7 @@ from gui.indicators.base import Indicator
 
 
 class TrueRange_AVG(Indicator):
-    """True Range volatility index"""
+    """Average True Range volatility index"""
     chart = None
 
     def __init__(self):
@@ -32,12 +32,12 @@ class TrueRange_AVG(Indicator):
         for ax in self.axes():
             self.removeAxis(ax)
 
-        # candle_set hidden x axis
+        # set x axes
         ax = QtChart.QValueAxis()
         ax.setRange(0, candles_visible)
         ax.hide()
 
-        # candle_set y price delta axis
+        # set y axes
         ay = QtChart.QValueAxis()
         ay.setRange(min(true_range), max(true_range))
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))

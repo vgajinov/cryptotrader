@@ -4,29 +4,34 @@ from PyQt5 import QtCore, QtGui, QtChart
 from gui.indicators.base import Indicator
 
 
-class ChaikinOscillator(Indicator):
-    """Chaikin Oscillator"""
+class AROON_Oscillator(Indicator):
+    """Absolute Price Oscillator"""
     chart = None
 
     def __init__(self):
         super().__init__()
-        self.oscillator = QtChart.QLineSeries()
-        self.oscillator.setColor(QtCore.Qt.red)
-        self.addSeries(self.oscillator)
+        self.aroon = QtChart.QLineSeries()
+        self.aroon.setColor(QtCore.Qt.magenta)
+        self.addSeries(self.aroon)
 
 
     def updateIndicator(self, data, candles_visible):
-        # ADOSC(high, low, close, volume, fastperiod=3, slowperiod=10)
-        chaikin_oscillator = talib.ADOSC(data[2], data[3], data[4], data[5], fastperiod=3, slowperiod=10)
-        chaikin_oscillator = chaikin_oscillator[-candles_visible:]
+        # AROONOSC(high, low, timeperiod=14)
+        aroon = talib.AROONOSC(data[2], data[3], timeperiod=14)
+        try:
+            firstNotNan = np.where(np.isnan(aroon))[0][-1] + 1
+        except:
+            firstNotNan = 0
+        aroon[:firstNotNan] = aroon[firstNotNan]
+        aroon = aroon[-candles_visible:]
 
-        self.oscillator.clear()
+        self.aroon.clear()
         for i in range(candles_visible):
-            self.oscillator.append(i + 0.5, chaikin_oscillator[i])
+            self.aroon.append(i + 0.5, aroon[i])
 
         # detach and remove old axes
-        for ax in self.oscillator.attachedAxes():
-            self.oscillator.detachAxis(ax)
+        for ax in self.aroon.attachedAxes():
+            self.aroon.detachAxis(ax)
         for ax in self.axes():
             self.removeAxis(ax)
 
@@ -35,10 +40,9 @@ class ChaikinOscillator(Indicator):
         ax.setRange(0, candles_visible)
         ax.hide()
 
-        # set x axes
+        # set y axes
         ay = QtChart.QValueAxis()
-        bound = max(abs(min(chaikin_oscillator)), max(chaikin_oscillator))
-        ay.setRange(-bound, bound)
+        ay.setRange(min(aroon), max(aroon))
         ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
         ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
         ay.applyNiceNumbers()
@@ -47,7 +51,7 @@ class ChaikinOscillator(Indicator):
         # add and attach new axes
         self.addAxis(ax, QtCore.Qt.AlignBottom)
         self.addAxis(ay, QtCore.Qt.AlignRight)
-        self.oscillator.attachAxis(ax)
-        self.oscillator.attachAxis(ay)
+        self.aroon.attachAxis(ax)
+        self.aroon.attachAxis(ay)
 
 
