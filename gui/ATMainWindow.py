@@ -1,5 +1,6 @@
 import os
 import configparser
+import traceback
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .Separators import *
 from .TradingTab import TradingTab
@@ -31,7 +32,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
         # add Tab widget
         self.tabWidget = QtWidgets.QTabWidget(self.central_widget)
         self.tabWidget.setObjectName('mainTabWidget')
-        self.tabTrade = TradingTab()
+        self.tabTrade = TradingTab(self)
         self.tabPredictors = QtWidgets.QWidget()
         self.tabWidget.addTab(self.tabTrade, "Trade")
         self.tabWidget.addTab(self.tabPredictors, "Predictors")
@@ -88,8 +89,8 @@ class ATMainWindow(QtWidgets.QMainWindow):
         self.tabTrade.closeConnections()
         event.accept()
 
-
     def load_keys_popup(self):
+        """Displays a popup dialog for loading the exchange keys"""
         dlg = QtWidgets.QFileDialog()
         dlg.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
@@ -97,12 +98,14 @@ class ATMainWindow(QtWidgets.QMainWindow):
             self.tabTrade.setKeysDirectory(self.keysDirectory)
 
     def load_config_dialog(self):
+        """Displays a popup dialog for loading the configuration file"""
         dlg = QtWidgets.QFileDialog()
         dlg.setWindowTitle('Load configuration from file')
         if dlg.exec_() == QtWidgets.QDialog.Accepted:
             self.loadConfiguration(dlg.selectedFiles()[0])
 
     def save_config_dialog(self):
+        """Displays a popup dialog for saving the configuration file"""
         dlg = QtWidgets.QFileDialog()
         dlg.setWindowTitle('Save configuration to file')
         dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
@@ -116,6 +119,7 @@ class ATMainWindow(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------------------------
 
     def loadConfiguration(self, file='config.ini'):
+        """Loads the configuration from a file"""
         self.setCursor(QtCore.Qt.WaitCursor)
         try:
             config = configparser.ConfigParser()
@@ -126,13 +130,40 @@ class ATMainWindow(QtWidgets.QMainWindow):
                 self.tabTrade.setKeysDirectory(self.keysDirectory)
             self.tabTrade.controlBarWidget.loadConfiguration(config)
         except Exception as e:
-            print(e)
+            self.showExceptionPopup(e)
         self.setCursor(QtCore.Qt.ArrowCursor)
 
 
     def saveConfiguration(self, file='config.ini'):
+        """Saves the configuration to a file"""
         config = configparser.ConfigParser()
         config['KEYS'] = {'keyDirectory': self.keysDirectory}
         self.tabTrade.controlBarWidget.saveConfiguration(config)
         with open(file, 'w') as cfgFile:
             config.write(cfgFile)
+
+
+    # ------------------------------------------------------------------------------------
+    # Exception handling
+    # ------------------------------------------------------------------------------------
+
+    def showExceptionPopup(self, exception):
+        """Displays an exception warning popup"""
+        self.tabTrade.blockSignals(True)
+        self.tabTrade.setDisabled(True)
+
+        popup = QtWidgets.QMessageBox()
+        popup.setWindowTitle("Warning")
+        popup.setIcon(QtWidgets.QMessageBox.Warning)
+        popup.setText(f"Exception caught:\n\n{exception}\n\n{''.join(traceback.format_exc())}")
+        ignoreButton = popup.addButton(QtWidgets.QMessageBox.Ignore)
+        abortButton  = popup.addButton(QtWidgets.QMessageBox.Abort)
+        popup.exec()
+        if popup.clickedButton() == abortButton:
+            self.close()
+            exit(-1)
+
+        self.tabTrade.setDisabled(False)
+        self.tabTrade.blockSignals(False)
+
+

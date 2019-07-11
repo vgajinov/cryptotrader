@@ -43,8 +43,9 @@ class TradingTab(QtWidgets.QWidget):
     balances_channel    = None
 
 
-    def __init__(self):
+    def __init__(self, parent):
         super(TradingTab, self).__init__()
+        self.parentWidget = parent
 
         # left layout
         self.controlBarWidget = ControlBarWidget(self)
@@ -159,24 +160,28 @@ class TradingTab(QtWidgets.QWidget):
                     self.chartWidget.updateChart()
 
         except ExchangeException as e:
-            # TODO: create an exception popup
-            pass
-
+            self.parentWidget.showExceptionPopup(e)
 
 
     def _subscribe_ws_user_channels(self):
         """Subscribes to user (authenticated) channels."""
-        self.orders_channel = self.ws_client.subscribe_user_orders(self.update_user_orders)
-        self.user_trades_channel = self.ws_client.subscribe_user_trades(self.update_user_trades)
-        self.balances_channel = self.ws_client.subscribe_balances(self.update_balances)
+        try:
+            self.orders_channel = self.ws_client.subscribe_user_orders(self.update_user_orders)
+            self.user_trades_channel = self.ws_client.subscribe_user_trades(self.update_user_trades)
+            self.balances_channel = self.ws_client.subscribe_balances(self.update_balances)
+        except ExchangeException as e:
+            self.parentWidget.showExceptionPopup(e)
 
     def _unsubscribe_ws_public_channels(self):
         """Unsubscribes from currently subscribed public channels for currently selected pair."""
-        self.ws_client.unsubscribe(self.ticker_channel, self.update_ticker)
-        self.ws_client.unsubscribe(self.book_channel, self.update_order_book)
-        self.ws_client.unsubscribe(self.tradesChannel, self.update_trades)
-        if self.candles_channel:
-            self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
+        try:
+            self.ws_client.unsubscribe(self.ticker_channel, self.update_ticker)
+            self.ws_client.unsubscribe(self.book_channel, self.update_order_book)
+            self.ws_client.unsubscribe(self.tradesChannel, self.update_trades)
+            if self.candles_channel:
+                self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
+        except ExchangeException as e:
+            self.parentWidget.showExceptionPopup(e)
 
 
     # ------------------------------------------------------------------------------------
@@ -206,48 +211,52 @@ class TradingTab(QtWidgets.QWidget):
 
         self.setCursor(QtCore.Qt.WaitCursor)
 
-        # disconnect from the current exchange
-        # all channels will be automatically unsubscribed
-        if self.ws_client:
-            self.ws_client.disconnect()
-            self.ws_client = None
-            self.rest_client = None
+        try:
+            # disconnect from the current exchange
+            # all channels will be automatically unsubscribed
+            if self.ws_client:
+                self.ws_client.disconnect()
+                self.ws_client = None
+                self.rest_client = None
 
-        # set the key file for the newly selected exchange
-        key_file = None
-        if self.keys_dir:
-            key_file = os.path.join(self.keys_dir, '{}.key'.format(self.exchange.lower()))
-            key_file = key_file if os.path.isfile(key_file) else None
+            # set the key file for the newly selected exchange
+            key_file = None
+            if self.keys_dir:
+                key_file = os.path.join(self.keys_dir, '{}.key'.format(self.exchange.lower()))
+                key_file = key_file if os.path.isfile(key_file) else None
 
-        # connect to the new exchange and authenticate
-        self.ws_client = ExchangeWSFactory.create_client(exchange_name)
-        self.ws_client.connect(self.info_update)
-        if key_file:
-            self.ws_client.authenticate(key_file=key_file)
-            self._subscribe_ws_user_channels()
+            # connect to the new exchange and authenticate
+            self.ws_client = ExchangeWSFactory.create_client(exchange_name)
+            self.ws_client.connect(self.info_update)
+            if key_file:
+                self.ws_client.authenticate(key_file=key_file)
+                self._subscribe_ws_user_channels()
 
-        self._clear_channels()
+            self._clear_channels()
 
-        # create a new client for the REST requests which will handle all user (authenticated) requests
-        self.rest_client = ExchangeRESTFactory.create_client(exchange_name, key_file=key_file)
-        self.placeOrderWidget.setClient(self.rest_client)
-        self.userTradingWidget.setClient(self.rest_client)
+            # create a new client for the REST requests which will handle all user (authenticated) requests
+            self.rest_client = ExchangeRESTFactory.create_client(exchange_name, key_file=key_file)
+            self.placeOrderWidget.setClient(self.rest_client)
+            self.userTradingWidget.setClient(self.rest_client)
 
-        # update the basic info for the new exchange
-        self.quote_currencies = self.rest_client.quote_currencies()
-        self.symbols = self.rest_client.symbols()
-        self.symbols_details = self.rest_client.symbols_details()
-        self.all_tickers = self.rest_client.all_tickers()
+            # update the basic info for the new exchange
+            self.quote_currencies = self.rest_client.quote_currencies()
+            self.symbols = self.rest_client.symbols()
+            self.symbols_details = self.rest_client.symbols_details()
+            self.all_tickers = self.rest_client.all_tickers()
 
-        # update controls to match the new exchange
-        self.userTradingWidget.setSymbolDetails(self.symbols_details)
-        self.controlBarWidget.setPairList(self.all_tickers, self.rest_client.quote_currencies())
-        self.controlBarWidget.setIntervalList(self.rest_client.candle_intervals())
-        self.controlBarWidget.setDisabled(True)
-        self.pair = None
-        self.interval = '1m'
-        self.controlBarWidget.ctrlTime.setCurrentText(self.interval)
-        self.controlBarWidget.setDisabled(False)
+            # update controls to match the new exchange
+            self.userTradingWidget.setSymbolDetails(self.symbols_details)
+            self.controlBarWidget.setPairList(self.all_tickers, self.rest_client.quote_currencies())
+            self.controlBarWidget.setIntervalList(self.rest_client.candle_intervals())
+            self.controlBarWidget.setDisabled(True)
+            self.pair = None
+            self.interval = '1m'
+            self.controlBarWidget.ctrlTime.setCurrentText(self.interval)
+            self.controlBarWidget.setDisabled(False)
+
+        except ExchangeException as e:
+            self.parentWidget.showExceptionPopup(e)
 
         self.setCursor(QtCore.Qt.ArrowCursor)
 
@@ -293,19 +302,25 @@ class TradingTab(QtWidgets.QWidget):
         Unsubscribes from the channel for current interval
         and subscribes to the channel for the new interval.
         """
-        self.setCursor(QtCore.Qt.WaitCursor)
         if interval == self.interval:
             return
-        self.interval = interval
-        if self.candles_channel:
-            self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
 
-        # subscribe to a candles channel
-        self.candles_channel, snapshot = self.ws_client.subscribe_candles(self.pair, self.interval,
-                                                                          self.update_candles)
-        if snapshot:
-            self.chartWidget.setData(snapshot)
-            self.chartWidget.updateChart()
+        self.setCursor(QtCore.Qt.WaitCursor)
+
+        try:
+            self.interval = interval
+            if self.candles_channel:
+                self.ws_client.unsubscribe(self.candles_channel, self.update_candles)
+
+            # subscribe to a candles channel
+            self.candles_channel, snapshot = self.ws_client.subscribe_candles(self.pair, self.interval,
+                                                                              self.update_candles)
+            if snapshot:
+                self.chartWidget.setData(snapshot)
+                self.chartWidget.updateChart()
+        except ExchangeException as e:
+            self.parentWidget.showExceptionPopup(e)
+
         self.setCursor(QtCore.Qt.ArrowCursor)
 
 
@@ -329,7 +344,7 @@ class TradingTab(QtWidgets.QWidget):
 
     def closeConnections(self):
         """Should be called on quitting the application to properly close exchange connections."""
-        if self.ws_client is not None:
+        if self.ws_client:
             self.ws_client.disconnect()
 
 
@@ -345,24 +360,30 @@ class TradingTab(QtWidgets.QWidget):
         for the dispatcher thread low and assuring that all gui updates
         are handled by the gui thread.
         """
-        if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
-            self.orderBookGraph.setData(event.book)
-            self.numericOrderBookWidget.setData(event.book)
-        elif event.type() == TradesUpdateEvent.EVENT_TYPE:
-            self.tradesTable.setData(event.trades)
-        elif event.type() == TickerUpdateEvent.EVENT_TYPE:
-            last_price = event.ticker[6]
-            self.numericOrderBookWidget.setLastPrice(last_price)
-            self.placeOrderWidget.setTicker(event.ticker)
-        elif event.type() == CandlesUpdateEvent.EVENT_TYPE:
-            self.chartWidget.setData(event.candles)
-            self.chartWidget.updateChart()
-        elif event.type() == OrdersUpdateEvent.EVENT_TYPE:
-            self.userTradingWidget.updateOrders(event.orders)
-        elif event.type() == UserTradesUpdateEvent.EVENT_TYPE:
-            self.userTradingWidget.updateUserTrades(event.trades)
-        elif event.type() == BalancesUpdateEvent.EVENT_TYPE:
-            self.placeOrderWidget.setBalances(event.balances)
+        if not self.isEnabled():
+            return
+
+        try:
+            if event.type() == OrderBookUpdateEvent.EVENT_TYPE:
+                self.orderBookGraph.setData(event.book)
+                self.numericOrderBookWidget.setData(event.book)
+            elif event.type() == TradesUpdateEvent.EVENT_TYPE:
+                self.tradesTable.setData(event.trades)
+            elif event.type() == TickerUpdateEvent.EVENT_TYPE:
+                last_price = event.ticker[6]
+                self.numericOrderBookWidget.setLastPrice(last_price)
+                self.placeOrderWidget.setTicker(event.ticker)
+            elif event.type() == CandlesUpdateEvent.EVENT_TYPE:
+                self.chartWidget.setData(event.candles)
+                self.chartWidget.updateChart()
+            elif event.type() == OrdersUpdateEvent.EVENT_TYPE:
+                self.userTradingWidget.updateOrders(event.orders)
+            elif event.type() == UserTradesUpdateEvent.EVENT_TYPE:
+                self.userTradingWidget.updateUserTrades(event.trades)
+            elif event.type() == BalancesUpdateEvent.EVENT_TYPE:
+                self.placeOrderWidget.setBalances(event.balances)
+        except Exception as e:
+            self.parentWidget.showExceptionPopup(e)
 
 
     # ------------------------------------------------------------------------------------
@@ -417,3 +438,4 @@ class TradingTab(QtWidgets.QWidget):
         :param data:  info message
         """
         pass
+

@@ -56,16 +56,10 @@ class OrderBookGraphWidget(pg.PlotWidget):
         bid_amounts = list(bids.values())
 
         # find the medium price and lower and upper bounds
-        try:
-            mid_price = bid_prices[-1] + (ask_prices[0] - bid_prices[-1]) / 2
-            bound = limit * mid_price
-            lower_bound = mid_price - bound
-            upper_bound = mid_price + bound
-        except IndexError as e:
-            print(e)
-            print('len(bids) = ', len(bids))
-            print('len(asks) = ', len(asks))
-            return
+        mid_price = bid_prices[-1] + (ask_prices[0] - bid_prices[-1]) / 2
+        bound = limit * mid_price
+        lower_bound = mid_price - bound
+        upper_bound = mid_price + bound
 
         # purge bids and asks list of excessive items
         bid_prices = [ x for x in bid_prices if x > lower_bound]
