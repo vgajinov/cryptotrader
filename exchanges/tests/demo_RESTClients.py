@@ -1,14 +1,12 @@
-# Import Homebrew
 from exchanges.REST.bitfinex import BitfinexRESTClient
 from exchanges.REST.binance import  BinanceRESTClient
-
 
 
 # =============================================================================
 # Test Binance
 # =============================================================================
 
-def testBinance():
+def test_binance():
     binance = BinanceRESTClient()
 
     print('='*100)
@@ -58,16 +56,15 @@ def testBinance():
     print()
 
     print('HISTORIC CANDLES\n' + '-'*30)
-    res = binance.historical_candles('bnbbtc', '1m', startTime=1519862400000, endTime=1519863300000)
+    res = binance.historical_candles('bnbbtc', '1m', start_time=1519862400000, end_time=1519863300000)
     for r in res: print(r)
     print()
 
 
-
-def testBinanceAuth():
+def test_binance_authenticated(file_path):
     # 1. Make sure to update the key file before running these tests
     # 2. Set the prices so that they do not get filled (i.e. buy price bellow current price)
-    binance = BinanceRESTClient(key_file='binance.key')
+    binance = BinanceRESTClient(key_file=file_path)
 
     print('='*100)
     print('   TESTING Binance authenticated endpoints')
@@ -150,23 +147,23 @@ def testBinanceAuth():
     # print(order)
 
 
-def testBinanceListenKey():
-    binance = BinanceRESTClient(key_file='/home/vladimir/work/keys/binance.key')
+def test_binance_listen_key(file_path):
+    binance = BinanceRESTClient(key_file=file_path)
 
     print()
     print('CREATE LISTEN KEY\n' + '-'*30)
-    listenKey = binance.create_listen_key()['listenKey']
+    listen_key = binance.create_listen_key()['listenKey']
     print(binance.create_listen_key())
     print()
 
     print()
     print('PING LISTEN KEY\n' + '-'*30)
-    print(binance.ping_listen_key(listenKey))
+    print(binance.ping_listen_key(listen_key))
     print()
 
     print()
     print('CLOSE LISTEN KEY\n' + '-'*30)
-    print(binance.close_listen_key(listenKey))
+    print(binance.close_listen_key(listen_key))
     print()
 
 
@@ -174,8 +171,8 @@ def testBinanceListenKey():
 # Test Bitfinex
 # =============================================================================
 
-def testBitfinex():
-    bitfinex  = BitfinexRESTClient(key_file='bitfinex.key')
+def test_bitfinex():
+    bitfinex  = BitfinexRESTClient()
 
     print('='*100)
     print('   TESTING Bitfinex public endpoints')
@@ -190,24 +187,24 @@ def testBitfinex():
     print(bitfinex.symbols())
     print()
     print('SYMBOLS DETAILS\n' + '-' * 30)
-    print(bitfinex.symbols_details()['btcusd'])
+    print(bitfinex.symbols_details()['BTCUSD'])
     print()
 
     print('TICKER\n' + '-' * 30)
     print(bitfinex.ticker('btcusd'))
     print()
     print('TICKERS\n' + '-' * 30)
-    print(bitfinex.tickers(['btcusd','ltcbtc','ethbtc']))
+    print(bitfinex.tickers(['BTCUSD', 'LTCBTC', 'ETHBTC']))
     print()
     print('ALL TICKERS (only showing btc tickers)\n' + '-' * 30)
     res = bitfinex.all_tickers()
     for k in res.keys():
-        if k.startswith('btc'):
+        if k.startswith('BTC'):
             print(k, res[k])
     print()
 
     print('ORDER BOOK\n' + '-' * 30)
-    res = bitfinex.order_book('btcusd', len=25)
+    res = bitfinex.order_book('BTCUSD', len=25)
     for r in res.keys():
         print(r)
         for i in res[r][:10]:
@@ -215,25 +212,25 @@ def testBitfinex():
     print()
 
     print('TRADES\n' + '-' * 30)
-    res = bitfinex.trades('btcusd', limit_trades=10)
+    res = bitfinex.trades('BTCUSD', limit_trades=10)
     for r in res: print(r)
     print()
 
     print('CANDLES\n' + '-'*30)
-    res = bitfinex.candles('btcusd', '1m', limit=10)
+    res = bitfinex.candles('BTCUSD', '1m', limit=10)
     for r in res: print(r)
     print()
+
     print('HISTORIC CANDLES\n' + '-'*30)
-    res = bitfinex.historical_candles('btcusd', '1m', startTime=1519862400000, endTime=1519863300000)
+    res = bitfinex.historical_candles('BTCUSD', '1m', start_time=1519862400000, end_time=1519863300000)
     for r in res: print(r)
     print()
 
 
-
-def testBitfinexAuth():
+def test_bitfinex_authenticated(file_path):
     # 1. Make sure to update the key file before running these tests
     # 2. Set the prices so that they do not get filled (i.e. buy price bellow current price)
-    bitfinex = BitfinexRESTClient(key_file='bitfinex.key')
+    bitfinex = BitfinexRESTClient(file_path)
 
     print('='*100)
     print('   TESTING Bitfinex authenticated endpoints')
@@ -250,7 +247,6 @@ def testBitfinexAuth():
     res = bitfinex.my_trades('btcusd', limit_trades=10)
     for r in res:
         print(r)
-
 
     print()
     print('PLACE LIMIT ORDER\n' + '-'*30)
@@ -288,14 +284,12 @@ def testBitfinexAuth():
     # res = bitfinex.all_orders(order1['symbol'], order1['orderId'])
     # for r in res: print(r)
 
-
     print()
     print('CANCEL ORDER\n' + '-'*30)
     print(bitfinex.cancel_order(order1['orderId'], order1['symbol']))
     print()
     print('CANCEL ALL\n' + '-'*30)
     print(bitfinex.cancel_all_orders())
-
 
     print()
     print('PLACE LIMIT ORDER\n' + '-'*30)
@@ -310,15 +304,34 @@ def testBitfinexAuth():
     print(bitfinex.cancel_multiple_orders([order1['orderId'], order2['orderId']]))
 
 
+if __name__ == '__main__':
+    choices = "Demo REST clients:\n"
+    choices += "Choose which demo to run:\n"
+    choices += "  (1) demo Binance public channels\n"
+    choices += "  (2) demo Binance authenticated channels\n"
+    choices += "  (3) demo Binance listen key\n"
+    choices += "  (4) demo Bitfinex public channels\n"
+    choices += "  (5) demo Bitfinex authenticated channels\n"
+    print(choices)
+    choice = -1
+    while choice not in [1, 2, 3, 4, 5]:
+        try:
+            choice = int(input("Your choice: "))
+        except:
+            pass
 
-
-
-
-
-# testBinance()
-# testBitfinex()
-
-# testBinanceAuth()
-# testBitfinexAuth()
-
-testBinanceListenKey()
+    if choice == 1:
+        test_binance()
+    elif choice == 2:
+        path = input("Full path to Binance key file: ")
+        test_binance_authenticated(path)
+    elif choice == 3:
+        path = input("Full path to Binance key file: ")
+        test_binance_listen_key(path)
+    elif choice == 4:
+        test_bitfinex()
+    elif choice == 5:
+        path = input("Full path to Bitfinex key file: ")
+        test_bitfinex_authenticated(path)
+    else:
+        print("Wrong choice given!")
