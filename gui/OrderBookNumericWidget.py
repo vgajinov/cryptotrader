@@ -9,9 +9,11 @@ from .CustomTables import OrderBookTableView
 # ======================================================================
 
 class OrderBookNumericWidget(QtWidgets.QWidget):
-    symbol_details = None
-    pricePrec      = None
-    amountPrec     = None
+    """The widget for the order book numeric display"""
+
+    symbol_details   = None
+    price_precision  = None
+    amount_precision = None
 
     def __init__(self):
         super(OrderBookNumericWidget, self).__init__()
@@ -35,64 +37,76 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.asksTable)
         self.mainLayout.addWidget(self.priceLabel)
         self.mainLayout.addWidget(self.bidsTable)
-        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
 
 
     def setSymbolDetails(self, details):
+        """Sets the symbol (pair details and determines price and amount precisions."""
         self.symbol_details = details
 
-        leftDigits, rightDigits = str(details['minAmount']).split('.')
-        self.amountPrec = len(rightDigits.rstrip('0'))
+        left_digits, right_digits = str(details['minAmount']).split('.')
+        self.amount_precision = len(right_digits.rstrip('0'))
 
-        self.pricePrec = None
-        pricePrec = details.get('minPrice', None)
-        if pricePrec is not None:
-            self.pricePrec = int(abs(math.log10(float(pricePrec))))
+        self.price_precision = None
+        price_precision = details.get('minPrice', None)
+        if price_precision:
+            self.price_precision = int(abs(math.log10(float(price_precision))))
 
 
     # set OrderBook numeric data
-    def setData(self, bids, asks):
-        # determine the price precision
-        if self.pricePrec is None:
+    def setData(self, data):
+        """Sets/updates the order book values
+        :param data    order book snapshot or and update
+        """
+        if not data or not self.symbol_details:
+            return
+
+        asks = data['asks']
+        bids = data['bids']
+
+        # deduce price precision if we didn't get it from the exchange
+        if not self.price_precision:
             price = next(iter(asks.keys()))
             exp = math.ceil(math.log10(float(price)))
-            self.pricePrec = min(abs(exp - int(self.symbol_details['precision'])), 8)
+            self.price_precision = min(abs(exp - int(self.symbol_details['precision'])), 8)
 
         total = 0.0
-        askList = []
+        asks_list = []
         for price, amount in list(asks.items()):
             total += abs(amount)
-            askList.append(['{:.{prec}f}'.format(price, prec=self.pricePrec),
-                            '{:,.{prec}f}'.format(abs(amount), prec=self.amountPrec),
-                            '{:,.{prec}f}'.format(total, prec=self.amountPrec)])
-        askList = list(reversed(askList))
+            asks_list.append([f'{price:.{self.price_precision}f}',
+                              f'{abs(amount):,.{self.amount_precision}f}',
+                              f'{total:,.{self.amount_precision}f}'])
+        asks_list = list(reversed(asks_list))
 
         total = 0.0
-        bidList = []
+        bid_list = []
         for price, amount in list(reversed(list(bids.items()))):
             total += abs(amount)
-            bidList.append(['{:.{prec}f}'.format(price, prec=self.pricePrec),
-                            '{:,.{prec}f}'.format(abs(amount), prec=self.amountPrec),
-                            '{:,.{prec}f}'.format(total, prec=self.amountPrec)])
+            bid_list.append([f'{price:.{self.price_precision}f}',
+                             f'{abs(amount):,.{self.amount_precision}f}',
+                             f'{total:,.{self.amount_precision}f}'])
 
-        self.asksTable.model().setTableData(askList, True)
-        self.bidsTable.model().setTableData(bidList, False)
+        self.asksTable.model().setTableData(asks_list, True)
+        self.bidsTable.model().setTableData(bid_list, False)
 
 
-    # set price on the OrderBook numeric layout
     def setLastPrice(self, price):
-        if self.pricePrec is None:
-            priceStr = '{:.8f}'.format(price)
-            if len(priceStr) > 9:
-                priceStr = priceStr[:9]
+        """Sets the last price on the OrderBook numeric layout"""
+        if self.price_precision is None:
+            price_str = f'{price:.8f}'
+            if len(price_str) > 9:
+                price_str = price_str[:9]
         else:
-            priceStr = '{:.{prec}f}'.format(price, prec=self.pricePrec)
+            price_str = f'{price:.{self.price_precision}f}'
+        self.priceLabel.setText(price_str)
 
-        self.priceLabel.setText(priceStr)
 
-
-    # format LastPrice label
     def formatLastPrice(self, height):
+        """Format the font for the LastPrice label
+        :param height:  the height of the display area in pixels
+        :return:
+        """
         self.priceLabel.setFixedHeight(height)
         font = QtGui.QFont(self.priceLabel.font())
         font.setPixelSize(int(0.7 * height))
@@ -100,19 +114,20 @@ class OrderBookNumericWidget(QtWidgets.QWidget):
         self.priceLabel.update()
 
 
-
     def clear(self):
+        """Clears the widget"""
         self.priceLabel.clear()
         self.asksTable.model().clear()
         self.bidsTable.model().clear()
+
 
     # ------------------------------------------------------------------------------------
     # Event Handlers
     # ------------------------------------------------------------------------------------
 
     def resizeEvent(self, QResizeEvent):
-        height = self.height() / 15
+        height = int(self.height() / 15)
         self.formatLastPrice(height)
-        self.asksTable.setMaximumHeight(7*height)
-        self.bidsTable.setMaximumHeight(7*height)
+        self.asksTable.setMaximumHeight(7 * height)
+        self.bidsTable.setMaximumHeight(7 * height)
         QtWidgets.QWidget.resizeEvent(self, QResizeEvent)

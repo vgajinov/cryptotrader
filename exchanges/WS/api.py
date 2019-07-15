@@ -57,16 +57,21 @@ class WSClientAPI(ABC):
         pass
 
     @abstractmethod
-    def subscribe(self, **kwargs):
+    def subscribe(self, channel, **kwargs):
         """Generic method to subscribe to a channel of an exchange.
+        :param channel:  a concrete channel to subscribe to
         :param kwargs: Arbitrary keyword arguments. Depend on the specific exchange.
         """
         pass
 
     @abstractmethod
-    def unsubscribe(self, **kwargs):
+    def unsubscribe(self, channel, update_handler=None):
         """Generic method to unsubscribe from the channel.
-        :param kwargs: Arbitrary keyword arguments. Depend on the specific exchange.
+        :param channel:         id of the channel to unsubscribe from
+        :param update_handler:  a handler used by a listener to receive updates from dispatcher.
+        A channel must be one of the following: ticker, book, trades or candles.
+        A remainder of the arguments is passed directly to concrete methods
+        for subscribing to a given channel.
         """
         pass
 
@@ -135,7 +140,7 @@ class WSClientAPI(ABC):
         The format of a candle is a list:
             [ TIMESTAMP, OPEN, CLOSE, HIGH, LOW, VOLUME ] -> [int, float, float, float, float, float]
         """
-        return None
+        pass
 
 
     # ------------------------------------------------------------------------
@@ -151,7 +156,7 @@ class WSClientAPI(ABC):
         :return True if authentication was successful
         If key file is provided, it will override values of provided via key and secret
         """
-        return False
+        pass
 
     @abstractmethod
     def subscribe_user_orders(self, update_handler):
@@ -163,7 +168,7 @@ class WSClientAPI(ABC):
         Return type:
            [ [int, int, string, string, string, float, float, string, float] ]
         """
-        return None
+        pass
 
     @abstractmethod
     def subscribe_user_trades(self, update_handler):
@@ -175,7 +180,7 @@ class WSClientAPI(ABC):
         Return type:
            [ [int, string, string, string, float, float, float, float, string] ]
         """
-        return None
+        pass
 
     @abstractmethod
     def subscribe_balances(self, update_handler):
@@ -187,7 +192,7 @@ class WSClientAPI(ABC):
         Return type:
            { string : float }
         """
-        return None
+        pass
 
 
 class ChannelData(ABC):

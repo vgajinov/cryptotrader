@@ -7,21 +7,22 @@ from PyQt5 import QtCore, QtGui, QtWidgets, QtChart
 # ------------------------------------------------------------------------------------
 
 class CandleChart(QtChart.QChart):
+    """Actual Candle chart display."""
     ax = None
     ay = None
     minTicks = 5
     maxTicks = 10
-    timeframes = [1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 4320, 10080]
-    currTimeframeIndex = 0
+    # time frames in minutes: 1m, 5m, 10m, 15m, 30m, 1h, 2h, 3h, 6h, 12h, 1d, 3d, 1w
+    time_frames = [1, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 4320, 10080]
 
     def __init__(self):
         super(CandleChart, self).__init__()
 
         # set margins, colors and font
-        self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0,0,0)))
+        self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0)))
         self.setBackgroundRoundness(0)
         self.layout().setContentsMargins(0, 0, 0, 0)
-        self.setMargins(QtCore.QMargins(0,0,0,0))
+        self.setMargins(QtCore.QMargins(0, 0, 0, 0))
         self.legend().hide()
         chartFont = QtGui.QFont(self.font())
         chartFont.setPixelSize(9)
@@ -35,49 +36,49 @@ class CandleChart(QtChart.QChart):
         # add hover line and price tag
         self.setAcceptHoverEvents(True)
         self.hoverLinePriceTag = QtWidgets.QGraphicsSimpleTextItem(self)
-        self.hoverLinePriceTag.setBrush(QtGui.QBrush(QtGui.QColor(255,255,255)))
+        self.hoverLinePriceTag.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255)))
         self.hoverLinePriceTag.setOpacity(1.0)
         self.hoverLine = QtChart.QLineSeries()
         hoverPen = QtGui.QPen(QtCore.Qt.DashLine)
         hoverPen.setColor(QtCore.Qt.white)
-        hoverPen.setWidth(0.5)
-        hoverPen.setDashPattern([5,10])
+        hoverPen.setWidthF(0.5)
+        hoverPen.setDashPattern([5, 10])
         self.hoverLine.setPen(hoverPen)
         self.hoverLineAxisX = QtChart.QValueAxis()
         self.hoverLineAxisX.hide()
-        self.hoverLineAxisX.setRange(0,1)
+        self.hoverLineAxisX.setRange(0, 1)
         self.addSeries(self.hoverLine)
         self.addAxis(self.hoverLineAxisX, QtCore.Qt.AlignBottom)
         self.hoverLine.attachAxis(self.hoverLineAxisX)
 
 
-    # update candle chart
     def updateCandleChart(self, data, N):
+        """Update candle chart display.
+        :param data:  numpy array representing candles
+        :param N:     number of candles in the array
+        """
         if data is None or data == []:
             return
 
-        timestamp = data[0,-N:].tolist()
-        open      = data[1,-N:].tolist()
-        high      = data[2,-N:].tolist()
-        low       = data[3,-N:].tolist()
-        close     = data[4,-N:].tolist()
-
-        timeInterval = (timestamp[1] - timestamp[0]) / 1000
+        timestamps = data[0, -N:].astype(int).tolist()
+        open       = data[1, -N:].tolist()
+        high       = data[2, -N:].tolist()
+        low        = data[3, -N:].tolist()
+        close      = data[4, -N:].tolist()
 
         # remove candlestick data
         if self.candlestickSeries.count() > 0:
             self.candlestickSeries.remove(self.candlestickSeries.sets())
 
         # add new candlestick data
-        for i, ts in enumerate(timestamp):
-            set = QtChart.QCandlestickSet(open[i], high[i], low[i], close[i], timestamp=ts)
-            self.setCandleColors(set)
-            self.candlestickSeries.append(set)
+        for i, ts in enumerate(timestamps):
+            candle_set = QtChart.QCandlestickSet(open[i], high[i], low[i], close[i], timestamp=ts)
+            self.setCandleColors(candle_set)
+            self.candlestickSeries.append(candle_set)
 
         # set candlestick time axes (hidden)
         axisXtime = QtChart.QBarCategoryAxis()
-        timestamps = [QtCore.QDateTime.fromMSecsSinceEpoch(x).toString('HH:mm') for x in timestamp]
-        axisXtime.setCategories(timestamps)
+        axisXtime.setCategories([str(int(x / 1000)) for x in timestamps])
         axisXtime.setGridLineVisible(False)
         axisXtime.hide()
 
@@ -86,25 +87,28 @@ class CandleChart(QtChart.QChart):
         self.ax.setGridLineVisible(False)
         self.ax.hide()
 
-        # set visible time axes with selexted time ticks
+        # set pen for lines and grid lines
+        line_pen = QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5)
+        grid_line_pen = QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5)
+
+        # set visible time axes with selected time ticks
         axisXticks = QtChart.QCategoryAxis()
         axisXticks.setLabelsPosition(QtChart.QCategoryAxis.AxisLabelsPositionOnValue)
-        linuxTimestamps = [x/1000 for x in timestamp]
-        categories = self.extractNiceCategories(linuxTimestamps)
-        for tst in categories:
-            axisXticks.append(tst, timestamps.index(tst))
-        axisXticks.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
-        axisXticks.setGridLineVisible(False)
+        for ts, index in self.extractNiceCategories(timestamps):
+            axisXticks.append(ts, index)
+        axisXticks.setGridLineVisible(True)
+        axisXticks.setGridLinePen(grid_line_pen)
+        axisXticks.setLinePen(line_pen)
         axisXticks.setStartValue(-1)
 
         # set y axes (prices)
-        maxVal = max(high)
-        minVal = min(low)
+        max_val = max(high)
+        min_val = min(low)
         self.ay = QtChart.QValueAxis()
-        self.ay.setGridLinePen(QtGui.QPen(QtGui.QColor(80, 80, 80), 0.5))
-        self.ay.setLinePen(QtGui.QPen(QtGui.QColor(0, 0, 0), 0.5))
-        self.ay.setMax(maxVal)
-        self.ay.setMin(minVal)
+        self.ay.setGridLinePen(grid_line_pen)
+        self.ay.setLinePen(line_pen)
+        self.ay.setMax(max_val)
+        self.ay.setMin(min_val)
         self.ay.applyNiceNumbers()
 
         # set y axes font
@@ -134,19 +138,72 @@ class CandleChart(QtChart.QChart):
         self.hoverLine.attachAxis(self.ay)
 
 
-    # choose ticks for visible time axes
-    def extractNiceCategories(self, timestamps):
-        # we want to show approximately 5 ticks on the time axes
-        for delta in self.timeframes:  #[self.currTimeframeIndex : ]:
-            minuteDelta = 60 * delta
-            timestamps = [ t for t in timestamps if t%(minuteDelta) == 0 ]
-            if len(timestamps) < self.maxTicks:
-                break
-        categories = [QtCore.QDateTime.fromSecsSinceEpoch(t).toString('HH:mm') for t in timestamps]
-        return categories
+    def extractNiceCategories(self, timestapms):
+        """Chooses appropriate ticks for visible time axes.
+        :param timestapms:   a list of timestamps for currently visible candles
+        :returns list of tuples [(time_string, index), ... ]
+        Tries to select and to show approximately between 4 and 12 ticks on the time axes.
+        If possible, it will adjust to local time (works only with small candle intervals).
+        As long as the candle interval is larger than the local timezone offset from UTC
+        the chart will use UTC time. This is because exchanges use UTC timestamps.
+        """
+        # get the interval between two candles in minutes
+        candle_interval = timestapms[1] - timestapms[0]
 
-    # set candle colors
-    def setCandleColors(self, candleSet : QtChart.QCandlestickSet):
+        # find the time frame with which we get between 4 and 12 ticks
+        for frame in self.time_frames:
+            if 4 <= len(timestapms) * candle_interval / (60000 * frame) <= 12:
+                break
+
+        # get the local timezone offset from UTC in milliseconds and select the time spec
+        local_offset = 1000 * QtCore.QDateTime.currentDateTime().offsetFromUtc()
+        time_spec = QtCore.Qt.LocalTime
+        if candle_interval > local_offset:
+            local_offset = 0
+            time_spec = QtCore.Qt.UTC
+
+        # select the timestamps and their indexes using the chosen time frame
+        # return the timestamps as formatted strings
+        num_ticks = 0
+        selected_timestamps = []
+        for index, val in enumerate(timestapms):
+            time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('yyyy:MMM:dd:HH:mm')
+
+            if (val + local_offset) % (60000 * frame) == 0:
+                if time_str.endswith('Jan:01:00:00'):
+                    time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('yyyy')
+                elif time_str.endswith('01:00:00'):
+                    time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('MMM')
+                elif time_str.endswith('00:00'):
+                    time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('d')
+                else:
+                    time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('HH:mm')
+
+                # skip this tick if it is too close to previous one
+                if selected_timestamps and index - selected_timestamps[-1][1] < 3:
+                    continue
+                # we add increasing number of spaces to the timedate string as a workaround
+                # for a stupid Qt requirement for category labels to be unique (no duplicates)
+                # at least Qt seems to trim the trailing spaces when showing the labels
+                num_ticks += 1
+                selected_timestamps.append((time_str + ' ' * num_ticks, index))
+
+            else:
+                if time_str.endswith('01:00:00') and selected_timestamps[-1] != index:
+                    time_str = QtCore.QDateTime.fromMSecsSinceEpoch(val, time_spec).toString('MMM')
+                    # remove previous tick if it is too close to this one
+                    if selected_timestamps and index - selected_timestamps[-1][1] < 4:
+                        selected_timestamps.pop(-1)
+                    num_ticks += 1
+                    selected_timestamps.append((time_str + ' ' * num_ticks, index))
+
+        return selected_timestamps
+
+
+    def setCandleColors(self, candleSet: QtChart.QCandlestickSet):
+        """Sets the candle colors (green and red)
+        :param candleSet:  a QCandlestickSet set of candles
+        """
         if candleSet.close() < candleSet.open():
             candleSet.setPen(QtGui.QPen(QtCore.Qt.red, 1))
             candleSet.setBrush(QtGui.QBrush(QtCore.Qt.red))
@@ -156,7 +213,7 @@ class CandleChart(QtChart.QChart):
 
 
     def clear(self):
-        # remove candlestick data
+        """Removes candlestick data"""
         if self.candlestickSeries.count() > 0:
             self.candlestickSeries.remove(self.candlestickSeries.sets())
 
@@ -165,8 +222,8 @@ class CandleChart(QtChart.QChart):
     # Event handlers
     # ------------------------------------------------------------------------------------
 
-    # handle hover event by showing hover price line
-    def hoverMoveEvent(self, event : QtWidgets.QGraphicsSceneHoverEvent):
+    def hoverMoveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
+        """Handles hover event by showing hover price line."""
         event.setAccepted(True)
         pos = self.mapToParent(event.pos())
         val = self.mapToValue(pos)
@@ -179,20 +236,22 @@ class CandleChart(QtChart.QChart):
         else:
             precision = 1
 
-        self.hoverLinePriceTag.setPos(self.plotArea().getCoords()[2] + 5, pos.y() - 7)  # TODO calculate offsets instead of hardcoding
+        # TODO calculate offsets instead of hard coding it
+        self.hoverLinePriceTag.setPos(self.plotArea().getCoords()[2] + 5, pos.y() - 7)
         self.hoverLinePriceTag.setText('{:.{prec}f}'.format(val.y(), prec=min(precision, 8)))
+        # self.hoverLinePriceTag.setText(f'{val.y():.{min(precision, 8)}f}')
 
         font = self.hoverLinePriceTag.font()
         font.setPointSize(8)
         self.hoverLinePriceTag.setFont(font)
 
-        yAxes = self.hoverLine.attachedAxes()[0]
-        if val.y() > yAxes.min() and val.y() < yAxes.max():
+        y_axes = self.hoverLine.attachedAxes()[0]
+        if y_axes.min() < val.y() < y_axes.max():
             self.hoverLinePriceTag.show()
         else:
             self.hoverLinePriceTag.hide()
 
-    def hoverLeaveEvent(self, event : QtWidgets.QGraphicsSceneHoverEvent):
+    def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
         self.hoverLine.hide()
         self.hoverLinePriceTag.hide()
 

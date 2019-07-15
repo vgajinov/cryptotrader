@@ -504,20 +504,24 @@ class BinanceWSClient(WSClientAPI):
         and finally it stops the logger.
         """
         self.logger.info('Disconnecting ...')
-        for stream, thread in list(self._subscriptions.items()):
+
+        # close all sockets
+        for stream, thread in self._subscriptions.items():
             try:
-                self.unsubscribe(stream)
+                socket = self._connections[stream]
+                socket.close()
                 thread.join()
             except KeyError:
-                self.logger.info('No subscription for stream %s' % stream)
+                self.logger.info(f'No connection for stream {stream}')
 
+        # clear internal structures
         self._data.clear()
         self._connections.clear()
         self._subscriptions.clear()
 
+        # disconnect all listeners from the dispatcher
         if self._info_handler:
             dispatcher.disconnect(self._info_handler, signal='info', sender='binance')
-        # there should be no listeners at this point but make sure that we do a clean up
         for d in dispatcher.getAllReceivers(sender='binance'):
             d.disconnect()
 
