@@ -3,6 +3,7 @@ import json
 import hashlib
 import hmac
 import base64
+import time
 
 from exchanges.REST.api import RESTClientAPI
 from exchanges.REST.response import response_formatter
@@ -90,7 +91,7 @@ class BitfinexFormatter(Formatter):
 
     @staticmethod
     def order_status(data, *args, **kwargs):
-        return { 'symbol':     data['symbol'],
+        return { 'symbol':     data['symbol'].upper(),
                  'orderId':    data['id'],
                  'price':      data['price'],
                  'stopPrice':  data['price'],
@@ -100,17 +101,39 @@ class BitfinexFormatter(Formatter):
                                'MARKET' if data['type'] == 'exchange market' else
                                'STOP-LOSS' if data['type'] == 'exchange stop' else
                                'TRAILING STOP-LOSS',
-                 'side':       data['side'],
+                 'side':       data['side'].upper(),
                  'timestamp':  data['timestamp'],
                  'status':     'LIVE' if data['is_live'] else
                                'CANCELED' if data['is_cancelled'] else
                                'EXECUTED'
                  }
 
+    @staticmethod
+    def order_status_v2(data, *args, **kwargs):
+        return { 'symbol':     data[3][1:].upper(),
+                 'orderId':    data[0],
+                 'price':      data[16],
+                 'stopPrice':  data[19],
+                 'amount':     abs(data[7]),
+                 'filled':     abs(data[7]) - abs(data[6]),
+                 'type':       'LIMIT' if data[8] == 'EXCHANGE LIMIT' else
+                               'MARKET' if data[8] == 'EXCHANGE MARKET' else
+                               'STOP-LOSS' if data[8] == 'EXCHANGE STOP' else
+                               'TRAILING STOP-LOSS',
+                 'side':       'BUY' if data[7] > 0 else 'SELL',
+                 'timestamp':  data[4],
+                 'status':     'LIVE' if data[13] == 'ACTIVE' or data[13] == 'PARTIALLY FILLED' else
+                               'CANCELED' if data[13] == 'CANCELED' else
+                               'EXECUTED'
+                 }
 
     @staticmethod
     def multi_order_status(data, *args, **kwargs):
         return [ BitfinexFormatter.order_status(d) for d in data]
+
+    @staticmethod
+    def multi_order_status_v2(data, *args, **kwargs):
+        return [ BitfinexFormatter.order_status_v2(d) for d in data]
 
     @staticmethod
     def cancel(data, *args, **kwargs):
@@ -126,12 +149,12 @@ class BitfinexFormatter(Formatter):
                   'amount':   d['amount'],
                   'fee':      d['fee_amount'],
                   'feeAsset': d['fee_currency'],
-                  'side':     d['type']}
+                  'side':     d['type'].upper()}
                 for d in data]
 
     @staticmethod
     def balance(data, *args, **kwargs):
-        return { d['currency']: d['available'] for d in data if d['type'] == 'exchange'}
+        return { d['currency'].upper(): d['available'] for d in data if d['type'] == 'exchange'}
 
 
 # ===============================================================================
@@ -141,8 +164,8 @@ class BitfinexFormatter(Formatter):
 class BitfinexRESTClient(RESTClientAPI):
     def __init__(self, key=None, secret=None, key_file=None, api_version=None,
                  url='https://api.bitfinex.com', timeout=5, log=logger):
-        super(BitfinexRESTClient, self).__init__(url, api_version=api_version, key=key, secret=secret,
-                                                 key_file=key_file, timeout=timeout, log=log)
+        super().__init__(url, api_version=api_version, key=key, secret=secret,
+                         key_file=key_file, timeout=timeout, log=log)
         self.authenticated = key_file is not None or key is not None and secret is not None
 
 
@@ -162,21 +185,35 @@ class BitfinexRESTClient(RESTClientAPI):
             req['nonce'] = self._nonce()
             js = json.dumps(req)
             data = base64.standard_b64encode(js.encode('utf-8'))
+
+            h = hmac.new(self._secret.encode('utf-8'), data, hashlib.sha384)
+            signature = h.hexdigest()
+
+            headers = {
+                "X-BFX-APIKEY": self._key,
+                "X-BFX-SIGNATURE": signature,
+                "X-BFX-PAYLOAD": data
+            }
+
+            return url, {'headers': headers}
+
         else:
-            data = '/api/' + endpoint_path + self._nonce() + json.dumps(req)
+            nonce = str(int(round(time.time() * 1000)))
+            body = json.dumps(req)
+            data = '/api' + endpoint_path + nonce + body
 
-        h = hmac.new(self._secret.encode('utf-8'), data, hashlib.sha384)
-        signature = h.hexdigest()
+            h = hmac.new(self._secret.encode('utf-8'), data.encode('utf-8'), hashlib.sha384)
+            signature = h.hexdigest()
 
-        headers = {
-            "X-BFX-APIKEY": self._key,
-            "X-BFX-SIGNATURE": signature,
-            "X-BFX-PAYLOAD": data
-        }
-        if 'v2' in endpoint:
-            headers['content-type'] = 'application/json'
+            headers = {
+                "bfx-nonce": nonce,
+                "bfx-apikey": self._key,
+                "bfx-signature": signature,
+                "content-type": "application/json"
+            }
 
-        return url, {'headers': headers}
+            return url, {'headers': headers, 'data': body}
+
 
 
     def _public_query(self, endpoint, **kwargs):
@@ -243,13 +280,13 @@ class BitfinexRESTClient(RESTClientAPI):
     #                “exchange trailing-stop” / “exchange fill-or-kill”
 
     def _place_order(self, type, side, pair, size, price, stopPrice, **kwargs):
-        q = {'type': type, 'side': side.lower(), 'symbol': pair.upper(), 'amount': str(size)}
+        params = {'type': type, 'side': side.lower(), 'symbol': pair.upper(), 'amount': str(size)}
         if price:
-            q['price'] = format(price, '.8f')
+            params['price'] = format(price, '.8f')
         if stopPrice:
-            q['stopPrice'] = format(stopPrice, '.8f')
-        q.update(kwargs)
-        return self._private_query('/v1/order/new', params=q)
+            params['stopPrice'] = format(stopPrice, '.8f')
+        params.update(kwargs)
+        return self._private_query('/v1/order/new', params=params)
 
     @response_formatter(BitfinexFormatter.order, logger)
     def place_market_order(self, side, pair, size, **kwargs):
@@ -262,32 +299,39 @@ class BitfinexRESTClient(RESTClientAPI):
 
     @response_formatter(BitfinexFormatter.order_status, logger)
     def order(self, order_id, symbol, **kwargs):
-        q = {'order_id': order_id}
-        q.update(kwargs)
-        return self._private_query('/v1/order/status', params=q)
+        params = {'order_id': order_id}
+        params.update(kwargs)
+        return self._private_query('/v1/order/status', params=params)
 
     @response_formatter(BitfinexFormatter.multi_order_status, logger)
     def open_orders(self, **kwargs):
         return self._private_query('/v1/orders')
 
-    @response_formatter(BitfinexFormatter.multi_order_status, logger)
-    def all_orders(self, symbol, **kwargs):
-        q = {}
-        q.update(kwargs)
-        return self._private_query('/v1/orders/hist', params=q)
+    def open_orders_for(self, symbol, **kwargs):
+        orders = self.open_orders()
+        return [ order for order in orders if order['symbol'] == symbol.upper()]
+
+    @response_formatter(BitfinexFormatter.multi_order_status_v2, logger)
+    def all_orders(self, symbol=None, **kwargs):
+        params = {}
+        params.update(kwargs)
+        if symbol:
+            return self._private_query(f'/v2/auth/r/orders/t{symbol}/hist', params=params)
+        else:
+            return self._private_query(f'/v2/auth/r/orders/hist', params=params)
 
     @response_formatter(BitfinexFormatter.cancel, logger)
     def cancel_order(self, order_id, symbol, **kwargs):
-        q = {'order_id': int(order_id)}
-        q.update(kwargs)
-        return self._private_query('/v1/order/cancel', params=q)
+        params = {'order_id': int(order_id)}
+        params.update(kwargs)
+        return self._private_query('/v1/order/cancel', params=params)
 
 
     @response_formatter(BitfinexFormatter.my_trades, logger)
-    def my_trades(self, symbol, **kwargs):
-        q = {'symbol': symbol}
-        q.update(kwargs)
-        return self._private_query('/v1/mytrades', params=q)
+    def user_trades(self, symbol, **kwargs):
+        params = {'symbol': symbol}
+        params.update(kwargs)
+        return self._private_query('/v1/mytrades', params=params)
 
     @response_formatter(BitfinexFormatter.balance, logger)
     def balance(self, **kwargs):

@@ -302,14 +302,14 @@ class BinanceRESTClient(RESTClientAPI):
     #               TAKE_PROFIT, TAKE_PROFIT_LIMIT, LIMIT_MAKER
 
     def _place_order(self, type, side, pair, size, price, stopPrice, **kwargs):
-        q = {'type': type, 'side': side.upper(), 'symbol': pair.upper(), 'quantity': size}
+        params = {'type': type, 'side': side.upper(), 'symbol': pair.upper(), 'quantity': size}
         if price:
-            q['price'] = format(price, '.8f')
+            params['price'] = format(price, '.8f')
         if stopPrice:
-            q['stopPrice'] = format(stopPrice, '.8f')
+            params['stopPrice'] = format(stopPrice, '.8f')
 
-        q.update(kwargs)
-        return self._private_query('POST', '/api/v3/order', params=q)
+        params.update(kwargs)
+        return self._private_query('POST', '/api/v3/order', params=params)
 
 
     @response_formatter(BinanceFormatter.order, logger)
@@ -324,37 +324,37 @@ class BinanceRESTClient(RESTClientAPI):
 
     @response_formatter(BinanceFormatter.order_status, logger)
     def order(self, order_id, symbol, **kwargs):
-        q = {'symbol': symbol, 'orderId': int(order_id)}
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/order', params=q)
+        params = {'symbol': symbol, 'orderId': int(order_id)}
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/order', params=params)
 
 
     @response_formatter(BinanceFormatter.multi_order_status, logger)
     def open_orders(self, **kwargs):
-        q = {}
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/openOrders', params=q)
+        params = {}
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/openOrders', params=params)
 
 
     @response_formatter(BinanceFormatter.multi_order_status, logger)
     def all_orders(self, symbol, **kwargs):
-        q = {'symbol': symbol}
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/allOrders', params=q)
+        params = {'symbol': symbol}
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/allOrders', params=params)
 
 
     @response_formatter(BinanceFormatter.cancel, logger)
     def cancel_order(self, order_id, symbol, **kwargs):
-        q = {'symbol': symbol, 'orderId': int(order_id)}
-        q.update(kwargs)
-        return self._private_query('DELETE', '/api/v3/order', params=q)
+        params = {'symbol': symbol, 'orderId': int(order_id)}
+        params.update(kwargs)
+        return self._private_query('DELETE', '/api/v3/order', params=params)
 
 
     @response_formatter(BinanceFormatter.my_trades, logger)
-    def my_trades(self, symbol, **kwargs):
-        q = {'symbol': symbol}
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/myTrades', params=q)
+    def user_trades(self, symbol, **kwargs):
+        params = {'symbol': symbol}
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/myTrades', params=params)
 
 
     @response_formatter(BinanceFormatter.balance, logger)
@@ -373,18 +373,18 @@ class BinanceRESTClient(RESTClientAPI):
 
     @response_formatter(BinanceFormatter.multi_order_status, logger)
     def open_orders_for(self, symbol, **kwargs):
-        q = {'symbol': symbol}
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/openOrders', params=q)
+        params = {'symbol': symbol}
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/openOrders', params=params)
 
 
     @response_formatter(BinanceFormatter.multi_order_status, logger)
     def all_orders_since(self, symbol, order_id, **kwargs):
-        q = {'symbol': symbol}
+        params = {'symbol': symbol}
         if order_id:
-            q['orderId'] = int(order_id)  # return all orders starting from this one
-        q.update(kwargs)
-        return self._private_query('GET', '/api/v3/allOrders', params=q)
+            params['orderId'] = int(order_id)  # return all orders starting from this one
+        params.update(kwargs)
+        return self._private_query('GET', '/api/v3/allOrders', params=params)
 
 
     @response_formatter(BinanceFormatter.forward, logger)

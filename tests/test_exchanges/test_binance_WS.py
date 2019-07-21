@@ -1,4 +1,5 @@
 import unittest
+from os import path
 from collections import OrderedDict, deque
 from exchanges.WS.binance import *
 
@@ -329,3 +330,148 @@ class BinanceWSDataTestCase(unittest.TestCase):
         for i in range(len(snapshot_data)-1):
             self.assertTrue(snapshot_data[i][0] < snapshot_data[i+1][0],
                             'Order of trades violated for i = {}'.format(i))
+
+
+class BinanceWSPublicClientTestCase(unittest.TestCase):
+    client = None
+
+    @staticmethod
+    def handle_info(sender, data):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.client = BinanceWSClient()
+        cls.client.connect(BinanceWSPublicClientTestCase.handle_info)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.client.disconnect()
+
+
+    def test_ticker(self):
+        def handle_update(sender, data):
+            if sender != 'binance':
+                self.fail('Wrong sender for a Binance update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_ticker('BNBBTC', update_handler=handle_update)
+        ticker = self.client._data[stream]
+        self.assertIsNotNone(ticker)
+        self.assertIs(type(ticker.data), list)
+        self.assertEqual(len(self.client._subscriptions), 1)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_ticker('BNBBTC', update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_order_book(self):
+        def handle_update(sender, data):
+            if sender != 'binance':
+                self.fail('Wrong sender for a Binance update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_order_book('BNBBTC', update_handler=handle_update)
+        book = self.client._data[stream]
+        self.assertIsNotNone(book)
+        self.assertIs(type(book.asks), dict)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue('asks' in snapshot.keys())
+        self.assertTrue('bids' in snapshot.keys())
+        self.assertTrue(len(snapshot['asks']) > 0)
+        self.assertTrue(len(snapshot['bids']) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_order_book('BNBBTC', update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_trades(self):
+        def handle_update(sender, data):
+            if sender != 'binance':
+                self.fail('Wrong sender for a Binance update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_trades('BNBBTC', update_handler=handle_update)
+        trades = self.client._data[stream]
+        self.assertIsNotNone(trades)
+        self.assertIs(type(trades.trades), deque)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(len(snapshot) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_trades('BNBBTC', update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_candles(self):
+        def handle_update(sender, data):
+            if sender != 'binance':
+                self.fail('Wrong sender for a Binance update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_candles('BNBBTC', update_handler=handle_update)
+        candles = self.client._data[stream]
+        self.assertIsNotNone(candles)
+        self.assertIs(type(candles.candles), deque)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(len(snapshot) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_candles('BNBBTC', update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+class BinanceWSAuthenticatedClientTestCase(unittest.TestCase):
+    client = None
+
+    @staticmethod
+    def handle_info(sender, data):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        print('Testing Binance authenticated channels requires an API key!')
+        key_file = input("Full path to Binance key file: ")
+        if not key_file or not path.isfile(key_file):
+            cls.fail('Key file not valid!')
+
+        cls.client = BinanceWSClient()
+        cls.client.connect(BinanceWSPublicClientTestCase.handle_info)
+
+        cls.client.authenticate(key_file=key_file)
+        if not cls.client.authenticated:
+            cls.fail('Authentication failed using given key file!')
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.client.disconnect()
+
+    def test_authenticate(self):
+        self.assertIsNotNone(self.client._orders)
+        self.assertTrue(len(self.client._balances) > 0)

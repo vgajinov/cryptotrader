@@ -1,4 +1,6 @@
 import unittest
+import time
+from os import path
 from collections import OrderedDict, deque
 from exchanges.WS.bitfinex import *
 
@@ -174,3 +176,189 @@ class BitfinexWSDataTestCase(unittest.TestCase):
         for i in range(len(snapshot_data)-1):
             self.assertTrue(snapshot_data[i][0] < snapshot_data[i+1][0],
                             'Order of trades violated for i = {}'.format(i))
+
+
+class BitfinexWSPublicClientTestCase(unittest.TestCase):
+    client = None
+
+    @staticmethod
+    def handle_info(sender, data):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        print("Bitfinex websocket is completely asynchronous, so we use 1s sleep after each request (subscribe ...).")
+        print("This may fail because the wait was too short for the message to arrive!")
+        cls.client = BitfinexWSClient()
+        cls.client.connect(BitfinexWSPublicClientTestCase.handle_info)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.client.disconnect()
+
+
+    def test_ticker(self):
+        def handle_update(sender, data):
+            if sender != 'bitfinex':
+                self.fail('Wrong sender for a Bitfinex update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_ticker('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+        stream_id = [ key for (key, value) in self.client._subscriptions.items() if value == stream][0]
+        ticker = self.client._data[stream_id]
+        self.assertIsNotNone(ticker)
+        self.assertIs(type(ticker.data), list)
+        self.assertTrue(len(ticker.data) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_ticker('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream2 in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_order_book(self):
+        def handle_update(sender, data):
+            if sender != 'bitfinex':
+                self.fail('Wrong sender for a Bitfinex update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_order_book('BTCUSD', update_handler=handle_update)
+        time.sleep(3)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+        stream_id = [ key for (key, value) in self.client._subscriptions.items() if value == stream][0]
+        book = self.client._data[stream_id]
+        self.assertIsNotNone(book)
+        self.assertIs(type(book.asks), dict)
+        self.assertTrue(len(book.asks) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_order_book('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream2 in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_trades(self):
+        def handle_update(sender, data):
+            if sender != 'bitfinex':
+                self.fail('Wrong sender for a Bitfinex update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_trades('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+        stream_id = [ key for (key, value) in self.client._subscriptions.items() if value == stream][0]
+        trades = self.client._data[stream_id]
+        self.assertIsNotNone(trades)
+        self.assertIs(type(trades.trades), deque)
+        self.assertTrue(len(trades.trades) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_trades('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream2 in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+    def test_candles(self):
+        def handle_update(sender, data):
+            if sender != 'bitfinex':
+                self.fail('Wrong sender for a Bitfinex update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream, snapshot  = self.client.subscribe_candles('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+        stream_id = [ key for (key, value) in self.client._subscriptions.items() if value == stream][0]
+        candles = self.client._data[stream_id]
+        self.assertIsNotNone(candles)
+        self.assertIs(type(candles.candles), deque)
+        self.assertTrue(len(candles.candles) > 0)
+
+        # test that the second subscriber will reuse the stream already used by the first subscriber
+        stream2, snapshot2 = self.client.subscribe_candles('BTCUSD', update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 1)
+        self.assertTrue(stream2 in self.client._subscriptions.values())
+        self.assertEqual(len(self.client._data), 1)
+
+        # test that unsubscribe properly updates the client dictionaries
+        self.client.unsubscribe(stream, update_handler=handle_update)
+        time.sleep(1)
+        self.assertEqual(len(self.client._subscriptions), 0)
+        self.assertEqual(len(self.client._data), 0)
+
+
+class BitfinexWSAuthenticatedClientTestCase(unittest.TestCase):
+    client = None
+
+    @staticmethod
+    def handle_info(sender, data):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        print('Testing Bitfinex authenticated channels requires an API key!')
+        key_file = input("Full path to Bitfinex key file: ")
+        if not key_file or not path.isfile(key_file):
+            cls.fail('Key file not valid!')
+
+        cls.client = BitfinexWSClient()
+        cls.client.connect(BitfinexWSPublicClientTestCase.handle_info)
+
+        cls.client.authenticate(key_file=key_file)
+        time.sleep(2)
+        if not cls.client.authenticated:
+            cls.fail('Authentication failed using given key file!')
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.client.disconnect()
+
+    def test_authenticate(self):
+        self.assertIsNotNone(self.client._orders)
+        self.assertTrue(len(self.client._balances) > 0)
+
+    def test_balances(self):
+        def handle_update(sender, data):
+            if sender != 'bitfinex':
+                self.fail('Wrong sender for a Bitfinex update handler!')
+
+        # test the subscription is successful and that the data for the stream is properly setup
+        stream = self.client.subscribe_balances(update_handler=handle_update)
+        time.sleep(1)
+        self.assertIsNotNone(self.client._balances)
+        self.assertTrue(len(self.client._balances) > 0)
+

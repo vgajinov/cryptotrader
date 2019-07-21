@@ -18,7 +18,7 @@ class DummyRESTClient(RESTClientAPI):
     def candle_intervals(self): pass
     def candles(self, symbol, interval='1m', **kwargs): pass
     def historical_candles(self, symbol, interval, start_time, end_time, **kwargs): pass
-    def my_trades(self, symbol, **kwargs): pass
+    def user_trades(self, symbol, **kwargs): pass
     def name(self): pass
     def open_orders(self, **kwargs): pass
     def order(self, order_id, symbol, **kwargs): pass

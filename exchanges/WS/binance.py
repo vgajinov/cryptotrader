@@ -394,9 +394,9 @@ class BinanceWSClient(WSClientAPI):
         self.logger.info('Connecting to websocket for stream %s' % stream)
         # websocket.enableTrace(True)
         ws = websocket.WebSocketApp(WEBSOCKET_URI + stream,
-                                         on_message=self._on_message,
-                                         on_error=self._on_error,
-                                         on_close=self._on_close)
+                                    on_message=self._on_message,
+                                    on_error=self._on_error,
+                                    on_close=self._on_close)
         ws.on_open = self._on_open
         self._connections[stream] = ws
         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})  # TODO see if we can solve this using ssl
@@ -843,6 +843,7 @@ class BinanceWSClient(WSClientAPI):
         :param msg      order update message
         :returns None
         Processes received order updates and sends them to listeners via dispatcher.
+        If the order was executed it generates trades update.
         """
         order_id   = int(msg['i'])
         timestamp  = int(msg['T'])
@@ -881,6 +882,7 @@ class BinanceWSClient(WSClientAPI):
                     dispatcher.send(signal='orders', sender='binance', data=list(reversed(self._orders)))
             # add to trades
             self._trades.append(trade_update)
+            print('Sending trade update')
             dispatcher.send(signal='user_trades', sender='binance', data=list(reversed(self._trades)))
 
 

@@ -487,6 +487,7 @@ class BitfinexWSClient(WSClientAPI):
         :returns None
         :raises Exception
         """
+        # return if this is just a channel heartbeat
         if 'hb' in msg:
             return
 

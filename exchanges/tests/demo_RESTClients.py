@@ -1,5 +1,6 @@
 from exchanges.REST.bitfinex import BitfinexRESTClient
 from exchanges.REST.binance import  BinanceRESTClient
+from exchanges.exception import ExchangeException
 
 
 # =============================================================================
@@ -65,6 +66,7 @@ def test_binance_authenticated(file_path):
     # 1. Make sure to update the key file before running these tests
     # 2. Set the prices so that they do not get filled (i.e. buy price bellow current price)
     binance = BinanceRESTClient(key_file=file_path)
+    assert binance.authenticated
 
     print('='*100)
     print('   TESTING Binance authenticated endpoints')
@@ -79,7 +81,7 @@ def test_binance_authenticated(file_path):
     print(binance.balance()['BTC'])
     print()
     print('MY TRADES\n' + '-'*30)
-    print(binance.my_trades('BNBBTC', limit=10))
+    print(binance.user_trades('BNBBTC', limit=10))
 
     print()
     print('PLACE LIMIT ORDER\n' + '-'*30)
@@ -87,7 +89,7 @@ def test_binance_authenticated(file_path):
     print(order1)
     print()
     print('PLACE LIMIT ORDER\n' + '-'*30)
-    order2 = binance.place_limit_order('buy', 'trxbtc', 1000, 0.00000280)
+    order2 = binance.place_limit_order('buy', 'trxbtc', 1000, 0.00000085)
     print(order2)
     print()
     print('PLACE LIMIT ORDER\n' + '-'*30)
@@ -124,27 +126,6 @@ def test_binance_authenticated(file_path):
     print()
     print('CANCEL ORDER\n' + '-'*30)
     print(binance.cancel_order(order3['orderId'], order3['symbol']))
-
-    # This order will be executed immediately
-    # print()
-    # print('PLACE MARKET ORDER\n' + '-'*30)
-    # morder = binance.place_market_order('buy', 'bnbbtc', 1)
-    # print(morder)
-    # print()
-    # print('GET A SINGLE ORDER STATUS\n' + '-'*30)
-    # res = binance.order(morder['orderId'], 'BNBBTC')
-    # for r in res.items(): print(r)
-
-    # These order types do not seem to work!
-    #
-    # print()
-    # print('PLACE STOP-LOSS-LIMIT ORDER\n' + '-'*30)
-    # order = binance.place_stoploss_order('buy', 'trxbtc', 1000, 0.00000280)
-    # print(order)
-    # print()
-    # print('PLACE STOP-LOSS-LIMIT ORDER\n' + '-'*30)
-    # order = binance.place_stoplosslimit_order('buy', 'trxbtc', 1000, 0.00000280, 0.00000275)
-    # print(order)
 
 
 def test_binance_listen_key(file_path):
@@ -230,79 +211,87 @@ def test_bitfinex():
 def test_bitfinex_authenticated(file_path):
     # 1. Make sure to update the key file before running these tests
     # 2. Set the prices so that they do not get filled (i.e. buy price bellow current price)
-    bitfinex = BitfinexRESTClient(file_path)
+    try:
+        bitfinex = BitfinexRESTClient(key_file=file_path)
+        assert bitfinex.authenticated
 
-    print('='*100)
-    print('   TESTING Bitfinex authenticated endpoints')
-    print('=' * 100)
-    print()
+        print()
+        print('='*100)
+        print('   TESTING Bitfinex authenticated endpoints')
+        print('=' * 100)
+        print()
 
-    print()
-    print('BALANCES\n' + '-'*30)
-    res = bitfinex.balance()
-    for r in res.items():
-        print(r)
-    print()
-    print('MY TRADES\n' + '-'*30)
-    res = bitfinex.my_trades('btcusd', limit_trades=10)
-    for r in res:
-        print(r)
+        print()
+        print('BALANCES\n' + '-'*30)
+        res = bitfinex.balance()
+        for r in res.items():
+            print(r)
 
-    print()
-    print('PLACE LIMIT ORDER\n' + '-'*30)
-    order1 = bitfinex.place_limit_order('sell', 'btcusd', 0.01, 123000)
-    print(order1)
-    print()
-    print('PLACE LIMIT ORDER\n' + '-'*30)
-    order2 = bitfinex.place_limit_order('buy', 'ltcbtc', 0.1, 0.000002)
-    print(order2)
-    print()
-    print('PLACE LIMIT ORDER\n' + '-'*30)
-    order3 = bitfinex.place_limit_order('buy', 'ethbtc', 0.1, 0.0001)
-    print(order3)
+        print()
+        print('MY TRADES\n' + '-'*30)
+        res = bitfinex.user_trades('btcusd', limit_trades=10)
+        for r in res: print(r)
+        print()
+        print('GET ALL ORDERS (history)\n' + '-'*30)
+        res = bitfinex.all_orders(None, limit=10)
+        for r in res: print(r)
+        print()
+        print('GET ALL ORDERS FOR A SYMBOL (history - not active orders)\n' + '-'*30)
+        res = bitfinex.all_orders('BTCUSD', limit=10)
+        for r in res: print(r)
 
-    print()
-    print('GET A SINGLE ORDER STATUS\n' + '-'*30)
-    res = bitfinex.order(order1['orderId'], None)
-    for r in res.items(): print(r)
-    print()
-    print('GET ALL OPEN ORDERS\n' + '-'*30)
-    res = bitfinex.open_orders()
-    for r in res: print(r)
-    print()
-    print('GET ALL ORDERS (history)\n' + '-'*30)
-    res = bitfinex.all_orders(None, limit=10)
-    for r in res: print(r)
+        print()
+        print('PLACE LIMIT ORDER\n' + '-'*30)
+        order1 = bitfinex.place_limit_order('sell', 'btcusd', 0.005, 123000)
+        print(order1)
+        print()
+        print('PLACE LIMIT ORDER\n' + '-'*30)
+        order2 = bitfinex.place_limit_order('buy', 'ltcbtc', 0.1, 0.000002)
+        print(order2)
+        print()
+        print('PLACE LIMIT ORDER\n' + '-'*30)
+        order3 = bitfinex.place_limit_order('buy', 'ethbtc', 0.1, 0.0001)
+        print(order3)
 
-    # TODO: implement from V2
-    # print()
-    # print('GET ALL OPEN ORDERS FOR A SYMBOL\n' + '-'*30)
-    # res = bitfinex.open_orders(order1['symbol'])
-    # for r in res: print(r)
-    # print()
-    # print('GET ALL ORDERS FOR A SYMBOL (history)\n' + '-'*30)
-    # res = bitfinex.all_orders(order1['symbol'], order1['orderId'])
-    # for r in res: print(r)
+        print()
+        print('GET A SINGLE ORDER STATUS\n' + '-'*30)
+        res = bitfinex.order(order1['orderId'], None)
+        for r in res.items(): print(r)
+        print()
+        print('GET ALL OPEN ORDERS\n' + '-'*30)
+        res = bitfinex.open_orders()
+        for r in res: print(r)
 
-    print()
-    print('CANCEL ORDER\n' + '-'*30)
-    print(bitfinex.cancel_order(order1['orderId'], order1['symbol']))
-    print()
-    print('CANCEL ALL\n' + '-'*30)
-    print(bitfinex.cancel_all_orders())
+        print()
+        print('CANCEL ORDER\n' + '-'*30)
+        print(bitfinex.cancel_order(order1['orderId'], order1['symbol']))
+        print()
+        print('CANCEL ALL\n' + '-'*30)
+        print(bitfinex.cancel_all_orders())
 
-    print()
-    print('PLACE LIMIT ORDER\n' + '-'*30)
-    order1 = bitfinex.place_limit_order('sell', 'btcusd', 0.01, 123000)
-    print(order1)
-    print()
-    print('PLACE LIMIT ORDER\n' + '-'*30)
-    order2 = bitfinex.place_limit_order('buy', 'ltcbtc', 0.1, 0.000002)
-    print(order2)
-    print()
-    print('CANCEL MULTIPLE ORDERS\n' + '-'*30)
-    print(bitfinex.cancel_multiple_orders([order1['orderId'], order2['orderId']]))
+        print()
+        print('PLACE LIMIT ORDER\n' + '-'*30)
+        order1 = bitfinex.place_limit_order('sell', 'btcusd', 0.005, 123000)
+        print(order1)
+        print()
+        print('PLACE LIMIT ORDER\n' + '-'*30)
+        order2 = bitfinex.place_limit_order('buy', 'ltcbtc', 0.1, 0.000002)
+        print(order2)
+        print()
+        print('CANCEL MULTIPLE ORDERS\n' + '-'*30)
+        print(bitfinex.cancel_multiple_orders([order1['orderId'], order2['orderId']]))
+        print()
+        print('GET ALL OPEN ORDERS\n' + '-'*30)
+        res = bitfinex.open_orders()
+        for r in res: print(r)
+        print()
+    except ExchangeException as e:
+        print(e)
 
+
+# =============================================================================
+# Main
+# =============================================================================
 
 if __name__ == '__main__':
     choices = "Demo REST clients:\n"

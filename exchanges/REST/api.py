@@ -62,8 +62,26 @@ class RESTClientAPI(ABC):
         :param kwargs:
         :return:
         """
-        r = requests.request(*args, **kwargs)
-        return APIResponse(r)
+        response = requests.request(*args, **kwargs)
+        return APIResponse(response)
+
+    @staticmethod
+    def _prepared_request(*args, **kwargs):
+        timeout = kwargs.pop('timeout')
+        request = requests.Request(*args, **kwargs)
+        prepared = request.prepare()
+        RESTClientAPI._print_request(prepared)
+        response = requests.Session().send(prepared, timeout=timeout)
+        return APIResponse(response)
+
+    @staticmethod
+    def _print_request(req):
+        print('{}\n{}\n{}\n\n{}'.format(
+            '-----------REQUEST-----------',
+            req.method + ' ' + req.url,
+            '\n'.join('{}: {}'.format(k, v) for k, v in req.headers.items()),
+            req.body,
+        ))
 
     def _load_key(self, path):
         """Load key and secret from file.
@@ -73,9 +91,9 @@ class RESTClientAPI(ABC):
             self._key = f.readline().strip()
             self._secret = f.readline().strip()
 
-    def _query(self, method_verb, endpoint, authenticate=False, *args, **kwargs):
+    def _query(self, request_method, endpoint, authenticate=False, *args, **kwargs):
         """Makes a query to an exchange. Defaults to unauthenticated query.
-        :param method_verb:    valid request type (PUT, GET, POST etc)
+        :param request_method: valid request type (PUT, GET, POST etc)
         :param endpoint:       endpoint path for the resource to query.
         :param authenticate:   Flag to determine whether or not a signature is required.
         :param args:           Optional args for requests.request()
@@ -88,15 +106,18 @@ class RESTClientAPI(ABC):
             endpoint_path = endpoint
 
         url = urljoin(self._uri, endpoint_path)
-        if authenticate:  # sign off kwargs and url before sending request
-            url, request_kwargs = self._sign(url, endpoint, endpoint_path, method_verb, *args, **kwargs)
+        if authenticate:
+            # sign off kwargs and url before sending the request
+            self._log.debug(f"Raw query parameters (before encoding): {kwargs}")
+            url, request_kwargs = self._sign(url, endpoint, endpoint_path, request_method, *args, **kwargs)
         else:
             request_kwargs = kwargs
 
-        self._log.debug("Making a request to: %s, kwargs: %s", url, request_kwargs)
-        req = self._api_request(method_verb, url, timeout=self.timeout, **request_kwargs)
-        self._log.debug("%s request made to %s, with body %s. Status code %s",
-                        req.request.method, req.request.url, req.request.body, req.status_code)
+        self._log.debug(f"Making a request to: {url}, kwargs: {request_kwargs}")
+        req = self._api_request(request_method, url, timeout=self.timeout, verify=True, **request_kwargs)
+        self._log.debug(f"{req.request.method} request made to {req.request.url}, with body {req.request.body}." +
+                        f" Status code {req.status_code}")
+
         return req
 
     @abstractmethod
@@ -260,6 +281,15 @@ class RESTClientAPI(ABC):
         pass
 
     @abstractmethod
+    def open_orders_for(self, symbol, **kwargs):
+        """Get all open orders for a given symbol.
+        :param symbol:  Exchange pair for which the request is made
+        :param kwargs:  Exchange specific additional parameters.
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def all_orders(self, symbol, **kwargs):
         """Get all orders for a given symbol.
         :param symbol:  A trading symbol (pair).
@@ -274,12 +304,15 @@ class RESTClientAPI(ABC):
         :param order_id:  An id of an order to cancel.
         :param symbol:    A trading symbol (pair).
         :param kwargs:    Exchange specific additional parameters.
-        :return:
+        :return: list(dict)
+        Returns user trades for a given symbol in the form of the list of dictionaries.
+        Each trade has to have these 4 keys (additional keys are allowed):
+            'orderId', 'price', 'amount' 'side'
         """
         pass
 
     @abstractmethod
-    def my_trades(self, symbol, **kwargs):
+    def user_trades(self, symbol, **kwargs):
         """Get all trades executed by a user for a given symbol.
         :param symbol:  A trading symbol (pair).
         :param kwargs:  Exchange specific additional parameters.
