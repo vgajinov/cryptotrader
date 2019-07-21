@@ -59,4 +59,5 @@ class Indicator(QtChart.QChart):
     def clear(self):
         """Clears the indicator values."""
         for series in self.series():
-            series.clear()
+            if not isinstance(series, QtChart.QAreaSeries):
+                series.clear()
