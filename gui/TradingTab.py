@@ -289,8 +289,7 @@ class TradingTab(QtWidgets.QWidget):
         self.tradesTable.setSymbolDetails(symbol_details)
         self.numericOrderBookWidget.setSymbolDetails(symbol_details)
         if self.rest_client.authenticated:
-            self.placeOrderWidget.setSymbolDetails(base_currency, quote_currency, symbol_details,
-                                                   self.all_tickers[pair])
+            self.placeOrderWidget.setSymbolDetails(base_currency, quote_currency, symbol_details)
 
         self._subscribe_ws_public_channels()
 

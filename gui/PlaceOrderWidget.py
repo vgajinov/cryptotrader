@@ -4,22 +4,24 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from .InfoMessageBox import InfoMessageBox
 
 
-
 class InputValidator(QtGui.QDoubleValidator):
-    def __init__(self, minAmount, maxAmount, precision):
-        super(InputValidator, self).__init__(minAmount, maxAmount, precision)
-        self.baseValidator = QtGui.QDoubleValidator(minAmount, maxAmount, precision)
+    """Validator for the price and amount fields.
+    Checks that values in the input fields fall within limits set by the exchange.
+    """
+    def __init__(self, min_amount, max_amount, precision):
+        super().__init__(min_amount, max_amount, precision)
+        self.baseValidator = QtGui.QDoubleValidator(min_amount, max_amount, precision)
         self.setNotation(QtGui.QDoubleValidator.StandardNotation)
 
     def validate(self, p_str, p_int):
-        baseValidate = self.baseValidator.validate(p_str, p_int)
-        if baseValidate[0] == QtGui.QDoubleValidator.Invalid:
-            return baseValidate
+        base_validate = self.baseValidator.validate(p_str, p_int)
+        if base_validate[0] == QtGui.QDoubleValidator.Invalid:
+            return base_validate
 
         if '.' in p_str:
             if len(p_str.split('.')[1]) > self.decimals():
-                return (QtGui.QDoubleValidator.Invalid, p_str[:-1], p_int-1)
-        return (QtGui.QValidator.Acceptable, p_str, p_int)
+                return QtGui.QDoubleValidator.Invalid, p_str[:-1], p_int-1
+        return QtGui.QValidator.Acceptable, p_str, p_int
 
 
 # ------------------------------------------------------------------------------------
@@ -27,6 +29,7 @@ class InputValidator(QtGui.QDoubleValidator):
 # ------------------------------------------------------------------------------------
 
 class AmountLineEdit(QtWidgets.QLineEdit):
+    """Custom QLineEdit for the amount input fields."""
     maxValue  = ''
     precision = 8
 
@@ -42,7 +45,7 @@ class AmountLineEdit(QtWidgets.QLineEdit):
     def focusInEvent(self, event):
         if self.maxValue != '':
             self.maxLabel.setText( 'max:   {:.{prec}f}'.format(float(self.maxValue), prec=self.precision) )
-            self.maxLabel.setStyleSheet('color: blue;')
+            self.maxLabel.setStyleSheet('color: rgb(200,200,0);')
         event.accept()
 
     def focusOutEvent(self, event):
@@ -59,15 +62,16 @@ class OrderSide(Enum):
     SELL = 1
 
 class OrderFormWidget(QtWidgets.QWidget):
+    """Input form widget for placing buy or sell orders."""
     amountPrecision = 8
     pricePrecision  = 8
     orderSide       = OrderSide.BUY
 
-    def __init__(self, orderSide, name):
+    def __init__(self, order_side, name):
         super(OrderFormWidget, self).__init__()
 
         self.setObjectName(name)
-        self.orderSide = orderSide
+        self.orderSide = order_side
 
         self.infoLabel = QtWidgets.QLabel()
         self.infoLabel.setStyleSheet('font: bold 16px;')
@@ -83,7 +87,7 @@ class OrderFormWidget(QtWidgets.QWidget):
         amountLabel = QtWidgets.QLabel('Amount:')
         self.amountInput = AmountLineEdit()
 
-        self.maxAmountLabel =  QtWidgets.QLabel('max amount')
+        self.maxAmountLabel = QtWidgets.QLabel('max amount')
         self.maxAmountLabel.setStyleSheet('color: black;')
         self.maxAmountLabel.setFixedHeight(10)
         self.amountInput.setMaxAmountLabel(self.maxAmountLabel)
@@ -94,8 +98,8 @@ class OrderFormWidget(QtWidgets.QWidget):
 
         self.executeButton = QtWidgets.QPushButton()
         self.executeButton.setMinimumHeight(40)
-        self.executeButton.setText(orderSide.name)
-        self.executeButton.setObjectName(orderSide.name.lower() + 'Button')
+        self.executeButton.setText(order_side.name)
+        self.executeButton.setObjectName(order_side.name.lower() + 'Button')
 
         formLayout = QtWidgets.QGridLayout()
         self.setLayout(formLayout)
@@ -114,8 +118,8 @@ class OrderFormWidget(QtWidgets.QWidget):
 
         formLayout.setMargin(15)
         formLayout.setVerticalSpacing(10)
-        formLayout.setColumnStretch(0 ,2)
-        formLayout.setColumnStretch(1 ,3)
+        formLayout.setColumnStretch(0, 2)
+        formLayout.setColumnStretch(1, 3)
         formLayout.setRowStretch(0, 2)
         formLayout.setRowStretch(6, 2)
 
@@ -124,20 +128,20 @@ class OrderFormWidget(QtWidgets.QWidget):
 
 
     def dataChange(self):
+        """Automatically updates the total value when the price or the amount inputs are changed."""
         if self.priceInput.text() != '':
             price = float(self.priceInput.text())
             if price != 0 and self.balanceAmountLabel.text() != '':
                 if self.orderSide == OrderSide.BUY:
-                    maxAmount = float(self.balanceAmountLabel.text()) / float(self.priceInput.text())
+                    max_amount = float(self.balanceAmountLabel.text()) / float(self.priceInput.text())
                 else:
-                    maxAmount = float(self.balanceAmountLabel.text())
-                self.amountInput.maxValue = '{:.{prec}f}'.format(maxAmount, prec=self.pricePrecision)
-
+                    max_amount = float(self.balanceAmountLabel.text())
+                self.amountInput.maxValue = '{:.{precision}f}'.format(max_amount, precision=self.pricePrecision)
 
             if self.amountInput.text() != '':
                 self.totalValueLabel.setText(
-                    '{:.{prec}f}'.format( float(self.priceInput.text()) * float(self.amountInput.text()),
-                                          prec=self.pricePrecision )
+                    '{:.{precision}f}'.format( float(self.priceInput.text()) * float(self.amountInput.text()),
+                                               precision=self.pricePrecision )
                 )
 
         try:
@@ -149,19 +153,23 @@ class OrderFormWidget(QtWidgets.QWidget):
             pass
 
 
-    def setPrecision(self, minAmount, pricePrec):
-        minPrice = float(minAmount) * pow(10, pricePrec)
-        amountPrec = 0
-        if '.' in str(minAmount):
-            leftDigits, rightDigits = str(minAmount).split('.')
-            amountPrec = len(rightDigits.rstrip('0'))
+    def setPrecision(self, min_amount, price_precision):
+        """Sets the price and amount limits for the input fields.
+        These values are used to setup the input validators.
+        """
+        min_price = float(min_amount) * pow(10, price_precision)
+        amount_precision = 0
+        if '.' in str(min_amount):
+            _, decimals = str(min_amount).split('.')
+            amount_precision = len(decimals.rstrip('0'))
 
-        self.priceInput.setValidator(InputValidator(minPrice, 100000.0 * minPrice, pricePrec))
-        self.amountInput.setValidator(InputValidator(float(minAmount), 100000.0 * float(minAmount), amountPrec))
-        self.amountInput.setPrecision(amountPrec)
+        self.priceInput.setValidator(InputValidator(min_price, 100000.0 * min_price, price_precision))
+        self.amountInput.setValidator(InputValidator(float(min_amount), 100000.0 * float(min_amount), amount_precision))
+        self.amountInput.setPrecision(amount_precision)
 
 
     def clear(self):
+        """Clears the input fields and derived values labels."""
         self.priceInput.blockSignals(True)
         self.amountInput.blockSignals(True)
         self.priceInput.clear()
@@ -171,19 +179,17 @@ class OrderFormWidget(QtWidgets.QWidget):
         self.amountInput.blockSignals(False)
 
 
-
-
 # ------------------------------------------------------------------------------------
 # PlaceOrderWidget
 # ------------------------------------------------------------------------------------
 
 class PlaceOrderWidget(QtWidgets.QWidget):
+    """The main widget for placing orders."""
     restClient     = None
     baseCurrency   = ''
     quoteCurrency  = ''
     symbol_details = None
     balances       = None
-
 
     def __init__(self):
         super(PlaceOrderWidget, self).__init__()
@@ -246,12 +252,12 @@ class PlaceOrderWidget(QtWidgets.QWidget):
         marketOrderLayout.setSpacing(10)
 
 
-
     # ------------------------------------------------------------------------------------
     # Event Handlers & Slots
     # ------------------------------------------------------------------------------------
 
     def placeOrder(self):
+        """Constructs and sends the new order to execute via REST exchange api."""
         sender = self.sender()
 
         if sender.objectName() == 'buyButton':
@@ -259,7 +265,8 @@ class PlaceOrderWidget(QtWidgets.QWidget):
         elif sender.objectName() == 'sellButton':
             side = 'SELL'
         else:
-            print('Unknown place order sender!')
+            msg = InfoMessageBox('Unknown place order request!\nExpected BUY or SELL.')
+            msg.exec()
             return
 
         pair = self.baseCurrency + self.quoteCurrency
@@ -282,6 +289,7 @@ class PlaceOrderWidget(QtWidgets.QWidget):
     # ------------------------------------------------------------------------------------
 
     def updateInfoLabels(self):
+        """Sets concrete quote and base currencies to info labels."""
         self.limitOrderBuyWidget.infoLabel.setText('Buy  {}'.format(self.baseCurrency))
         self.limitOrderSellWidget.infoLabel.setText('Sell  {}'.format(self.baseCurrency))
         self.marketOrderBuyWidget.infoLabel.setText('Buy  {}'.format(self.baseCurrency))
@@ -289,36 +297,38 @@ class PlaceOrderWidget(QtWidgets.QWidget):
 
 
     def updatePrecisions(self):
-        minAmount = self.symbol_details['minAmount']
-        pricePrec = None
-        pPrec = self.symbol_details.get('minPrice', None)
-        if pPrec is not None:
-            pricePrec = int(abs(math.log10(float(pPrec))))
+        """Updates the precisions in specific order forms."""
+        min_amount = self.symbol_details['minAmount']
+        price_precision = self.symbol_details.get('minPrice', None)
+        if price_precision is not None:
+            price_precision = int(abs(math.log10(float(price_precision))))
         else:
-            pricePrec = 8
+            price_precision = 8
 
-        self.limitOrderBuyWidget.setPrecision(minAmount, pricePrec)
-        self.limitOrderSellWidget.setPrecision(minAmount, pricePrec)
-        self.marketOrderBuyWidget.setPrecision(minAmount, pricePrec)
-        self.marketOrderSellWidget.setPrecision(minAmount, pricePrec)
+        self.limitOrderBuyWidget.setPrecision(min_amount, price_precision)
+        self.limitOrderSellWidget.setPrecision(min_amount, price_precision)
+        self.marketOrderBuyWidget.setPrecision(min_amount, price_precision)
+        self.marketOrderSellWidget.setPrecision(min_amount, price_precision)
 
 
-    def updateBalanceLables(self):
+    def updateBalanceLabels(self):
+        """Sets and updates quote and base balance labels."""
         if self.baseCurrency and self.quoteCurrency and self.balances:
-            quoteBalance = self.balances.get(self.quoteCurrency, '0.0')
-            baseBalance  = self.balances.get(self.baseCurrency, '0.0')
+            quote_balance = self.balances.get(self.quoteCurrency, '0.0')
+            base_balance  = self.balances.get(self.baseCurrency, '0.0')
             self.limitOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-            self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quoteBalance))
+            self.limitOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quote_balance))
             self.marketOrderBuyWidget.balanceLabel.setText('{} Balance:'.format(self.quoteCurrency))
-            self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quoteBalance))
+            self.marketOrderBuyWidget.balanceAmountLabel.setText('{}'.format(quote_balance))
 
             self.limitOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-            self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(baseBalance))
+            self.limitOrderSellWidget.balanceAmountLabel.setText('{}'.format(base_balance))
             self.marketOrderSellWidget.balanceLabel.setText('{} Balance:'.format(self.baseCurrency))
-            self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(baseBalance))
+            self.marketOrderSellWidget.balanceAmountLabel.setText('{}'.format(base_balance))
 
 
     def clear(self):
+        """Clears the current state of the widget."""
         self.limitOrderBuyWidget.clear()
         self.limitOrderSellWidget.clear()
         self.marketOrderBuyWidget.clear()
@@ -329,25 +339,28 @@ class PlaceOrderWidget(QtWidgets.QWidget):
     # Data update methods (from parent)
     # ------------------------------------------------------------------------------------
 
-    def setSymbolDetails(self, base_currency, quote_currency, symbol_details, ticker):
+    def setSymbolDetails(self, base_currency, quote_currency, symbol_details):
+        """Sets the mandatory details for a selected exchange pair. """
         self.baseCurrency = base_currency
         self.quoteCurrency = quote_currency
         self.symbol_details = symbol_details
 
         self.updateInfoLabels()
         self.updatePrecisions()
-        self.updateBalanceLables()
-
+        self.updateBalanceLabels()
 
     def setTicker(self, ticker):
-        self.marketOrderBuyWidget.priceInput.setText('{}'.format(ticker[2]))
-        self.marketOrderSellWidget.priceInput.setText('{}'.format(ticker[0]))
+        """Updates the ticker value which is used for validation."""
+        self.marketOrderBuyWidget.priceInput.setText(f'{ticker[2]}')
+        self.marketOrderSellWidget.priceInput.setText(f'{ticker[0]}')
 
     def setBalances(self, balances):
+        """Sets the quote and base balances for a selected exchange pair."""
         self.balances = balances
-        self.updateBalanceLables()
+        self.updateBalanceLabels()
 
     def setClient(self, client):
+        """Sets the reference to the REST exchange client."""
         self.restClient = client
 
 

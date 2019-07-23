@@ -107,6 +107,12 @@ OrderBookTableView::item {
     margin: 0px;
 }
 
+#openOrdersTable,
+#historyTable
+{
+    selection-background-color: black;
+}
+
 #openOrdersTable QHeaderView::section,
 #historyTable QHeaderView::section
 {
@@ -153,7 +159,7 @@ QLineEdit {
 #disabledInput {
     border: none;
     padding: 3px 3px 3px 0px;
-    color: rgb(167,174,186,128);
+    color: rgb(167,174,186,192);
 }
 
 
@@ -168,7 +174,7 @@ QLabel {
 }
 
 #grayedLabel {
-    color: rgb(167,174,186,128);
+    color: rgb(0,128,255);
 }
 
 #totalLabel {
@@ -213,6 +219,12 @@ QLabel {
     margin-top: 4px;
     margin-bottom: 4px;
     margin-right: 3px;
+    outline: none;
+    padding: 2px;
+}
+
+#cancelButton:pressed {
+    background-color: rgb(100,0,0);
 }
 
 
@@ -343,7 +355,7 @@ QComboBox::drop-down {
     border: 1px solid rgb(180,0,0);
     background-color: rgb(100,0,0);
     height: 12;
-    width: 16;
+    width: 20;
     margin-right:0px;
 }
 

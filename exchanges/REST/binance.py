@@ -213,7 +213,7 @@ class BinanceRESTClient(RESTClientAPI):
         # add receive window time to compensate for clocks being out of sync
         params.append(('recvWindow', 60000))
         # add timestamp (required)
-        params.append(('timestamp', int((time.time()) * 1000)))
+        params.append(('timestamp', int(round(time.time() * 1000))))
 
         # generate  and add signature
         query_string = '&'.join(["{}={}".format(d[0], d[1]) for d in params])
