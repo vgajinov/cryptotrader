@@ -669,7 +669,7 @@ class BitfinexWSClient(WSClientAPI):
             self.logger.info('Subscribing to {} for {} ...'.format(channel_type, symbol))
             self._ws.send(payload)
         else:
-            self.logger.info('Already subscribed to {} for {}.'.format(symbol, channel_type))
+            self.logger.info('Already subscribed to {} for {}.'.format(channel_type, symbol))
             channel_id = self._get_channel_id(channel_name)
             if channel_id:
                 return self._data[channel_id].snapshot()
@@ -818,6 +818,8 @@ class BitfinexWSClient(WSClientAPI):
         """
         self.logger.info('Subscribing to orders channel')
         dispatcher.connect(update_handler, signal='orders', sender='bitfinex')
+        if self._orders:
+            dispatcher.send(signal='orders', sender='bitfinex', data=list(reversed(self._orders)))
         return 'orders'
 
     def subscribe_user_trades(self, update_handler):
@@ -827,6 +829,8 @@ class BitfinexWSClient(WSClientAPI):
         """
         self.logger.info('Subscribing to user trades channel')
         dispatcher.connect(update_handler, signal='user_trades', sender='bitfinex')
+        if self._trades:
+            dispatcher.send(signal='user_trades', sender='bitfinex', data=list(reversed(self._trades)))
         return 'user_trades'
 
     def subscribe_balances(self, update_handler):
@@ -836,6 +840,8 @@ class BitfinexWSClient(WSClientAPI):
         """
         self.logger.info('Subscribing to balances channel')
         dispatcher.connect(update_handler, signal='balances', sender='bitfinex')
+        if self._balances:
+            dispatcher.send(signal='balances', sender='bitfinex', data=self._balances)
         return 'balances'
 
 

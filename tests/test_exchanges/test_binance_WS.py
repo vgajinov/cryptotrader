@@ -1,5 +1,6 @@
 import unittest
 from os import path
+import time
 from collections import OrderedDict, deque
 from exchanges.WS.binance import *
 
@@ -346,6 +347,7 @@ class BinanceWSPublicClientTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        time.sleep(2)
         cls.client.disconnect()
 
 
@@ -365,6 +367,7 @@ class BinanceWSPublicClientTestCase(unittest.TestCase):
         stream2, snapshot2 = self.client.subscribe_ticker('BNBBTC', update_handler=handle_update)
         self.assertEqual(len(self.client._subscriptions), 1)
         self.assertEqual(len(self.client._data), 1)
+        time.sleep(2)
 
         # test that unsubscribe properly updates the client dictionaries
         self.client.unsubscribe(stream, update_handler=handle_update)
@@ -392,6 +395,7 @@ class BinanceWSPublicClientTestCase(unittest.TestCase):
         stream2, snapshot2 = self.client.subscribe_order_book('BNBBTC', update_handler=handle_update)
         self.assertEqual(len(self.client._subscriptions), 1)
         self.assertEqual(len(self.client._data), 1)
+        time.sleep(2)
 
         # test that unsubscribe properly updates the client dictionaries
         self.client.unsubscribe(stream, update_handler=handle_update)
@@ -416,6 +420,7 @@ class BinanceWSPublicClientTestCase(unittest.TestCase):
         stream2, snapshot2 = self.client.subscribe_trades('BNBBTC', update_handler=handle_update)
         self.assertEqual(len(self.client._subscriptions), 1)
         self.assertEqual(len(self.client._data), 1)
+        time.sleep(2)
 
         # test that unsubscribe properly updates the client dictionaries
         self.client.unsubscribe(stream, update_handler=handle_update)
@@ -440,6 +445,7 @@ class BinanceWSPublicClientTestCase(unittest.TestCase):
         stream2, snapshot2 = self.client.subscribe_candles('BNBBTC', update_handler=handle_update)
         self.assertEqual(len(self.client._subscriptions), 1)
         self.assertEqual(len(self.client._data), 1)
+        time.sleep(2)
 
         # test that unsubscribe properly updates the client dictionaries
         self.client.unsubscribe(stream, update_handler=handle_update)
@@ -456,17 +462,18 @@ class BinanceWSAuthenticatedClientTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        print('Testing Binance authenticated channels requires an API key!')
-        key_file = input("Full path to Binance key file: ")
-        if not key_file or not path.isfile(key_file):
-            cls.fail('Key file not valid!')
+        key_file = 'exchanges/api_keys/binance.key'
+        if not path.exists(key_file) or not path.isfile(key_file):
+            print("Testing Binance authenticated channels requires an API key!")
+            print("Please, provide the key file named 'binance.key' in the exchanges/api_keys folder.")
+            raise unittest.SkipTest('Key file not found or invalid!')
 
         cls.client = BinanceWSClient()
         cls.client.connect(BinanceWSPublicClientTestCase.handle_info)
 
         cls.client.authenticate(key_file=key_file)
         if not cls.client.authenticated:
-            cls.fail('Authentication failed using given key file!')
+            raise unittest.SkipTest('Authentication failed using given key file!')
 
     @classmethod
     def tearDownClass(cls) -> None:

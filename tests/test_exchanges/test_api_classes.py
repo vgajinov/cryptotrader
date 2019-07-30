@@ -19,8 +19,10 @@ class DummyRESTClient(RESTClientAPI):
     def candles(self, symbol, interval='1m', **kwargs): pass
     def historical_candles(self, symbol, interval, start_time, end_time, **kwargs): pass
     def user_trades(self, symbol, **kwargs): pass
-    def name(self): pass
+    @staticmethod
+    def name(): return "DummyRESTClient"
     def open_orders(self, **kwargs): pass
+    def open_orders_for(self, symbol, **kwargs): pass
     def order(self, order_id, symbol, **kwargs): pass
     def order_book(self, symbol, **kwargs): pass
     def ping(self): pass
@@ -40,7 +42,8 @@ class DummyWSClient(WSClientAPI):
     def authenticate(self, key=None, secret=None, key_file=None): pass
     def connect(self, info_handler=None): pass
     def disconnect(self): pass
-    def name(self): pass
+    @staticmethod
+    def name(): return "DummyWSClient"
     def subscribe(self, **kwargs): pass
     def subscribe_balances(self, update_handler): pass
     def subscribe_candles(self, symbol, interval='1m', update_handler=None): pass
@@ -87,7 +90,7 @@ class ApiClassesTestCase(unittest.TestCase):
         file_path = os.path.dirname(os.path.relpath(__file__))
         try:
             rest_client = DummyRESTClient('http://testurl.com', key='userName', secret='abcd',
-                                  key_file=os.path.join(file_path, 'test.key'))
+                                          key_file=os.path.join(file_path, 'test.key'))
         except TypeError:
             self.fail('Instantiation of the concrete implementation of the abstract RESTClientAPI class failed!')
         self.assertEqual(rest_client._key, 'storedUserName')

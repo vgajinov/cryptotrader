@@ -33,9 +33,8 @@ class WSClientAPI(ABC):
         self.logger.removeHandler(self.logger_handler)
         self.logger = None
 
-    # @staticmethod
-    @abstractmethod
-    def name(self):
+    @staticmethod
+    def name():
         """Return the name of the exchange.
         This is used by the WSClientFactory and is NOT the name of the class,
         but is defined by the class implementation.

@@ -6,7 +6,7 @@ from exchanges.exception import ExchangeException
 client = BitfinexRESTClient()
 
 
-class BitfinexRESTClientTestCase(unittest.TestCase):
+class BitfinexRESTPublicClientTestCase(unittest.TestCase):
     client = BitfinexRESTClient()
 
     def test_ping(self):
@@ -99,13 +99,14 @@ class BitfinexRESTAuthenticatedClientTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        print('Testing Bitfinex authenticated channels requires an API key!')
-        key_file = input("Full path to Bitfinex key file: ")
-        if not key_file or not path.isfile(key_file):
-            cls.fail('Key file not valid!')
+        key_file = 'exchanges/api_keys/bitfinex.key'
+        if not path.exists(key_file) or not path.isfile(key_file):
+            print("Testing Bitfinex authenticated channels requires an API key!")
+            print("Please, provide the key file named 'bitfinex.key' in the exchanges/api_keys folder.")
+            raise unittest.SkipTest('Key file not found or invalid!')
         cls.client = BitfinexRESTClient(key_file=key_file)
         if not cls.client.authenticated:
-            cls.fail('Authentication failed using given key file!')
+            raise unittest.SkipTest('Authentication failed using given key file!')
 
     @classmethod
     def tearDownClass(cls) -> None:

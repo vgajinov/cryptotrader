@@ -1,3 +1,2 @@
 #!/bin/bash
-export PYTHONPATH=$PWD:$PYTHONPATH
-python3 -m unittest discover test/
+PYTHONPATH=$(pwd) python3 tests/run_exchange_tests.py

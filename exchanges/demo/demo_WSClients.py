@@ -2,8 +2,10 @@ import os
 import sys
 import time
 import logging
+import traceback
 from exchanges.WS.binance import BinanceWSClient
 from exchanges.WS.bitfinex import BitfinexWSClient
+from exchanges.exception import ExchangeException
 
 
 # Ticker
@@ -309,38 +311,51 @@ class UserBalances:
         self.client_name = client.name()
         self._show_header()
         handle = client.subscribe_balances(update_handler=self.handle_updates)
-        time.sleep(30)
+        time.sleep(10)
         client.unsubscribe(handle, update_handler=self.handle_updates)
 
 
 # =================================================================================
-# Demos
+#     Demos
 # =================================================================================
 
 def demo_public_channels(client):
-    client.connect(info_handler)
+    """Subscribes to public channels using the websocket client.
+    :param client   a reference to the websocket client used for the demo
+    Displays the values returned by the websocket for some time and then switches to next channel.
+    Tests ticker, order book, trades and candles channels."""
+    try:
+        client.connect(info_handler)
 
-    if client.name() == 'Binance':
-        symbol = 'BTCUSDT'
-        AllTickers().test(client)
+        if client.name() == 'Binance':
+            symbol = 'BTCUSDT'
+            AllTickers().test(client)
+            time.sleep(3)
+        else:
+            symbol = 'BTCUSD'
+        Ticker().test(client, symbol)
         time.sleep(3)
-    else:
-        symbol = 'BTCUSD'
-    Ticker().test(client, symbol)
-    time.sleep(3)
-    OrderBook().test(client, symbol)
-    time.sleep(3)
-    Trades().test(client, symbol)
-    time.sleep(3)
-    Candles().test(client, symbol)
-    time.sleep(3)
+        OrderBook().test(client, symbol)
+        time.sleep(3)
+        Trades().test(client, symbol)
+        time.sleep(3)
+        Candles().test(client, symbol)
+        time.sleep(3)
 
-    client.disconnect()
-    time.sleep(5)
+        client.disconnect()
+        time.sleep(5)
+    except ExchangeException as e:
+        print(e)
+        print(''.join(traceback.format_exc()))
 
 
-# Test multiple channel subscriptions
 def demo_multiple_subscriptions(client):
+    """Shows a demo of simultaneous multiple channel subscriptions
+    :param client   a reference to the websocket client used for the demo
+    Subscribes to ticker, order book, trades and candles channels and displays the contents
+    of the websocket logger.
+    """
+
     # add a stdout handler to a client logger
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.DEBUG)
@@ -352,29 +367,42 @@ def demo_multiple_subscriptions(client):
     header_string = '*' * 100 + '\n   TESTING:   {0} {1}\n' + '*' * 100 + '\n\n'
     print(header_string.format('Multiple channel subscriptions via websocket for ', client.name()))
 
-    client.connect(info_handler)
-    print('\nSubscribing to Ticker:\n' + '-'*100)
-    client.subscribe_ticker('LTCBTC')
-    time.sleep(1)
-    print('\nSubscribing to Candles:\n' + '-' * 100)
-    client.subscribe_candles('LTCBTC', '1m')
-    time.sleep(1)
-    print('\nSubscribing to Trades:\n' + '-' * 100)
-    client.subscribe_trades('LTCBTC')
-    time.sleep(1)
-    print('\nSubscribing to Order Book:\n' + '-' * 100)
-    client.subscribe_order_book('LTCBTC')
-    time.sleep(5)
-    print('\nDisconnecting ...\n' + '-' * 100)
-    client.disconnect()
-    time.sleep(5)
+    try:
+        client.connect(info_handler)
+        print('\nSubscribing to Ticker:\n' + '-'*100)
+        client.subscribe_ticker('LTCBTC')
+        time.sleep(1)
+        print('\nSubscribing to Candles:\n' + '-' * 100)
+        client.subscribe_candles('LTCBTC', '1m')
+        time.sleep(1)
+        print('\nSubscribing to Trades:\n' + '-' * 100)
+        client.subscribe_trades('LTCBTC')
+        time.sleep(1)
+        print('\nSubscribing to Order Book:\n' + '-' * 100)
+        client.subscribe_order_book('LTCBTC')
+        time.sleep(5)
+        print('\nDisconnecting ...\n' + '-' * 100)
+        client.disconnect()
+        time.sleep(5)
+    except ExchangeException as e:
+        print(e)
+        print(''.join(traceback.format_exc()))
 
 
-# Test multiple listeners on the same channel
 def demo_multiple_listeners(client):
+    """Shows a demo of multiple listeners on the same channel.
+    :param client   a reference to the websocket client used for the demo
+    Connects three listeners to the the same ticker channel and displays the contents
+    of the websocket logger.
+    """
+
     class SimpleTicker(Ticker):
         def handle_updates(self, sender, data):
             self.ticker = data
+
+    os.system('clear')
+    header_string = '*' * 100 + '\n   TESTING:   {0} {1}\n' + '*' * 100 + '\n\n'
+    print(header_string.format('Multiple listeners on a Ticker channel for ', client.name()))
 
     # add a stdout handler to a client logger
     handler = logging.StreamHandler(sys.stdout)
@@ -383,53 +411,75 @@ def demo_multiple_listeners(client):
     handler.setFormatter(formatter)
     client.logger.addHandler(handler)
 
-    os.system('clear')
-    header_string = '*' * 100 + '\n   TESTING:   {0} {1}\n' + '*' * 100 + '\n\n'
-    print(header_string.format('Multiple listeners on a Ticker channel for ', client.name()))
+    try:
+        client.connect(info_handler)
 
-    ticker1 = SimpleTicker()
-    ticker2 = SimpleTicker()
-    ticker3 = SimpleTicker()
+        ticker1 = SimpleTicker()
+        ticker2 = SimpleTicker()
+        ticker3 = SimpleTicker()
 
-    print('\nNew subscriber to a Ticker:\n' + '-' * 100)
-    handle1, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker1.handle_updates)
-    time.sleep(5)
-    print('\nNew subscriber to a Ticker:\n' + '-' * 100)
-    handle2, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker2.handle_updates)
-    time.sleep(5)
-    print('\nNew subscriber to a Ticker:\n' + '-' * 100)
-    handle3, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker3.handle_updates)
-    time.sleep(5)
+        print('\nNew subscriber to a Ticker:\n' + '-' * 100)
+        handle1, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker1.handle_updates)
+        time.sleep(5)
+        print('\nNew subscriber to a Ticker:\n' + '-' * 100)
+        handle2, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker2.handle_updates)
+        time.sleep(5)
+        print('\nNew subscriber to a Ticker:\n' + '-' * 100)
+        handle3, _ = client.subscribe_ticker('LTCBTC', update_handler=ticker3.handle_updates)
+        time.sleep(5)
 
-    print('\nUNSUBSCRIBING ...\n' + '-' * 100)
-    client.unsubscribe(handle1, update_handler=ticker1.handle_updates)
-    client.unsubscribe(handle2, update_handler=ticker2.handle_updates)
-    client.unsubscribe(handle3, update_handler=ticker3.handle_updates)
-    time.sleep(3)
+        print('\nUNSUBSCRIBING ...\n' + '-' * 100)
+        client.unsubscribe(handle1, update_handler=ticker1.handle_updates)
+        client.unsubscribe(handle2, update_handler=ticker2.handle_updates)
+        client.unsubscribe(handle3, update_handler=ticker3.handle_updates)
+        time.sleep(3)
 
-    print('\nDisconnecting:\n' + '-' * 100)
-    client.disconnect()
-    time.sleep(3)
+        print('\nDisconnecting:\n' + '-' * 100)
+        client.disconnect()
+        time.sleep(3)
 
-    print("\nSTATE OF TICKERS:\n" + '-' * 100)
-    print(ticker1.fmt.format(*ticker1.header))
-    print(ticker1.fmt.format(*ticker1.ticker))
-    print(ticker2.fmt.format(*ticker2.ticker))
-    print(ticker3.fmt.format(*ticker3.ticker))
+        # NOTE: tickers might not get updates during the execution of the demo
+        print("\nSTATE OF TICKERS:\n" + '-' * 100)
+        print(ticker1.fmt.format(*ticker1.header))
+        if ticker1.ticker:
+            print(ticker1.fmt.format(*ticker1.ticker))
+        if ticker2.ticker:
+            print(ticker2.fmt.format(*ticker2.ticker))
+        if ticker3.ticker:
+            print(ticker3.fmt.format(*ticker3.ticker))
+
+    except ExchangeException as e:
+        print(e)
+        print(''.join(traceback.format_exc()))
 
 
-# Test authenticated channels
 def demo_authenticated(client, key_file):
-    client.connect(info_handler)
-    client.authenticate(key_file=key_file)
+    """Shows a demo of using authenticated channels via websocket client.
+    :param client     a reference to the websocket client used for the demo
+    :param key_file   a path to the key file
+    Connects to the client and authenticates the user using the key file.
+    Then, it subscribes to user orders, user trades and balances channels
+    and displays the values returned by the websocket for some time
+    before switching to next channel.
+    """
+    try:
+        client.connect(info_handler)
+        client.authenticate(key_file=key_file)
 
-    UserOrders().test(client)
-    UserTrades().test(client)
-    UserBalances().test(client)
+        UserOrders().test(client)
+        UserTrades().test(client)
+        UserBalances().test(client)
 
-    client.disconnect()
-    time.sleep(3)
+        client.disconnect()
+        time.sleep(3)
+    except ExchangeException as e:
+        print(e)
+        print(''.join(traceback.format_exc()))
 
+
+# =================================================================================
+#     MAIN
+# =================================================================================
 
 if __name__ == '__main__':
     choices  = "Choose which demo to run:\n"
@@ -462,10 +512,18 @@ if __name__ == '__main__':
     elif choice == 6:
         demo_multiple_listeners(client=BitfinexWSClient())
     elif choice == 7:
-        path = input("Full path to Binance key file: ")
-        demo_authenticated(BinanceWSClient(), path)
+        key_file = 'exchanges/api_keys/binance.key'
+        if os.path.exists(key_file) and os.path.isfile(key_file):
+            demo_authenticated(BinanceWSClient(), key_file)
+        else:
+            print("Binance api key file not found!")
+            print("Please, provide the key file named 'binance.key' in the exchanges/api_keys folder.")
     elif choice == 8:
-        path = input("Full path to Bitfinex key file: ")
-        demo_authenticated(BitfinexWSClient(), path)
+        key_file = 'exchanges/api_keys/bitfinex.key'
+        if os.path.exists(key_file) and os.path.isfile(key_file):
+            demo_authenticated(BitfinexWSClient(), key_file)
+        else:
+            print("Bitfinex api key file not found!")
+            print("Please, provide the key file named 'bitfinex.key' in the exchanges/api_keys folder.")
     else:
         print("Wrong choice given!")

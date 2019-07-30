@@ -187,8 +187,8 @@ class BitfinexWSPublicClientTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        print("Bitfinex websocket is completely asynchronous, so we use 1s sleep after each request (subscribe ...).")
-        print("This may fail because the wait was too short for the message to arrive!")
+        # Bitfinex websocket is completely asynchronous, so we use 1s sleep after each request (subscribe ...)
+        # This may fail because the wait was too short for the message to arrive!
         cls.client = BitfinexWSClient()
         cls.client.connect(BitfinexWSPublicClientTestCase.handle_info)
 
@@ -330,10 +330,11 @@ class BitfinexWSAuthenticatedClientTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        print('Testing Bitfinex authenticated channels requires an API key!')
-        key_file = input("Full path to Bitfinex key file: ")
-        if not key_file or not path.isfile(key_file):
-            cls.fail('Key file not valid!')
+        key_file = 'exchanges/api_keys/bitfinex.key'
+        if not path.exists(key_file) or not path.isfile(key_file):
+            print("Testing Bitfinex authenticated channels requires an API key!")
+            print("Please, provide the key file named 'bitfinex.key' in the exchanges/api_keys folder.")
+            raise unittest.SkipTest('Key file not found or invalid!')
 
         cls.client = BitfinexWSClient()
         cls.client.connect(BitfinexWSPublicClientTestCase.handle_info)
@@ -341,7 +342,7 @@ class BitfinexWSAuthenticatedClientTestCase(unittest.TestCase):
         cls.client.authenticate(key_file=key_file)
         time.sleep(2)
         if not cls.client.authenticated:
-            cls.fail('Authentication failed using given key file!')
+            raise unittest.SkipTest('Authentication failed using given key file!')
 
     @classmethod
     def tearDownClass(cls) -> None:

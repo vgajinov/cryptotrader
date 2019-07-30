@@ -39,8 +39,9 @@ class RESTClientAPI(ABC):
     def __str__(self):
         return self.name()
 
-    @abstractmethod
-    def name(self):
+
+    @staticmethod
+    def name():
         """Return the name of the exchange.
         This is used by the RESTClientFactory and is NOT the name of the class,
         but is defined by the class implementation.

@@ -370,6 +370,7 @@ class BinanceWSClient(WSClientAPI):
     def __init__(self):
         """Creates Binance websocket client"""
         super(BinanceWSClient, self).__init__()
+        self._threads = []        # a list of all spawned threads
         self._data = {}           # stream -> data
         self._subscriptions = {}  # stream -> thread
         self._connections = {}    # stream -> websocket
@@ -417,6 +418,7 @@ class BinanceWSClient(WSClientAPI):
         thread = threading.Thread(target=self._connect, name=stream)
         thread.daemon = True
         self._subscriptions[stream] = thread
+        self._threads.append(thread)
         thread.start()
 
     def _log_active_threads(self):
@@ -445,6 +447,10 @@ class BinanceWSClient(WSClientAPI):
         """
         self.logger.info('Websocket error:')
         try:
+            if isinstance(error, AttributeError):
+                # This is a workaround for an issue with the websocket-client
+                self.logger.error(error)
+                return
             err = json.loads(error)
             self.logger.info('Error {} : {}'.format(err['code'], err['msg']))
             dispatcher.send(signal='info', sender='binance', data={'error': err['msg]']})
@@ -514,16 +520,24 @@ class BinanceWSClient(WSClientAPI):
             except KeyError:
                 self.logger.info(f'No connection for stream {stream}')
 
-        # clear internal structures
-        self._data.clear()
-        self._connections.clear()
-        self._subscriptions.clear()
-
         # disconnect all listeners from the dispatcher
         if self._info_handler:
             dispatcher.disconnect(self._info_handler, signal='info', sender='binance')
         for d in dispatcher.getAllReceivers(sender='binance'):
             d.disconnect()
+
+        # make sure that there are no zombie threads
+        for thread in self._threads:
+            while thread.is_alive():
+                thread.join(timeout=3)
+                if thread.is_alive():
+                    thread._stop()
+
+        # clear internal structures
+        self._threads.clear()
+        self._data.clear()
+        self._connections.clear()
+        self._subscriptions.clear()
 
         self._stop_logger()
 
@@ -601,7 +615,7 @@ class BinanceWSClient(WSClientAPI):
                 self._subscribe(stream)
                 return stream, None
             else:
-                self.logger.info(f'Already subscribed to {symbol} candles')
+                self.logger.info(f'Already subscribed to {symbol} ticker')
                 return stream, self._data[stream].snapshot()
         except Exception as e:
             raise ExchangeException(self.name(), 'Exception while trying to subscribe to a ticker',
@@ -807,6 +821,8 @@ class BinanceWSClient(WSClientAPI):
         """
         self.logger.info('Subscribing to user trades channel')
         dispatcher.connect(update_handler, signal='user_trades', sender='binance')
+        if self._trades:
+            dispatcher.send(signal='user_trades', sender='binance', data=list(reversed(self._trades)))
         return 'user_trades'
 
     def subscribe_balances(self, update_handler):
