@@ -47,3 +47,21 @@ and then run application.
 
 ssl.get_server_certificate(('stream.binance.com',9443))
 sslopt={'certfile':'/home/vladimir/work/autoTrader/exchanges/WS/binance.pem'}
+
+Docker image
+------------
+
+The docker image can be built using the command
+
+   $ docker build -t autotrader:latest .
+
+and run using
+
+   $ git clone https://github.com/mherkazandjian/autotrader.git
+   $ cd autotrader
+   $ docker run -it --rm \
+       -e DISPLAY=$DISPLAY \
+       -v $PWD:/home/developer/autotrader \
+       -v /tmp/.X11-unix:/tmp/.X11-unix \
+       -v $HOME/.Xauthority:/home/developer/.Xauthority \
+       --net=host autotrader
