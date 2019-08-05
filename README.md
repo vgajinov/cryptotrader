@@ -24,12 +24,12 @@ The easiest way to use CryptoTrader at the moment is to build and run the Docker
 
 The docker image can be built using the command
 
-```python
+```bash
 $ docker build -t autotrader:latest .
 ```
 and run using
 
-```python
+```bash
 $ git clone https://github.com/mherkazandjian/autotrader.git
 $ cd autotrader
 $ docker run -it --rm \
