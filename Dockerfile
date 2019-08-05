@@ -215,8 +215,8 @@ RUN pip3 install \
      elasticsearch==7.0.2
 
 # map the dir of the project from the host to the container
-# using the flag e.g -v $HOME/autotrader:/home/developer/autotrader
-RUN mkdir /home/developer/autotrader
+# using the flag e.g -v $HOME/cryptotrader:/home/developer/cryptotrader
+RUN mkdir /home/developer/cryptotrader
 
 RUN apt-get clean
 
